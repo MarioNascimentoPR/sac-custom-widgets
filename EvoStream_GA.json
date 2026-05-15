@@ -1,6 +1,6 @@
 {
   "name": "EvoStream GA Table",
-  "description": "Tabela G&A Customizada EvoStream",
+  "description": "Tabela GA",
   "eula": "",
   "vendor": "EvoStream",
   "license": "",
@@ -12,27 +12,11 @@
     {
       "kind": "main",
       "tag": "evostream-ga-table",
-      "url": "https://MarioNascimentoPR.github.io/sac-custom-widgets/ga_widget.js",
-      "integrity": "",
-      "ignoreInDocumentation": false
+      "url": "https://SEU_USUARIO.github.io/sac-custom-widgets/ga_widget.js",
+      "integrity": ""
     }
   ],
-  "properties": {
-    "rows": {
-      "type": "object",
-      "description": "Dados da Tabela"
-    }
-  },
-  "methods": {
-    "setRows": {
-      "parameters": [
-        {
-          "name": "newRows",
-          "type": "object"
-        }
-      ],
-      "body": "this.rows = newRows;"
-    }
-  },
+  "properties": {},
+  "methods": {},
   "events": {}
 }
