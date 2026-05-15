@@ -14,7 +14,7 @@
       .delta { font-weight: 700; padding: 4px 8px; border-radius: 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
       .red { color: #e11d48; background: #fff1f2; }
       .green { color: #16a34a; background: #f0fdf4; }
-      .info-box { padding: 20px; color: #71717a; font-size: 13px; text-align: center; }
+      .info-box { padding: 30px; color: #71717a; font-size: 13px; text-align: center; font-weight: 500; }
     </style>
     <div class="container">
       <table>
@@ -52,11 +52,11 @@
           this._render(binding.data, binding.metadata);
         } else {
           tbody.innerHTML = "";
-          status.innerHTML = `<div class="info-box">Data Binding conectado. Aguardando dados de resposta do modelo S00_GERENCIAL...</div>`;
+          status.innerHTML = `<div class="info-box">Aguardando dados: Certifique-se de preencher o Builder do componente no Story.</div>`;
         }
       } else {
         tbody.innerHTML = "";
-        status.innerHTML = `<div class="info-box" style="color: #ef4444;">Erro de inicialização: Atualize o arquivo JSON do widget no painel do SAC.</div>`;
+        status.innerHTML = `<div class="info-box" style="color: #ef4444;">Aguardando sincronização do arquivo JSON.</div>`;
       }
     }
 
@@ -64,7 +64,7 @@
       const tbody = this._shadowRoot.getElementById("tbody");
       const consolidated = {};
 
-      // Captura os membros dinâmicos gerados pelas contas restritas
+      // Captura as chaves de colunas criadas pelas contas restritas do modelo
       const memberKeys = Object.keys(metadata?.mainStructureMembers || {});
       const realKey = memberKeys[0];
       const budgetKey = memberKeys[1];
