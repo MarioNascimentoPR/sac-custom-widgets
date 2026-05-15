@@ -1,0 +1,57 @@
+{
+  "id": "com.evostream.gatable",
+  "version": "1.0.0",
+  "name": "EvoStream GA Table Only",
+  "description": "Tabela de Ofensores G&A - Foco em Desvios",
+  "newInstancePrefix": "GATable",
+  "vendor": "EvoStream",
+  "eula": "",
+  "license": "",
+  "webcomponents": [
+    {
+      "kind": "main",
+      "tag": "evo-ga-table-only",
+      "url": "http://localhost:8080/evo_ga_table.js",
+      "integrity": "",
+      "ignoreIntegrity": true
+    }
+  ],
+  "properties": {
+    "rows": {
+      "type": "string",
+      "description": "Data binding do SAC enviado como string JSON",
+      "default": ""
+    }
+  },
+  "methods": {
+    "setRows": {
+      "description": "Define os dados via script se necessário",
+      "parameters": [
+        {
+          "name": "data",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "dataBindings": {
+    "financialData": {
+      "feeds": [
+        {
+          "id": "dimensions",
+          "description": "Dimensões: Centro de Custo, Diretoria e Área",
+          "type": "dimension",
+          "min": 1,
+          "max": 4
+        },
+        {
+          "id": "measures",
+          "description": "Medidas/Versões: AMOUNT filtrado por Realizado e Budget",
+          "type": "mainStructureMember",
+          "min": 2,
+          "max": 2
+        }
+      ]
+    }
+  }
+}
