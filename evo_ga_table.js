@@ -1,373 +1,108 @@
 (function () {
+    let template = document.createElement("template");
+    template.innerHTML = `
+        <style>
+            :host { display: block; width: 100%; height: 100%; overflow: auto; }
+            table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px; }
+            th, td { border: 1px solid #d3d3d3; padding: 8px; text-align: left; }
+            th { background-color: #f4f4f4; font-weight: bold; text-align: center; }
+            .numeric { text-align: right; }
+        </style>
+        <div id="table-container"></div>
+    `;
 
-  const template = document.createElement("template");
+    class EvoGATable extends HTMLElement {
+        constructor() {
+            super();
+            this._shadowRoot = this.attachShadow({ mode: "open" });
+            this._shadowRoot.appendChild(template.content.cloneNode(true));
+            this._props = {};
+        }
 
-  template.innerHTML = `
+        onCustomWidgetBeforeUpdate(changedProperties) {
+            this._props = { ...this._props, ...changedProperties };
+        }
 
-    <style>
+        onCustomWidgetAfterUpdate(changedProperties) {
+            if ("financialData" in changedProperties && this.financialData) {
+                this.renderTable(this.financialData);
+            }
+        }
 
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+        renderTable(financialData) {
+            const container = this._shadowRoot.getElementById("table-container");
+            container.innerHTML = ""; 
 
-      :host {
-        display: block;
-        width: 100%;
-        height: 100%;
-        font-family: 'Inter', sans-serif;
-      }
+            if (!financialData.data || financialData.data.length === 0) {
+                container.innerHTML = "<div>Aguardando dados no Builder...</div>";
+                return;
+            }
 
-      .wrapper {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        overflow: hidden;
-      }
+            const dimensions = financialData.metadata.dimensions;
+            const measures = financialData.metadata.mainStructureMembers;
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
+            const dimKeys = Object.keys(dimensions);
+            const measureKeys = Object.keys(measures);
 
-      thead {
-        background: #f9fafb;
-      }
+            if (dimKeys.length < 2 || measureKeys.length < 1) {
+                container.innerHTML = "<div>Adicione pelo menos 2 dimensões e 1 medida no painel.</div>";
+                return;
+            }
 
-      thead th {
-        padding: 14px 18px;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        color: #6b7280;
-        text-align: right;
-        border-bottom: 1px solid #e5e7eb;
-      }
+            // Mapeia os IDs baseados na ordem do Builder
+            const rowDimKey = dimKeys[0];    // 1ª dimensão arrastada vira linha
+            const colDimKey = dimKeys[1];    // 2ª dimensão arrastada vira coluna
+            const measureKey = measureKeys[0]; // 1ª medida arrastada
 
-      thead th:first-child {
-        text-align: left;
-      }
+            const rowDimName = dimensions[rowDimKey].description;
+            const measureName = measures[measureKey].description;
 
-      tbody td {
-        padding: 14px 18px;
-        border-bottom: 1px solid #f3f4f6;
-        font-size: 13px;
-      }
+            // Extrai valores únicos para montar os eixos do pivô
+            const uniqueCols = [...new Set(financialData.data.map(row => row[colDimKey].description))];
+            const uniqueRows = [...new Set(financialData.data.map(row => row[rowDimKey].description))];
 
-      .cc {
-        font-weight: 600;
-        color: #111827;
-      }
+            // Cria mapa de dados indexado
+            const dataMap = {};
+            financialData.data.forEach(row => {
+                const rKey = row[rowDimKey].description;
+                const cKey = row[colDimKey].description;
+                const value = row[measureKey].formattedValue || row[measureKey].value;
 
-      .money {
-        text-align: right;
-        font-family: 'JetBrains Mono', monospace;
-      }
+                if (!dataMap[rKey]) dataMap[rKey] = {};
+                dataMap[rKey][cKey] = value;
+            });
 
-      .budget {
-        color: #6b7280;
-      }
+            // Geração da estrutura HTML da tabela cruzada
+            let tableHtml = `<table>`;
+            
+            // Header 1: Nome da dimensão de linha + Itens da dimensão de coluna
+            tableHtml += `<tr><th rowspan="2">${rowDimName}</th>`;
+            uniqueCols.forEach(col => {
+                tableHtml += `<th>${col}</th>`;
+            });
+            tableHtml += `</tr>`;
 
-      .variance {
-        text-align: right;
-      }
+            // Header 2: Nome da Medida replicada abaixo de cada coluna
+            tableHtml += `<tr>`;
+            uniqueCols.forEach(() => {
+                tableHtml += `<th>${measureName}</th>`;
+            });
+            tableHtml += `</tr>`;
 
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 5px 9px;
-        border-radius: 999px;
-        font-size: 11px;
-        font-weight: 700;
-      }
+            // Linhas de dados
+            uniqueRows.forEach(row => {
+                tableHtml += `<tr><td>${row}</td>`;
+                uniqueCols.forEach(col => {
+                    const cellValue = (dataMap[row] && dataMap[row][col]) ? dataMap[row][col] : "-";
+                    tableHtml += `<td class="numeric">${cellValue}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
 
-      .negative {
-        background: #fef2f2;
-        color: #dc2626;
-      }
-
-      .positive {
-        background: #f0fdf4;
-        color: #16a34a;
-      }
-
-      .status {
-        padding: 24px;
-        text-align: center;
-        color: #6b7280;
-        font-size: 13px;
-      }
-
-      .debug {
-        background: #111827;
-        color: #4ade80;
-        padding: 14px;
-        font-size: 10px;
-        font-family: monospace;
-        overflow: auto;
-        max-height: 300px;
-        border-top: 1px solid #1f2937;
-      }
-
-    </style>
-
-    <div class="wrapper">
-
-      <table>
-
-        <thead>
-          <tr>
-            <th>Centro de Custo</th>
-            <th>Realizado</th>
-            <th>Orçado</th>
-            <th>Desvio</th>
-          </tr>
-        </thead>
-
-        <tbody id="tbody"></tbody>
-
-      </table>
-
-      <div id="status" class="status"></div>
-
-      <div id="debug" class="debug"></div>
-
-    </div>
-
-  `;
-
-  class EvoGATableOnly extends HTMLElement {
-
-    constructor() {
-
-      super();
-
-      this.attachShadow({ mode: "open" });
-
-      this.shadowRoot.appendChild(
-        template.content.cloneNode(true)
-      );
-
-      this.currencyFormatter =
-        new Intl.NumberFormat(
-          "pt-BR",
-          {
-            style: "currency",
-            currency: "BRL"
-          }
-        );
+            tableHtml += `</table>`;
+            container.innerHTML = tableHtml;
+        }
     }
 
-    onCustomWidgetAfterUpdate() {
-
-      const tbody =
-        this.shadowRoot.getElementById("tbody");
-
-      const status =
-        this.shadowRoot.getElementById("status");
-
-      const debug =
-        this.shadowRoot.getElementById("debug");
-
-      tbody.innerHTML = "";
-      status.innerHTML = "";
-
-      try {
-
-        if (
-          !this.dataBindings ||
-          !this.dataBindings.getDataBinding
-        ) {
-
-          status.innerHTML =
-            "DataBinding não encontrado.";
-
-          return;
-        }
-
-        const binding =
-          this.dataBindings.getDataBinding(
-            "financialData"
-          );
-
-        if (!binding) {
-
-          status.innerHTML =
-            'Binding "financialData" não encontrado.';
-
-          return;
-        }
-
-        const data =
-          binding.data || [];
-
-        debug.innerHTML = `
-          TOTAL ROWS: ${data.length}
-
-          <br><br>
-
-          PRIMEIRA LINHA:
-
-          <pre>
-${JSON.stringify(data[0], null, 2)}
-          </pre>
-        `;
-
-        if (!data.length) {
-
-          status.innerHTML =
-            "Nenhum dado retornado pelo SAC.";
-
-          return;
-        }
-
-        const VERSION_MAP = {
-          "PUBLIC.REALIZADO": "realized",
-          "PUBLIC.ORÇADO": "budget"
-        };
-
-        const consolidated = {};
-
-        data.forEach(row => {
-
-          const dimensionKeys =
-            Object.keys(row)
-            .filter(key =>
-              key.startsWith("dimensions_")
-            );
-
-          const measureKey =
-            Object.keys(row)
-            .find(key =>
-              key.startsWith("measures_")
-            );
-
-          if (
-            dimensionKeys.length < 2 ||
-            !measureKey
-          ) {
-            return;
-          }
-
-          const ccDimension =
-            row[dimensionKeys[0]];
-
-          const versionDimension =
-            row[dimensionKeys[1]];
-
-          const ccId =
-            ccDimension?.id || "N/A";
-
-          const ccDescription =
-            ccDimension?.description || ccId;
-
-          const versionId =
-            (
-              versionDimension?.id || ""
-            ).toUpperCase();
-
-          const scenario =
-            VERSION_MAP[versionId];
-
-          if (!scenario) {
-            return;
-          }
-
-          const value =
-            parseFloat(
-              row[measureKey]?.rawValue || 0
-            );
-
-          if (!consolidated[ccId]) {
-
-            consolidated[ccId] = {
-              description: ccDescription,
-              realized: 0,
-              budget: 0
-            };
-          }
-
-          consolidated[ccId][scenario] += value;
-        });
-
-        const html =
-          Object.values(consolidated)
-          .map(item => {
-
-            const variance =
-              item.realized - item.budget;
-
-            const positive =
-              variance <= 0;
-
-            return `
-
-              <tr>
-
-                <td class="cc">
-                  ${item.description}
-                </td>
-
-                <td class="money">
-                  ${this.currencyFormatter.format(
-                    item.realized
-                  )}
-                </td>
-
-                <td class="money budget">
-                  ${this.currencyFormatter.format(
-                    item.budget
-                  )}
-                </td>
-
-                <td class="variance">
-
-                  <span class="
-                    badge
-                    ${positive
-                      ? "positive"
-                      : "negative"}
-                  ">
-
-                    ${positive ? "▼" : "▲"}
-
-                    ${this.currencyFormatter.format(
-                      Math.abs(variance)
-                    )}
-
-                  </span>
-
-                </td>
-
-              </tr>
-
-            `;
-          })
-          .join("");
-
-        tbody.innerHTML = html;
-
-      } catch(error) {
-
-        status.innerHTML =
-          "Erro ao renderizar widget.";
-
-        debug.innerHTML = `
-
-          ERROR:
-
-          <pre>
-${error.message}
-
-${error.stack}
-          </pre>
-
-        `;
-      }
-    }
-  }
-
-  customElements.define(
-    "evo-ga-table-only",
-    EvoGATableOnly
-  );
-
+    customElements.define("evo-ga-table-only", EvoGATable);
 })();
