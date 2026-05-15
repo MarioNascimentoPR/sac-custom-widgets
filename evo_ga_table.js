@@ -15,6 +15,7 @@
                 width: 100%; 
                 border-collapse: collapse; 
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+                table-layout: auto;
             }
             th { 
                 color: #A0A0A0; 
@@ -25,6 +26,7 @@
                 padding: 16px 12px; 
                 border-bottom: 2px solid #F2F2F2; 
                 text-align: right; 
+                vertical-align: bottom;
             }
             th:first-child { 
                 text-align: left; 
@@ -34,6 +36,7 @@
                 border-bottom: 1px solid #F8F8F8; 
                 font-size: 13px; 
                 color: #555555; 
+                vertical-align: middle;
             }
             td:first-child { 
                 font-weight: 600; 
@@ -46,8 +49,31 @@
                 font-weight: 500;
                 color: #666666;
             }
-            .var-positive { color: #D32F2F; font-weight: 600; } /* Vermelho para desvio acima do orçado */
-            .var-negative { color: #388E3C; font-weight: 600; } /* Verde para desvio abaixo do orçado */
+            .center { text-align: center; }
+
+            /* Texto colorido para variação */
+            .var-positive { color: #D32F2F; font-weight: 600; } /* Acima do orçamento - Vermelho */
+            .var-negative { color: #388E3C; font-weight: 600; } /* Abaixo do orçamento - Verde */
+
+            /* Alinhamento de elementos em células */
+            .cell-variance { white-space: nowrap; }
+            .cell-variance .var-icon { margin-right: 4px; font-size: 1.2em; vertical-align: middle; }
+
+            /* Barras de Progresso de Consumo */
+            .cell-consumption { text-align: center !important; width: 120px; }
+            .bar-container { position: relative; width: 100%; height: 6px; background-color: #F2F2F2; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+            .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 3px; transition: width 0.3s ease; }
+            .fill-green { background-color: #4CAF50; }
+            .fill-yellow { background-color: #FF9800; }
+            .fill-red { background-color: #F44336; }
+            .percent-value { font-size: 11px; color: #666666; margin-top: 2px; }
+
+            /* Status Pills (Etiquetas) */
+            .cell-status { text-align: center !important; }
+            .status-pill { display: inline-block; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; } /* Verde */
+            .status-atencao { background-color: #FFF3E0; color: #EF6C00; } /* Laranja */
+            .status-acima { background-color: #FFEBEE; color: #C62828; } /* Vermelho */
         </style>
         <div id="table-container"></div>
     `;
@@ -100,18 +126,29 @@
                     return obj.label || obj.description || obj.id || "N/D";
                 };
 
-                // Parser para garantir cálculo matemático limpo
+                // Parser robusto para garantir cálculo matemático independente da formatação do SAC
                 const parseNumber = (val) => {
                     if (typeof val === 'number') return val;
                     if (!val || val === "-") return 0;
-                    const cleanStr = String(val).replace(/[^0-9.-]/g, '');
+                    const cleanStr = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.'); // Remove tudo exceto numéros e pontos, e troca vírgula por ponto
                     return parseFloat(cleanStr) || 0;
                 };
 
-                // Formatador visual de moeda (para o desvio e para os valores caso venham brutos)
-                const formatNumber = (num) => {
+                // Formatador visual de moeda e números
+                const formatNumber = (num, withCurrency = true) => {
                     if (num === 0) return "-";
-                    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    let options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+                    if (withCurrency) {
+                        options.style = 'currency';
+                        options.currency = 'BRL';
+                    }
+                    return num.toLocaleString('pt-BR', options);
+                };
+                
+                const formatPercentage = (val) => {
+                    if (val === 0) return "-";
+                    if (val === Infinity) return "∞";
+                    return val.toFixed(1) + "%"; // Mostra 1 casa decimal, ex: 62.4%
                 };
 
                 const rowDimName = getName(dimensions[rowDimKey]);
@@ -121,85 +158,4 @@
 
                 const dataMap = {};
                 financialData.data.forEach(row => {
-                    const rKey = getName(row[rowDimKey]);
-                    const cKey = getName(row[colDimKey]);
-                    
-                    let value = "-";
-                    
-                    if (row[measureKey] && (row[measureKey].formattedValue !== undefined || row[measureKey].raw !== undefined)) {
-                        value = row[measureKey].formattedValue || row[measureKey].raw;
-                    } else {
-                        for (const key in row) {
-                            const cell = row[key];
-                            if (cell && typeof cell === "object" && ("formattedValue" in cell || "raw" in cell)) {
-                                value = cell.formattedValue || cell.raw;
-                                break;
-                            }
-                        }
-                    }
-
-                    // Se vier como float longo sem formato do SAC, já formata
-                    if (typeof value === "number" || !isNaN(parseFloat(value))) {
-                        value = parseNumber(value);
-                    }
-
-                    if (!dataMap[rKey]) dataMap[rKey] = {};
-                    dataMap[rKey][cKey] = value;
-                });
-
-                let tableHtml = `<table>`;
-                
-                tableHtml += `<thead><tr><th>${rowDimName}</th>`;
-                uniqueCols.forEach(col => {
-                    tableHtml += `<th>${col}</th>`;
-                });
-                tableHtml += `<th>VARIAÇÃO R$</th></tr></thead><tbody>`;
-
-                uniqueRows.forEach(row => {
-                    tableHtml += `<tr><td>${row}</td>`;
-                    
-                    let valOrcado = 0;
-                    let valRealizado = 0;
-
-                    uniqueCols.forEach(col => {
-                        let cellValue = (dataMap[row] && dataMap[row][col] !== undefined) ? dataMap[row][col] : "-";
-                        
-                        // Extrai valores para matemática
-                        const numValue = parseNumber(cellValue);
-                        if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) {
-                            valOrcado = numValue;
-                        } else if (col.toUpperCase().includes("REALIZADO")) {
-                            valRealizado = numValue;
-                        }
-
-                        // Aplica formatação final na célula da versão
-                        if (typeof cellValue === "number") cellValue = formatNumber(cellValue);
-                        
-                        tableHtml += `<td class="numeric">${cellValue}</td>`;
-                    });
-
-                    // Cálculo e injeção do Desvio
-                    const desvio = valRealizado - valOrcado;
-                    const desvioFormatted = formatNumber(desvio);
-                    
-                    let colorClass = "";
-                    if (desvio > 0) colorClass = "var-positive";
-                    else if (desvio < 0) colorClass = "var-negative";
-
-                    tableHtml += `<td class="numeric ${colorClass}">${desvioFormatted !== "-" ? (desvio > 0 ? "+" : "") + desvioFormatted : "-"}</td>`;
-                    
-                    tableHtml += `</tr>`;
-                });
-
-                tableHtml += `</tbody></table>`;
-                container.innerHTML = tableHtml;
-
-            } catch (error) {
-                container.innerHTML = `<div style='padding:10px; color:red;'>Erro ao renderizar: ${error.message}</div>`;
-                console.error("Erro no Widget:", error);
-            }
-        }
-    }
-
-    customElements.define("evo-ga-table-only", EvoGATable);
-})();
+                    const rKey = getName(row[row
