@@ -46,6 +46,8 @@
                 font-weight: 500;
                 color: #666666;
             }
+            .var-positive { color: #D32F2F; font-weight: 600; } /* Vermelho para desvio acima do orçado */
+            .var-negative { color: #388E3C; font-weight: 600; } /* Verde para desvio abaixo do orçado */
         </style>
         <div id="table-container"></div>
     `;
@@ -98,6 +100,20 @@
                     return obj.label || obj.description || obj.id || "N/D";
                 };
 
+                // Parser para garantir cálculo matemático limpo
+                const parseNumber = (val) => {
+                    if (typeof val === 'number') return val;
+                    if (!val || val === "-") return 0;
+                    const cleanStr = String(val).replace(/[^0-9.-]/g, '');
+                    return parseFloat(cleanStr) || 0;
+                };
+
+                // Formatador visual de moeda (para o desvio e para os valores caso venham brutos)
+                const formatNumber = (num) => {
+                    if (num === 0) return "-";
+                    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+
                 const rowDimName = getName(dimensions[rowDimKey]);
 
                 const uniqueCols = [...new Set(financialData.data.map(row => getName(row[colDimKey])))];
@@ -122,26 +138,56 @@
                         }
                     }
 
+                    // Se vier como float longo sem formato do SAC, já formata
+                    if (typeof value === "number" || !isNaN(parseFloat(value))) {
+                        value = parseNumber(value);
+                    }
+
                     if (!dataMap[rKey]) dataMap[rKey] = {};
                     dataMap[rKey][cKey] = value;
                 });
 
                 let tableHtml = `<table>`;
                 
-                // Header (Linha única)
                 tableHtml += `<thead><tr><th>${rowDimName}</th>`;
                 uniqueCols.forEach(col => {
                     tableHtml += `<th>${col}</th>`;
                 });
-                tableHtml += `</tr></thead><tbody>`;
+                tableHtml += `<th>VARIAÇÃO R$</th></tr></thead><tbody>`;
 
-                // Corpo da Tabela
                 uniqueRows.forEach(row => {
                     tableHtml += `<tr><td>${row}</td>`;
+                    
+                    let valOrcado = 0;
+                    let valRealizado = 0;
+
                     uniqueCols.forEach(col => {
-                        const cellValue = (dataMap[row] && dataMap[row][col]) ? dataMap[row][col] : "-";
+                        let cellValue = (dataMap[row] && dataMap[row][col] !== undefined) ? dataMap[row][col] : "-";
+                        
+                        // Extrai valores para matemática
+                        const numValue = parseNumber(cellValue);
+                        if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) {
+                            valOrcado = numValue;
+                        } else if (col.toUpperCase().includes("REALIZADO")) {
+                            valRealizado = numValue;
+                        }
+
+                        // Aplica formatação final na célula da versão
+                        if (typeof cellValue === "number") cellValue = formatNumber(cellValue);
+                        
                         tableHtml += `<td class="numeric">${cellValue}</td>`;
                     });
+
+                    // Cálculo e injeção do Desvio
+                    const desvio = valRealizado - valOrcado;
+                    const desvioFormatted = formatNumber(desvio);
+                    
+                    let colorClass = "";
+                    if (desvio > 0) colorClass = "var-positive";
+                    else if (desvio < 0) colorClass = "var-negative";
+
+                    tableHtml += `<td class="numeric ${colorClass}">${desvioFormatted !== "-" ? (desvio > 0 ? "+" : "") + desvioFormatted : "-"}</td>`;
+                    
                     tableHtml += `</tr>`;
                 });
 
