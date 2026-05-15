@@ -52,43 +52,26 @@
 
             if (!data || data.length === 0) return;
 
-            // 1. Identificar qual dimensão é a "Versão" e qual é a medida "AMOUNT"
-            const versionDimKey = Object.keys(metadata.dimensions).find(k => 
-                metadata.dimensions[k].description.toUpperCase().includes("VERS") || 
-                metadata.dimensions[k].description.toUpperCase().includes("VERSION")
-            ) || "dimensions_1";
+            // Mapeia os IDs das contas restritas que você arrastou no Gerador
+            // Geralmente Account_0, Account_1 ou similar
+            const accountKeys = Object.keys(metadata.mainStructureMembers || {});
+            const realKey = accountKeys[0]; // Conta Restrita 1
+            const budgetKey = accountKeys[1]; // Conta Restrita 2
 
-            const measureKey = Object.keys(metadata.mainStructureMembers)[0];
+            tbody.innerHTML = data.map(row => {
+                // Dimensão: Centro de Custo
+                const ccuDesc = row.dimensions_0?.description || "S/ CCU";
+                
+                // Valores das contas restritas
+                const realVal = parseFloat(row[realKey]?.rawValue) || 0;
+                const budVal = parseFloat(row[budgetKey]?.rawValue) || 0;
+                const delta = realVal - budVal;
 
-            // 2. Agrupar dados por Centro de Custo (dimensions_0)
-            const consolidated = {};
-
-            data.forEach(row => {
-                const ccuId = row.dimensions_0.id;
-                const ccuDesc = row.dimensions_0.description;
-                const versionDesc = row[versionDimKey]?.description.toUpperCase() || "";
-                const val = parseFloat(row[measureKey]?.rawValue) || 0;
-
-                if (!consolidated[ccuId]) {
-                    consolidated[ccuId] = { desc: ccuDesc, real: 0, budget: 0 };
-                }
-
-                // Lógica de Atribuição baseada no membro da dimensão de Versão
-                if (versionDesc.includes("REAL") || versionDesc.includes("ACTUAL")) {
-                    consolidated[ccuId].real += val;
-                } else if (versionDesc.includes("BUD") || versionDesc.includes("ORC") || versionDesc.includes("PLAN")) {
-                    consolidated[ccuId].budget += val;
-                }
-            });
-
-            // 3. Renderizar as linhas consolidadas
-            tbody.innerHTML = Object.values(consolidated).map(item => {
-                const delta = item.real - item.budget;
                 return `
                     <tr>
-                        <td style="font-weight:600; color:#09090b">${item.desc}</td>
-                        <td class="val-mono">${fmt.format(item.real)}</td>
-                        <td class="val-mono" style="color: #71717a;">${fmt.format(item.budget)}</td>
+                        <td style="font-weight:600; color:#09090b">${ccuDesc}</td>
+                        <td class="val-mono">${fmt.format(realVal)}</td>
+                        <td class="val-mono" style="color: #71717a;">${fmt.format(budVal)}</td>
                         <td class="val-mono">
                             <span class="alert ${delta > 0.01 ? 'critical' : 'success'}">
                                 ${delta > 0 ? '▲' : '▼'} ${fmt.format(Math.abs(delta))}
