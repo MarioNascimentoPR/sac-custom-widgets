@@ -12,7 +12,7 @@
         .alert { font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
         .critical { color: #e11d48; background: #fff1f2; }
         .success { color: #16a34a; background: #f0fdf4; }
-        .debug-info { font-size: 10px; color: #a1a1aa; padding: 10px; font-family: monospace; }
+        .debug { font-size: 9px; color: #a1a1aa; padding: 8px; font-family: monospace; border-top: 1px solid #f4f4f5; }
       </style>
       <div class="table-container">
         <table>
@@ -24,11 +24,9 @@
               <th style="text-align:right">Desvio</th>
             </tr>
           </thead>
-          <tbody id="tbody">
-            <tr><td colspan="4" style="text-align:center; padding:40px;">Aguardando sincronização de dados...</td></tr>
-          </tbody>
+          <tbody id="tbody"></tbody>
         </table>
-        <div id="debug" class="debug-info"></div>
+        <div id="debug" class="debug"></div>
       </div>
     `;
 
@@ -51,38 +49,33 @@
         _render(binding) {
             const data = binding.data;
             const tbody = this._shadowRoot.getElementById("tbody");
-            const debugDiv = this._shadowRoot.getElementById("debug");
+            const debug = this._shadowRoot.getElementById("debug");
             const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Nenhum dado recebido do modelo.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px;">Sem dados (Verifique os filtros do SAC)</td></tr>';
                 return;
             }
 
-            // --- EXTRATOR UNIVERSAL DE DADOS SAC ---
-            tbody.innerHTML = data.map(row => {
-                // 1. Pega a descrição da dimensão (independente do ID dimensions_X)
-                const dimKey = Object.keys(row).find(k => k.includes("dimensions_"));
-                const ccuDesc = row[dimKey]?.description || "S/ CCU";
-                const ccuId = row[dimKey]?.id || "";
+            // Mapeia as chaves que possuem valores numéricos
+            // O SAC pode enviar como 'mainStructureMember_X' ou 'measure_X'
+            const sampleRow = data[0];
+            const valueKeys = Object.keys(sampleRow).filter(k => sampleRow[k] && typeof sampleRow[k].rawValue !== 'undefined');
 
-                // 2. Localiza todas as colunas que possuem valores numéricos (rawValue)
-                // O SAC envia medidas restritas como objetos que contêm rawValue
-                const valueKeys = Object.keys(row).filter(k => row[k] && typeof row[k].rawValue !== 'undefined');
-                
-                // Atribui por ordem de inserção no painel Gerador
-                const realVal = parseFloat(row[valueKeys[0]]?.rawValue) || 0;
-                const budVal = parseFloat(row[valueKeys[1]]?.rawValue) || 0;
-                const delta = realVal - budVal;
+            tbody.innerHTML = data.map(row => {
+                const dimKey = Object.keys(row).find(k => k.includes("dimensions_"));
+                const ccuDesc = row[dimKey]?.description || "N/A";
+
+                // Se você tem duas contas restritas, elas serão os dois primeiros índices de valores detectados
+                const real = parseFloat(row[valueKeys[0]]?.rawValue) || 0;
+                const budget = parseFloat(row[valueKeys[1]]?.rawValue) || 0;
+                const delta = real - budget;
 
                 return `
                     <tr>
-                        <td style="font-weight:600; color:#09090b">
-                            ${ccuDesc}
-                            <div style="font-size:9px; color:#a1a1aa; font-family:monospace">${ccuId}</div>
-                        </td>
-                        <td class="val-mono">${fmt.format(realVal)}</td>
-                        <td class="val-mono" style="color: #71717a;">${fmt.format(budVal)}</td>
+                        <td style="font-weight:600;">${ccuDesc}</td>
+                        <td class="val-mono">${fmt.format(real)}</td>
+                        <td class="val-mono" style="color: #71717a;">${fmt.format(budget)}</td>
                         <td class="val-mono">
                             <span class="alert ${delta > 0.01 ? 'critical' : 'success'}">
                                 ${delta > 0 ? '▲' : '▼'} ${fmt.format(Math.abs(delta))}
@@ -92,8 +85,7 @@
                 `;
             }).join('');
 
-            // Mostra o número de linhas processadas para confirmar que o widget está "vivo"
-            debugDiv.textContent = `Linhas processadas: ${data.length} | Colunas de valor detectadas: ${Object.keys(data[0]).filter(k => data[0][k]?.rawValue !== undefined).length}`;
+            debug.textContent = `Chaves de valor detectadas: ${valueKeys.join(" | ")}`;
         }
     }
 
