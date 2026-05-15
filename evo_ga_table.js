@@ -4,7 +4,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Space+Mono&display=swap');
       :host { display: block; font-family: 'Plus Jakarta Sans', sans-serif; width: 100%; height: 100%; }
-      .container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; }
+      .container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       thead th { background: #f4f4f5; padding: 14px 18px; font-weight: 600; color: #71717a; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #e4e4e7; text-align: right; }
       thead th:first-child { text-align: left; }
@@ -14,7 +14,7 @@
       .delta { font-weight: 700; padding: 4px 8px; border-radius: 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
       .red { color: #e11d48; background: #fff1f2; }
       .green { color: #16a34a; background: #f0fdf4; }
-      .debug-box { padding: 15px; background: #09090b; color: #4ade80; font-family: 'Space Mono', monospace; font-size: 11px; max-height: 200px; overflow-y: auto; border-top: 1px solid #e4e4e7; }
+      .info-box { padding: 20px; color: #71717a; font-size: 13px; text-align: center; }
     </style>
     <div class="container">
       <table>
@@ -28,7 +28,7 @@
         </thead>
         <tbody id="tbody"></tbody>
       </table>
-      <div id="debug" class="debug-box"></div>
+      <div id="status"></div>
     </div>
   `;
 
@@ -41,42 +41,22 @@
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
-      const debugDiv = this._shadowRoot.getElementById("debug");
+      const status = this._shadowRoot.getElementById("status");
       const tbody = this._shadowRoot.getElementById("tbody");
       
-      let activeBinding = null;
-      let detectedKey = "Nenhuma";
-
-      if (this.dataBindings) {
-        for (let key in this.dataBindings) {
-          if (typeof this.dataBindings.getDataBinding === 'function') {
-            const b = this.dataBindings.getDataBinding(key);
-            if (b) {
-              activeBinding = b;
-              detectedKey = key;
-              break;
-            }
-          }
+      if (this.dataBindings && this.dataBindings.getDataBinding("financialData")) {
+        const binding = this.dataBindings.getDataBinding("financialData");
+        
+        if (binding && binding.data && binding.data.length > 0) {
+          status.innerHTML = "";
+          this._render(binding.data, binding.metadata);
+        } else {
+          tbody.innerHTML = "";
+          status.innerHTML = `<div class="info-box">Data Binding conectado. Aguardando dados de resposta do modelo S00_GERENCIAL...</div>`;
         }
-      }
-
-      if (!activeBinding) {
-        debugDiv.innerHTML = `[DEBUG] Erro: Nenhum Data Binding detectado na estrutura do widget.`;
-        return;
-      }
-
-      const dataLength = activeBinding.data ? activeBinding.data.length : 0;
-      
-      // Imprime o diagnóstico direto no rodapé do componente
-      debugDiv.innerHTML = `[DIAGNÓSTICO]<br>
-                            - Feed Detectado: ${detectedKey}<br>
-                            - Linhas retornadas pelo SAC: ${dataLength}<br>
-                            - Chaves do primeiro registro: ${dataLength > 0 ? Object.keys(activeBinding.data[0]).join(', ') : 'Nenhum dado'}`;
-
-      if (dataLength > 0) {
-        this._render(activeBinding.data, activeBinding.metadata);
       } else {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:30px; color:#a1a1aa;">O modelo retornou 0 linhas. Verifique os filtros de Data/Versão do Story.</td></tr>`;
+        tbody.innerHTML = "";
+        status.innerHTML = `<div class="info-box" style="color: #ef4444;">Erro de inicialização: Atualize o arquivo JSON do widget no painel do SAC.</div>`;
       }
     }
 
@@ -84,6 +64,7 @@
       const tbody = this._shadowRoot.getElementById("tbody");
       const consolidated = {};
 
+      // Captura os membros dinâmicos gerados pelas contas restritas
       const memberKeys = Object.keys(metadata?.mainStructureMembers || {});
       const realKey = memberKeys[0];
       const budgetKey = memberKeys[1];
