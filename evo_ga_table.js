@@ -3,8 +3,8 @@
     tmpl.innerHTML = `
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
-        :host { display: block; font-family: 'Plus Jakarta Sans', sans-serif; width: 100%; height: 100%; }
-        .table-container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        :host { display: block; font-family: 'Plus Jakarta Sans', sans-serif; width: 100%; height: 100%; min-height: 200px; }
+        .table-container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         thead th { background: #f4f4f5; padding: 14px 18px; font-weight: 600; color: #71717a; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #e4e4e7; text-align: left; }
         tbody td { padding: 12px 18px; border-bottom: 1px solid #f4f4f5; vertical-align: middle; }
@@ -12,6 +12,7 @@
         .alert { font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
         .critical { color: #e11d48; background: #fff1f2; }
         .success { color: #16a34a; background: #f0fdf4; }
+        .debug-panel { font-size: 9px; color: #a1a1aa; padding: 10px; background: #fdfdfd; border-top: 1px solid #eee; font-family: monospace; }
       </style>
       <div class="table-container">
         <table>
@@ -25,6 +26,7 @@
           </thead>
           <tbody id="tbody"></tbody>
         </table>
+        <div id="debug" class="debug-panel"></div>
       </div>
     `;
 
@@ -37,7 +39,6 @@
 
         onCustomWidgetAfterUpdate(changedProperties) {
             if (this.dataBindings) {
-                // Tenta capturar o binding do feed definido no seu JSON
                 const binding = this.dataBindings.getDataBinding("financialData");
                 if (binding && binding.data) {
                     this._render(binding);
@@ -47,61 +48,67 @@
 
         _render(binding) {
             const data = binding.data;
-            const metadata = binding.metadata;
             const tbody = this._shadowRoot.getElementById("tbody");
+            const debug = this._shadowRoot.getElementById("debug");
             const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-            if (!data || data.length === 0) return;
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:40px;">DADOS NÃO RECEBIDOS. Verifique o Data Binding no SAC.</td></tr>';
+                return;
+            }
 
-            // Mapeamento dinâmico baseado na estrutura do seu print
             const consolidated = {};
 
-            data.forEach(row => {
-                // Identifica as chaves de dimensões enviadas pelo SAC
-                const dimKeys = Object.keys(row).filter(k => k.includes("dimensions_"));
-                
-                // No seu build: Centro de Custo está em um feed e Contas em outro.
-                // O SAC costuma enviar na ordem dimensions_0, dimensions_1...
-                const ccuDesc = row[dimKeys[0]]?.description || "N/A";
-                const ccuId = row[dimKeys[0]]?.id || "N/A";
-                const indicadorDesc = row[dimKeys[1]]?.description.toUpperCase() || "";
+            data.forEach((row, index) => {
+                // SCANNER: Identifica chaves de dimensões e de valores dinamicamente
+                const keys = Object.keys(row);
+                const dimKeys = keys.filter(k => row[k] && row[k].id !== undefined);
+                const valKeys = keys.filter(k => row[k] && row[k].rawValue !== undefined);
 
-                // Captura a medida (Montante)
-                const measureKey = Object.keys(metadata.mainStructureMembers)[0];
-                const val = parseFloat(row[measureKey]?.rawValue) || 0;
+                // No seu cenário: 
+                // dimensions_0 (ou primeira dim de texto) = Centro de Custo
+                // dimensions_1 (ou segunda dim de texto) = Conta Restrita
+                const ccuDesc = row[dimKeys[0]]?.description || row[dimKeys[0]]?.id || "N/A";
+                const ccuId = row[dimKeys[0]]?.id || "N/A";
+                const indicadorDesc = (row[dimKeys[1]]?.description || "").toUpperCase();
+
+                // Valor vem da primeira medida numérica encontrada (Montante)
+                const val = parseFloat(row[valKeys[0]]?.rawValue) || 0;
 
                 if (!consolidated[ccuId]) {
                     consolidated[ccuId] = { desc: ccuDesc, real: 0, budget: 0 };
                 }
 
-                if (indicadorDesc.includes("RESTRITA 1")) {
-                    consolidated[ccuId].real = val;
-                } else if (indicadorDesc.includes("RESTRITA 2")) {
-                    consolidated[ccuId].budget = val;
+                // Lógica de separação
+                if (indicadorDesc.includes("RESTRITA 2") || indicadorDesc.includes("BUDGET") || indicadorDesc.includes("ORC")) {
+                    consolidated[ccuId].budget += val;
+                } else {
+                    consolidated[ccuId].real += val;
                 }
             });
 
-            tbody.innerHTML = Object.values(consolidated)
-                .sort((a, b) => (b.real - b.budget) - (a.real - a.budget))
-                .map(item => {
-                    const delta = item.real - item.budget;
-                    return `
-                        <tr>
-                            <td style="font-weight:600; color:#09090b">${item.desc}</td>
-                            <td class="val-mono">${fmt.format(item.real)}</td>
-                            <td class="val-mono" style="color: #71717a;">${fmt.format(item.budget)}</td>
-                            <td class="val-mono" style="text-align:right">
-                                <span class="alert ${delta > 0.01 ? 'critical' : 'success'}">
-                                    ${delta > 0 ? '▲' : '▼'} ${fmt.format(Math.abs(delta))}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+            const rowsHtml = Object.values(consolidated).map(item => {
+                const delta = item.real - item.budget;
+                return `
+                    <tr>
+                        <td style="font-weight:600;">${item.desc}</td>
+                        <td class="val-mono">${fmt.format(item.real)}</td>
+                        <td class="val-mono" style="color: #71717a;">${fmt.format(item.budget)}</td>
+                        <td class="val-mono" style="text-align:right">
+                            <span class="alert ${delta > 0.01 ? 'critical' : 'success'}">
+                                ${delta > 0 ? '▲' : '▼'} ${fmt.format(Math.abs(delta))}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = rowsHtml || '<tr><td colspan="4" style="text-align:center;">Erro ao processar mapeamento.</td></tr>';
+            
+            // PAINEL DE DEBUG: Isso vai nos dizer exatamente o que está chegando
+            debug.textContent = `Linhas: ${data.length} | Dimensões: ${Object.keys(data[0]).filter(k => data[0][k]?.id).length} | Medidas: ${Object.keys(data[0]).filter(k => data[0][k]?.rawValue !== undefined).length}`;
         }
     }
 
-    if (!customElements.get("evo-ga-table-only")) {
-        customElements.define("evo-ga-table-only", EvoGATableOnly);
-    }
+    customElements.define("evo-ga-table-only", EvoGATableOnly);
 })();
