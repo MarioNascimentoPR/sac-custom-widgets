@@ -1,19 +1,18 @@
 {
-  "name": "EvoStream GA Table",
-  "description": "Tabela GA",
-  "eula": "",
-  "vendor": "EvoStream",
-  "license": "",
-  "id": "evostream.ga.table",
-  "newInstancePrefix": "GATable",
+  "id": "evostream.ga.table_1.x",
   "version": "1.0.0",
-  "icon": "",
+  "name": "EvoStream Table",
+  "description": "Custom Widget de Tabela para o projeto EvoStream",
+  "newInstancePrefix": "EvoStreamTable",
+  "vendor": "Petroreconcavo",
+  "eula": "",
+  "license": "",
   "webcomponents": [
     {
       "kind": "main",
-      "tag": "evostream-ga-table",
-      "url": "https://MarioNascimentoPR.github.io/sac-custom-widgets/ga_widget.js",
-      "integrity": ""
+      "url": "https://MarioNascimentoPR/evostream.ga.table_1.x.js",
+      "integrity": "sha256-INSERIR_HASH_SHA256_DO_ARQUIVO_JS_AQUI",
+      "version": "1.0.0"
     }
   ],
   "properties": {},
