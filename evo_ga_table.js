@@ -1,108 +1,191 @@
 (function () {
-  const tmpl = document.createElement("template");
-  tmpl.innerHTML = `
+
+  const template = document.createElement("template");
+
+  template.innerHTML = `
+
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Space+Mono&display=swap');
-      :host { display: block; font-family: 'Plus Jakarta Sans', sans-serif; width: 100%; height: 100%; }
-      .container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-      table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      thead th { background: #f4f4f5; padding: 14px 18px; font-weight: 600; color: #71717a; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #e4e4e7; text-align: right; }
-      thead th:first-child { text-align: left; }
-      tbody td { padding: 12px 18px; border-bottom: 1px solid #f4f4f5; vertical-align: middle; }
-      .val { font-family: 'Space Mono', monospace; text-align: right; font-size: 12px; }
-      .ccu { font-weight: 600; color: #09090b; }
-      .delta { font-weight: 700; padding: 4px 8px; border-radius: 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
-      .red { color: #e11d48; background: #fff1f2; }
-      .green { color: #16a34a; background: #f0fdf4; }
-      .info-box { padding: 30px; color: #71717a; font-size: 13px; text-align: center; font-weight: 500; }
+
+      :host {
+        display:block;
+        font-family: Arial;
+      }
+
+      table {
+        width:100%;
+        border-collapse: collapse;
+      }
+
+      th, td {
+        padding:12px;
+        border-bottom:1px solid #ddd;
+        text-align:right;
+      }
+
+      th:first-child,
+      td:first-child {
+        text-align:left;
+      }
+
+      .debug {
+        margin-top:20px;
+        background:#111;
+        color:#0f0;
+        padding:15px;
+        font-size:11px;
+        overflow:auto;
+        max-height:400px;
+      }
+
     </style>
-    <div class="container">
-      <table>
-        <thead>
-          <tr>
-            <th>Centro de Custo</th>
-            <th>Realizado</th>
-            <th>Budget</th>
-            <th>Desvio</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-      <div id="status"></div>
-    </div>
+
+    <table>
+
+      <thead>
+        <tr>
+          <th>Centro de Custo</th>
+          <th>Valor 1</th>
+          <th>Valor 2</th>
+        </tr>
+      </thead>
+
+      <tbody id="tbody"></tbody>
+
+    </table>
+
+    <div id="debug" class="debug"></div>
+
   `;
 
   class EvoGATableOnly extends HTMLElement {
+
     constructor() {
+
       super();
-      this._shadowRoot = this.attachShadow({ mode: "open" });
-      this._shadowRoot.appendChild(tmpl.content.cloneNode(true));
-      this._fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+      this.attachShadow({ mode: "open" });
+
+      this.shadowRoot.appendChild(
+        template.content.cloneNode(true)
+      );
     }
 
-    onCustomWidgetAfterUpdate(changedProperties) {
-      const status = this._shadowRoot.getElementById("status");
-      const tbody = this._shadowRoot.getElementById("tbody");
-      
-      if (this.dataBindings && this.dataBindings.getDataBinding("financialData")) {
-        const binding = this.dataBindings.getDataBinding("financialData");
-        
-        if (binding && binding.data && binding.data.length > 0) {
-          status.innerHTML = "";
-          this._render(binding.data, binding.metadata);
-        } else {
-          tbody.innerHTML = "";
-          status.innerHTML = `<div class="info-box">Aguardando dados: Certifique-se de preencher o Builder do componente no Story.</div>`;
-        }
-      } else {
-        tbody.innerHTML = "";
-        status.innerHTML = `<div class="info-box" style="color: #ef4444;">Aguardando sincronização do arquivo JSON.</div>`;
-      }
-    }
+    onCustomWidgetAfterUpdate() {
 
-    _render(data, metadata) {
-      const tbody = this._shadowRoot.getElementById("tbody");
-      const consolidated = {};
+      const tbody =
+        this.shadowRoot.getElementById(
+          "tbody"
+        );
 
-      // Captura as chaves de colunas criadas pelas contas restritas do modelo
-      const memberKeys = Object.keys(metadata?.mainStructureMembers || {});
-      const realKey = memberKeys[0];
-      const budgetKey = memberKeys[1];
+      const debug =
+        this.shadowRoot.getElementById(
+          "debug"
+        );
 
-      data.forEach(row => {
-        const dimKeys = Object.keys(row).filter(k => k.includes("dimensions_"));
-        const ccuDesc = row[dimKeys[0]]?.description || row[dimKeys[0]]?.id || "N/A";
-        const ccuId = row[dimKeys[0]]?.id || "N/A";
+      tbody.innerHTML = "";
 
-        const vReal = parseFloat(row[realKey]?.rawValue) || 0;
-        const vBud = parseFloat(row[budgetKey]?.rawValue) || 0;
+      try {
 
-        if (!consolidated[ccuId]) {
-          consolidated[ccuId] = { desc: ccuDesc, real: 0, budget: 0 };
+        const binding =
+          this.dataBindings.getDataBinding(
+            "financialData"
+          );
+
+        if (!binding) {
+
+          debug.innerHTML =
+            "Binding não encontrado.";
+
+          return;
         }
 
-        consolidated[ccuId].real += vReal;
-        consolidated[ccuId].budget += vBud;
-      });
+        const data =
+          binding.data || [];
 
-      tbody.innerHTML = Object.values(consolidated).map(item => {
-        const delta = item.real - item.budget;
-        const color = delta > 0.01 ? 'red' : 'green';
-        const sign = delta > 0 ? '▲' : '▼';
+        const metadata =
+          binding.metadata || {};
 
-        return `
-          <tr>
-            <td class="ccu">${item.desc}</td>
-            <td class="val">${this._fmt.format(item.real)}</td>
-            <td class="val" style="color:#71717a">${this._fmt.format(item.budget)}</td>
-            <td style="text-align:right">
-              <span class="delta ${color}">${sign} ${this._fmt.format(Math.abs(delta))}</span>
-            </td>
-          </tr>
+        debug.innerHTML = `
+
+          <b>METADATA</b>
+
+          <pre>
+${JSON.stringify(metadata, null, 2)}
+          </pre>
+
+          <b>PRIMEIRA LINHA</b>
+
+          <pre>
+${JSON.stringify(data[0], null, 2)}
+          </pre>
+
         `;
-      }).join('');
+
+        if (!data.length) {
+          return;
+        }
+
+        const measureKeys =
+          Object.keys(
+            metadata.mainStructureMembers || {}
+          );
+
+        data.forEach(row => {
+
+          const dimKey =
+            Object.keys(row)
+            .find(k =>
+              k.startsWith("dimensions_")
+            );
+
+          const cc =
+            row[dimKey]?.description || "N/A";
+
+          let val1 = 0;
+          let val2 = 0;
+
+          if (measureKeys.length >= 2) {
+
+            val1 =
+              parseFloat(
+                row[measureKeys[0]]?.rawValue || 0
+              );
+
+            val2 =
+              parseFloat(
+                row[measureKeys[1]]?.rawValue || 0
+              );
+          }
+
+          tbody.innerHTML += `
+
+            <tr>
+              <td>${cc}</td>
+              <td>${val1}</td>
+              <td>${val2}</td>
+            </tr>
+
+          `;
+        });
+
+      } catch(error) {
+
+        debug.innerHTML = `
+
+          <pre>
+${error.message}
+
+${error.stack}
+          </pre>
+
+        `;
+      }
     }
   }
 
-  customElements.define("evo-ga-table-only", EvoGATableOnly);
+  customElements.define(
+    "evo-ga-table-only",
+    EvoGATableOnly
+  );
+
 })();
