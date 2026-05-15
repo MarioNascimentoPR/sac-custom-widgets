@@ -46,7 +46,7 @@
                 const measureKeys = Object.keys(measures);
 
                 if (dimKeys.length < 2 || measureKeys.length < 1) {
-                    container.innerHTML = "<div style='padding:10px;'>Adicione pelo menos 2 dimensões e 1 medida no painel.</div>";
+                    container.innerHTML = "<div style='padding:10px;'>Adicione pelo menos 2 dimensões e 1 conta/medida no painel.</div>";
                     return;
                 }
 
@@ -54,8 +54,6 @@
                 const colDimKey = dimKeys[1];
                 const measureKey = measureKeys[0];
 
-                // --- CORREÇÃO AQUI ---
-                // Função segura para pegar o nome da dimensão independente da versão do SAC
                 const getName = (obj) => {
                     if (!obj) return "N/D";
                     return obj.label || obj.description || obj.id || "N/D";
@@ -64,43 +62,49 @@
                 const rowDimName = getName(dimensions[rowDimKey]);
                 const measureName = getName(measures[measureKey]);
 
-                // Extrai valores únicos usando a função segura
                 const uniqueCols = [...new Set(financialData.data.map(row => getName(row[colDimKey])))];
                 const uniqueRows = [...new Set(financialData.data.map(row => getName(row[rowDimKey])))];
 
-                // Cria mapa de dados
                 const dataMap = {};
                 financialData.data.forEach(row => {
                     const rKey = getName(row[rowDimKey]);
                     const cKey = getName(row[colDimKey]);
                     
                     let value = "-";
-                    if (row[measureKey]) {
-                        value = row[measureKey].formattedValue || row[measureKey].value || "-";
+                    
+                    // 1. Tenta acessar via chave primária mapeada
+                    if (row[measureKey] && (row[measureKey].formattedValue !== undefined || row[measureKey].raw !== undefined)) {
+                        value = row[measureKey].formattedValue || row[measureKey].raw;
+                    } else {
+                        // 2. Fallback: Varre a linha para localizar o objeto de valor. 
+                        // Necessário para modelos novos do SAC onde Medidas e Contas cruzam chaves.
+                        for (const key in row) {
+                            const cell = row[key];
+                            if (cell && typeof cell === "object" && ("formattedValue" in cell || "raw" in cell)) {
+                                value = cell.formattedValue || cell.raw;
+                                break;
+                            }
+                        }
                     }
 
                     if (!dataMap[rKey]) dataMap[rKey] = {};
                     dataMap[rKey][cKey] = value;
                 });
 
-                // --- MONTAGEM DA TABELA ---
                 let tableHtml = `<table>`;
                 
-                // Header 1: Nome da dimensão de linha + Itens da dimensão de coluna
                 tableHtml += `<tr><th rowspan="2">${rowDimName}</th>`;
                 uniqueCols.forEach(col => {
                     tableHtml += `<th>${col}</th>`;
                 });
                 tableHtml += `</tr>`;
 
-                // Header 2: Nome da Medida replicada abaixo
                 tableHtml += `<tr>`;
                 uniqueCols.forEach(() => {
                     tableHtml += `<th>${measureName}</th>`;
                 });
                 tableHtml += `</tr>`;
 
-                // Linhas de dados
                 uniqueRows.forEach(row => {
                     tableHtml += `<tr><td>${row}</td>`;
                     uniqueCols.forEach(col => {
