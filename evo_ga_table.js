@@ -12,16 +12,15 @@
         .alert { font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
         .critical { color: #e11d48; background: #fff1f2; }
         .success { color: #16a34a; background: #f0fdf4; }
-        .right { text-align: right; }
       </style>
       <div class="table-container">
         <table>
           <thead>
             <tr>
               <th>Centro de Custo</th>
-              <th class="right">Realizado</th>
-              <th class="right">Budget</th>
-              <th class="right">Desvio</th>
+              <th style="text-align:right">Realizado</th>
+              <th style="text-align:right">Budget</th>
+              <th style="text-align:right">Desvio</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -38,6 +37,7 @@
 
         onCustomWidgetAfterUpdate(changedProperties) {
             if (this.dataBindings) {
+                // Tenta capturar o binding do feed definido no seu JSON
                 const binding = this.dataBindings.getDataBinding("financialData");
                 if (binding && binding.data) {
                     this._render(binding);
@@ -53,25 +53,27 @@
 
             if (!data || data.length === 0) return;
 
-            // 1. Identificar chaves dinâmicas
-            const dimCCU = "dimensions_0"; // Centro de Custo
-            const dimIndicador = "dimensions_1"; // Onde estão "Conta restrita 1" e "2"
-            const measureKey = Object.keys(metadata.mainStructureMembers)[0]; // "Montante"
-
-            // 2. Consolidar dados (Agrupar o que o SAC manda em linhas separadas)
+            // Mapeamento dinâmico baseado na estrutura do seu print
             const consolidated = {};
 
             data.forEach(row => {
-                const ccuId = row[dimCCU].id;
-                const ccuDesc = row[dimCCU].description;
-                const indicadorDesc = row[dimIndicador]?.description.toUpperCase() || "";
+                // Identifica as chaves de dimensões enviadas pelo SAC
+                const dimKeys = Object.keys(row).filter(k => k.includes("dimensions_"));
+                
+                // No seu build: Centro de Custo está em um feed e Contas em outro.
+                // O SAC costuma enviar na ordem dimensions_0, dimensions_1...
+                const ccuDesc = row[dimKeys[0]]?.description || "N/A";
+                const ccuId = row[dimKeys[0]]?.id || "N/A";
+                const indicadorDesc = row[dimKeys[1]]?.description.toUpperCase() || "";
+
+                // Captura a medida (Montante)
+                const measureKey = Object.keys(metadata.mainStructureMembers)[0];
                 const val = parseFloat(row[measureKey]?.rawValue) || 0;
 
                 if (!consolidated[ccuId]) {
                     consolidated[ccuId] = { desc: ccuDesc, real: 0, budget: 0 };
                 }
 
-                // Distribui o valor do Montante conforme a Conta Restrita da linha
                 if (indicadorDesc.includes("RESTRITA 1")) {
                     consolidated[ccuId].real = val;
                 } else if (indicadorDesc.includes("RESTRITA 2")) {
@@ -79,9 +81,8 @@
                 }
             });
 
-            // 3. Renderizar
             tbody.innerHTML = Object.values(consolidated)
-                .sort((a, b) => (b.real - b.budget) - (a.real - a.budget)) // Ordena por maior desvio
+                .sort((a, b) => (b.real - b.budget) - (a.real - a.budget))
                 .map(item => {
                     const delta = item.real - item.budget;
                     return `
@@ -89,7 +90,7 @@
                             <td style="font-weight:600; color:#09090b">${item.desc}</td>
                             <td class="val-mono">${fmt.format(item.real)}</td>
                             <td class="val-mono" style="color: #71717a;">${fmt.format(item.budget)}</td>
-                            <td class="val-mono">
+                            <td class="val-mono" style="text-align:right">
                                 <span class="alert ${delta > 0.01 ? 'critical' : 'success'}">
                                     ${delta > 0 ? '▲' : '▼'} ${fmt.format(Math.abs(delta))}
                                 </span>
@@ -100,5 +101,7 @@
         }
     }
 
-    customElements.define("evo-ga-table-only", EvoGATableOnly);
+    if (!customElements.get("evo-ga-table-only")) {
+        customElements.define("evo-ga-table-only", EvoGATableOnly);
+    }
 })();
