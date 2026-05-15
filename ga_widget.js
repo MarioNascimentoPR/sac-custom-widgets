@@ -319,8 +319,12 @@
  
     // ── Public API ──
     set rows(data) {
-      this._rows = data;
-      this._render(data);
+      let parsed = data;
+      if (typeof data === "string") {
+        try { parsed = JSON.parse(data); } catch(e) { parsed = null; }
+      }
+      this._rows = parsed;
+      this._render(parsed);
     }
     get rows() { return this._rows; }
  
