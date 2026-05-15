@@ -4,17 +4,17 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Space+Mono&display=swap');
       :host { display: block; font-family: 'Plus Jakarta Sans', sans-serif; width: 100%; height: 100%; }
-      .container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; }
+      .container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      thead th { background: #f4f4f5; padding: 12px 16px; font-weight: 600; color: #71717a; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #e4e4e7; text-align: right; }
+      thead th { background: #f4f4f5; padding: 14px 18px; font-weight: 600; color: #71717a; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #e4e4e7; text-align: right; }
       thead th:first-child { text-align: left; }
-      tbody td { padding: 12px 16px; border-bottom: 1px solid #f4f4f5; vertical-align: middle; }
+      tbody td { padding: 12px 18px; border-bottom: 1px solid #f4f4f5; vertical-align: middle; }
       .val { font-family: 'Space Mono', monospace; text-align: right; font-size: 12px; }
       .ccu { font-weight: 600; color: #09090b; }
-      .delta { font-weight: 700; padding: 4px 8px; border-radius: 6px; font-size: 11px; display: inline-block; }
+      .delta { font-weight: 700; padding: 4px 8px; border-radius: 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
       .red { color: #e11d48; background: #fff1f2; }
       .green { color: #16a34a; background: #f0fdf4; }
-      .error-msg { padding: 20px; color: #ef4444; font-size: 12px; font-family: monospace; }
+      .error-msg { padding: 30px; color: #71717a; font-size: 13px; text-align: center; font-weight: 500; }
     </style>
     <div class="container">
       <table>
@@ -40,54 +40,59 @@
       this._fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // O SAC chama esta função sempre que algo muda no Builder
     onCustomWidgetAfterUpdate(changedProperties) {
       const status = this._shadowRoot.getElementById("status");
+      const tbody = this._shadowRoot.getElementById("tbody");
       
-      // Captura QUALQUER dataBinding disponível (evita erro de nome no JSON)
-      const bindingKey = Object.keys(this.dataBindings || {})[0];
-      const binding = bindingKey ? this.dataBindings.getDataBinding(bindingKey) : null;
+      // PEGA QUALQUER BINDING QUE EXISTIR ATIVO (ignora o ID do JSON)
+      let activeBinding = null;
+      if (this.dataBindings) {
+        for (let key in this.dataBindings) {
+          if (typeof this.dataBindings.getDataBinding === 'function') {
+            const b = this.dataBindings.getDataBinding(key);
+            if (b && b.data) {
+              activeBinding = b;
+              break;
+            }
+          }
+        }
+      }
 
-      if (binding && binding.data) {
-        console.log("SAC Payload Bruto:", binding.data);
-        this._render(binding.data);
+      // Se achou dados válidos no feed, renderiza
+      if (activeBinding && activeBinding.data && activeBinding.data.length > 0) {
+        status.innerHTML = "";
+        this._render(activeBinding.data, activeBinding.metadata);
       } else {
-        status.innerHTML = `<div class="error-msg">Aguardando Vinculação: Verifique se 'Centro de Custo', 'Conta Restrita' e 'Montante' estão no Builder.</div>`;
+        tbody.innerHTML = "";
+        status.innerHTML = `<div class="error-msg">Aguardando Vinculação: Verifique os dados ou filtros do modelo S00_GERENCIAL no SAC.</div>`;
       }
     }
 
-    _render(data) {
+    _render(data, metadata) {
       const tbody = this._shadowRoot.getElementById("tbody");
-      const status = this._shadowRoot.getElementById("status");
-      status.innerHTML = "";
-
-      // Consolidação de Real vs Budget via Membros de Conta
       const consolidated = {};
 
+      // Coleta as chaves das contas restritas na ordem exata do painel
+      const memberKeys = Object.keys(metadata?.mainStructureMembers || {});
+      const realKey = memberKeys[0];
+      const budgetKey = memberKeys[1];
+
       data.forEach(row => {
-        // 1. Identificar CCU (Dimensão de Linha)
+        // Assume que a primeira dimensão padrão do objeto é o Centro de Custo
         const dimKeys = Object.keys(row).filter(k => k.includes("dimensions_"));
         const ccuDesc = row[dimKeys[0]]?.description || row[dimKeys[0]]?.id || "N/A";
         const ccuId = row[dimKeys[0]]?.id || "N/A";
 
-        // 2. Identificar Conta/Indicador
-        const indicador = (row[dimKeys[1]]?.description || "").toUpperCase();
-
-        // 3. Capturar Valor (Montante)
-        const valKeys = Object.keys(row).filter(k => row[k] && typeof row[k].rawValue !== 'undefined');
-        const val = parseFloat(row[valKeys[0]]?.rawValue) || 0;
+        const vReal = parseFloat(row[realKey]?.rawValue) || 0;
+        const vBud = parseFloat(row[budgetKey]?.rawValue) || 0;
+        const delta = vReal - vBud;
 
         if (!consolidated[ccuId]) {
           consolidated[ccuId] = { desc: ccuDesc, real: 0, budget: 0 };
         }
 
-        // Lógica de Atribuição: Se a conta for a 1ª do Builder = Real, 2ª = Budget
-        // Se houver nomes específicos, filtramos por eles
-        if (indicador.includes("RESTRITA 2") || indicador.includes("BUDGET")) {
-          consolidated[ccuId].budget += val;
-        } else {
-          consolidated[ccuId].real += val;
-        }
+        consolidated[ccuId].real += vReal;
+        consolidated[ccuId].budget += vBud;
       });
 
       tbody.innerHTML = Object.values(consolidated).map(item => {
