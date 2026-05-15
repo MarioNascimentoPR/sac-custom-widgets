@@ -12,6 +12,7 @@
         .alert { font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
         .critical { color: #e11d48; background: #fff1f2; }
         .success { color: #16a34a; background: #f0fdf4; }
+        .debug-info { font-size: 10px; color: #a1a1aa; padding: 10px; font-family: monospace; }
       </style>
       <div class="table-container">
         <table>
@@ -23,8 +24,11 @@
               <th style="text-align:right">Desvio</th>
             </tr>
           </thead>
-          <tbody id="tbody"></tbody>
+          <tbody id="tbody">
+            <tr><td colspan="4" style="text-align:center; padding:40px;">Aguardando sincronização de dados...</td></tr>
+          </tbody>
         </table>
+        <div id="debug" class="debug-info"></div>
       </div>
     `;
 
@@ -46,30 +50,37 @@
 
         _render(binding) {
             const data = binding.data;
-            const metadata = binding.metadata;
             const tbody = this._shadowRoot.getElementById("tbody");
+            const debugDiv = this._shadowRoot.getElementById("debug");
             const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-            if (!data || data.length === 0) return;
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Nenhum dado recebido do modelo.</td></tr>';
+                return;
+            }
 
-            // Mapeia os IDs das contas restritas que você arrastou no Gerador
-            // Geralmente Account_0, Account_1 ou similar
-            const accountKeys = Object.keys(metadata.mainStructureMembers || {});
-            const realKey = accountKeys[0]; // Conta Restrita 1
-            const budgetKey = accountKeys[1]; // Conta Restrita 2
-
+            // --- EXTRATOR UNIVERSAL DE DADOS SAC ---
             tbody.innerHTML = data.map(row => {
-                // Dimensão: Centro de Custo
-                const ccuDesc = row.dimensions_0?.description || "S/ CCU";
+                // 1. Pega a descrição da dimensão (independente do ID dimensions_X)
+                const dimKey = Object.keys(row).find(k => k.includes("dimensions_"));
+                const ccuDesc = row[dimKey]?.description || "S/ CCU";
+                const ccuId = row[dimKey]?.id || "";
+
+                // 2. Localiza todas as colunas que possuem valores numéricos (rawValue)
+                // O SAC envia medidas restritas como objetos que contêm rawValue
+                const valueKeys = Object.keys(row).filter(k => row[k] && typeof row[k].rawValue !== 'undefined');
                 
-                // Valores das contas restritas
-                const realVal = parseFloat(row[realKey]?.rawValue) || 0;
-                const budVal = parseFloat(row[budgetKey]?.rawValue) || 0;
+                // Atribui por ordem de inserção no painel Gerador
+                const realVal = parseFloat(row[valueKeys[0]]?.rawValue) || 0;
+                const budVal = parseFloat(row[valueKeys[1]]?.rawValue) || 0;
                 const delta = realVal - budVal;
 
                 return `
                     <tr>
-                        <td style="font-weight:600; color:#09090b">${ccuDesc}</td>
+                        <td style="font-weight:600; color:#09090b">
+                            ${ccuDesc}
+                            <div style="font-size:9px; color:#a1a1aa; font-family:monospace">${ccuId}</div>
+                        </td>
                         <td class="val-mono">${fmt.format(realVal)}</td>
                         <td class="val-mono" style="color: #71717a;">${fmt.format(budVal)}</td>
                         <td class="val-mono">
@@ -80,6 +91,9 @@
                     </tr>
                 `;
             }).join('');
+
+            // Mostra o número de linhas processadas para confirmar que o widget está "vivo"
+            debugDiv.textContent = `Linhas processadas: ${data.length} | Colunas de valor detectadas: ${Object.keys(data[0]).filter(k => data[0][k]?.rawValue !== undefined).length}`;
         }
     }
 
