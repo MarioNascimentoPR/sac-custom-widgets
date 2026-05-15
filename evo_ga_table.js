@@ -4,7 +4,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Space+Mono&display=swap');
       :host { display: block; font-family: 'Plus Jakarta Sans', sans-serif; width: 100%; height: 100%; }
-      .container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+      .container { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       thead th { background: #f4f4f5; padding: 14px 18px; font-weight: 600; color: #71717a; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #e4e4e7; text-align: right; }
       thead th:first-child { text-align: left; }
@@ -14,7 +14,7 @@
       .delta { font-weight: 700; padding: 4px 8px; border-radius: 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
       .red { color: #e11d48; background: #fff1f2; }
       .green { color: #16a34a; background: #f0fdf4; }
-      .error-msg { padding: 30px; color: #71717a; font-size: 13px; text-align: center; font-weight: 500; }
+      .debug-box { padding: 15px; background: #09090b; color: #4ade80; font-family: 'Space Mono', monospace; font-size: 11px; max-height: 200px; overflow-y: auto; border-top: 1px solid #e4e4e7; }
     </style>
     <div class="container">
       <table>
@@ -28,7 +28,7 @@
         </thead>
         <tbody id="tbody"></tbody>
       </table>
-      <div id="status"></div>
+      <div id="debug" class="debug-box"></div>
     </div>
   `;
 
@@ -41,30 +41,42 @@
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
-      const status = this._shadowRoot.getElementById("status");
+      const debugDiv = this._shadowRoot.getElementById("debug");
       const tbody = this._shadowRoot.getElementById("tbody");
       
-      // PEGA QUALQUER BINDING QUE EXISTIR ATIVO (ignora o ID do JSON)
       let activeBinding = null;
+      let detectedKey = "Nenhuma";
+
       if (this.dataBindings) {
         for (let key in this.dataBindings) {
           if (typeof this.dataBindings.getDataBinding === 'function') {
             const b = this.dataBindings.getDataBinding(key);
-            if (b && b.data) {
+            if (b) {
               activeBinding = b;
+              detectedKey = key;
               break;
             }
           }
         }
       }
 
-      // Se achou dados válidos no feed, renderiza
-      if (activeBinding && activeBinding.data && activeBinding.data.length > 0) {
-        status.innerHTML = "";
+      if (!activeBinding) {
+        debugDiv.innerHTML = `[DEBUG] Erro: Nenhum Data Binding detectado na estrutura do widget.`;
+        return;
+      }
+
+      const dataLength = activeBinding.data ? activeBinding.data.length : 0;
+      
+      // Imprime o diagnóstico direto no rodapé do componente
+      debugDiv.innerHTML = `[DIAGNÓSTICO]<br>
+                            - Feed Detectado: ${detectedKey}<br>
+                            - Linhas retornadas pelo SAC: ${dataLength}<br>
+                            - Chaves do primeiro registro: ${dataLength > 0 ? Object.keys(activeBinding.data[0]).join(', ') : 'Nenhum dado'}`;
+
+      if (dataLength > 0) {
         this._render(activeBinding.data, activeBinding.metadata);
       } else {
-        tbody.innerHTML = "";
-        status.innerHTML = `<div class="error-msg">Aguardando Vinculação: Verifique os dados ou filtros do modelo S00_GERENCIAL no SAC.</div>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:30px; color:#a1a1aa;">O modelo retornou 0 linhas. Verifique os filtros de Data/Versão do Story.</td></tr>`;
       }
     }
 
@@ -72,20 +84,17 @@
       const tbody = this._shadowRoot.getElementById("tbody");
       const consolidated = {};
 
-      // Coleta as chaves das contas restritas na ordem exata do painel
       const memberKeys = Object.keys(metadata?.mainStructureMembers || {});
       const realKey = memberKeys[0];
       const budgetKey = memberKeys[1];
 
       data.forEach(row => {
-        // Assume que a primeira dimensão padrão do objeto é o Centro de Custo
         const dimKeys = Object.keys(row).filter(k => k.includes("dimensions_"));
         const ccuDesc = row[dimKeys[0]]?.description || row[dimKeys[0]]?.id || "N/A";
         const ccuId = row[dimKeys[0]]?.id || "N/A";
 
         const vReal = parseFloat(row[realKey]?.rawValue) || 0;
         const vBud = parseFloat(row[budgetKey]?.rawValue) || 0;
-        const delta = vReal - vBud;
 
         if (!consolidated[ccuId]) {
           consolidated[ccuId] = { desc: ccuDesc, real: 0, budget: 0 };
