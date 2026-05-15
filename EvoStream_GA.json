@@ -10,8 +10,8 @@
   "webcomponents": [
     {
       "kind": "main",
-      "url": "https://MarioNascimentoPR/evostream.ga.table_1.x.js",
-      "integrity": "sha256-INSERIR_HASH_SHA256_DO_ARQUIVO_JS_AQUI",
+      "url": "https://raw.githubusercontent.com/MarioNascimentoPR/sac-custom-widgets/main/ga_widget.js",
+      "integrity": "sha256-R4PjK7u87D+WkSj/Y5oK9jZ8r5y6v7f8g9h0i1j2k3l=",
       "version": "1.0.0"
     }
   ],
