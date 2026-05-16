@@ -43,7 +43,7 @@
             
             td { 
                 padding: 6px 10px; 
-                border-bottom: 1px solid #EAEAEA; 
+                border-bottom: 1px solid #F0F0F0; /* Bordas mais claras para reduzir poluição visual */
                 font-size: 13px; 
                 color: #444444; 
                 vertical-align: middle;
@@ -75,7 +75,7 @@
             }
             
             tr.row-conta:last-child td {
-                border-bottom: 1px solid #EAEAEA;
+                border-bottom: 1px solid #F0F0F0;
             }
 
             tr.row-conta td:first-child { 
@@ -116,18 +116,36 @@
 
             .cell-consumption { width: 140px; }
             .consumption-wrapper { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+            
+            /* Barra com marcador de limite de 100% */
             .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; overflow: hidden; }
-            .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease; }
+            .bar-container::after { content: ''; position: absolute; right: 0; top: 0; height: 100%; width: 1px; background-color: #999999; z-index: 2; }
+            
+            .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease; z-index: 1; }
             .fill-green { background-color: #2E7D32; }
             .fill-yellow { background-color: #EF6C00; }
             .fill-red { background-color: #D32F2F; }
             .percent-value { font-size: 12px; font-weight: 500; color: #444444; width: 45px; text-align: right; font-variant-numeric: tabular-nums; }
 
             .cell-status { text-align: center !important; width: 90px; }
-            .status-pill { display: inline-block; padding: 4px 0; width: 100%; max-width: 80px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
-            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; } 
-            .status-atencao { background-color: #FFF3E0; color: #EF6C00; border: 1px solid #FFE0B2; } 
-            .status-acima { background-color: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; } 
+            
+            /* Pílulas padronizadas em tamanho e contraste de cores */
+            .status-pill { 
+                display: inline-flex; 
+                align-items: center; 
+                justify-content: center; 
+                padding: 4px 0; 
+                width: 65px; 
+                box-sizing: border-box; 
+                border-radius: 4px; 
+                font-size: 11px; 
+                font-weight: 700; 
+                text-transform: uppercase; 
+                letter-spacing: 0.5px; 
+            }
+            .status-abaixo { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; } 
+            .status-atencao { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; } 
+            .status-acima { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; } 
         </style>
         <div id="table-container"></div>
     `;
@@ -194,8 +212,9 @@
                     let options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
                     if (withCurrency) { options.style = 'currency'; options.currency = 'BRL'; }
                     let formatted = num.toLocaleString('pt-BR', options);
+                    
+                    /* Sinal de + removido para manter eixo vertical dos números uniforme */
                     if (isVariance && rawValue < 0) formatted = "-" + formatted;
-                    else if (isVariance && rawValue > 0) formatted = "+" + formatted;
                     return formatted;
                 };
                 
@@ -260,7 +279,6 @@
                 let tableData = Object.keys(dataMap).map(cc => {
                     let ccNode = buildRowMetrics(cc, dataMap[cc].totals);
                     ccNode.children = Object.keys(dataMap[cc].contas).map(conta => buildRowMetrics(conta, dataMap[cc].contas[conta]));
-                    // Alteração: Ordena as contas pelo maior valor de Realizado (decrescente)
                     ccNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
                     return ccNode;
                 });
