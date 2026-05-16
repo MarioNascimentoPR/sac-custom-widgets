@@ -21,15 +21,15 @@
             th { 
                 position: sticky; 
                 top: 0;
-                background-color: #F4F6F9; /* Fundo com tom de destaque */
+                background-color: #F4F6F9; 
                 z-index: 10;
-                color: #7A7A7A; /* Cor levemente ajustada para contrastar com o novo fundo */
+                color: #7A7A7A; 
                 font-size: 11px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
-                padding: 16px 12px; 
-                box-shadow: 0 3px 0 0 #CCCCCC; /* Linha divisória mais espessa e escura */
+                padding: 12px 10px; /* Reduzido para maior densidade */
+                box-shadow: 0 2px 0 0 #CCCCCC; 
                 text-align: right; 
                 vertical-align: bottom;
             }
@@ -37,31 +37,31 @@
                 text-align: left; 
             }
             td { 
-                padding: 16px 12px; 
-                border-bottom: 1px solid #F8F8F8; 
+                padding: 10px; /* Ajustado de 16px para 10px para densidade corporativa */
+                border-bottom: 1px solid #EAEAEA; /* Linhas levemente mais marcadas */
                 font-size: 13px; 
-                color: #555555; 
+                color: #444444; 
                 vertical-align: middle;
             }
             td:first-child { 
                 font-weight: 600; 
-                color: #333333; 
+                color: #222222; 
                 text-align: left; 
             }
             
-            /* Configuração do Rodapé Fixo (Sticky Footer) */
             tfoot td {
                 position: sticky;
                 bottom: 0;
-                background-color: #F4F6F9; /* Fundo com tom de destaque igual ao cabeçalho */
+                background-color: #F4F6F9; 
                 z-index: 10;
-                font-weight: bold !important;
-                color: #333333 !important;
-                box-shadow: 0 -3px 0 0 #CCCCCC; /* Linha divisória superior mais espessa e escura */
+                font-weight: 700 !important;
+                color: #222222 !important;
+                box-shadow: 0 -2px 0 0 #CCCCCC; 
                 border-bottom: none;
+                padding: 12px 10px;
             }
             tfoot td:first-child {
-                color: #333333 !important;
+                color: #222222 !important;
             }
 
             .numeric { 
@@ -69,29 +69,29 @@
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
                 font-variant-numeric: tabular-nums; 
                 font-weight: 500;
-                color: #444444;
             }
             .center { text-align: center; }
 
             .var-positive { color: #D32F2F; font-weight: 600; } 
-            .var-negative { color: #388E3C; font-weight: 600; } 
+            .var-negative { color: #2E7D32; font-weight: 600; } 
 
             .cell-variance { white-space: nowrap; }
-            .cell-variance .var-icon { margin-right: 4px; font-size: 1.2em; vertical-align: middle; }
 
-            .cell-consumption { text-align: center !important; width: 120px; }
-            .bar-container { position: relative; width: 100%; height: 6px; background-color: #E0E0E0; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
-            .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 3px; transition: width 0.3s ease; }
-            .fill-green { background-color: #4CAF50; }
-            .fill-yellow { background-color: #FF9800; }
-            .fill-red { background-color: #F44336; }
-            .percent-value { font-size: 11px; color: #666666; margin-top: 2px; }
+            /* Ajuste para consumo inline (Barra + Texto na mesma linha) */
+            .cell-consumption { width: 140px; }
+            .consumption-wrapper { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+            .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; overflow: hidden; }
+            .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease; }
+            .fill-green { background-color: #2E7D32; }
+            .fill-yellow { background-color: #EF6C00; }
+            .fill-red { background-color: #D32F2F; }
+            .percent-value { font-size: 12px; font-weight: 500; color: #444444; width: 45px; text-align: right; font-variant-numeric: tabular-nums; }
 
-            .cell-status { text-align: center !important; }
-            .status-pill { display: inline-block; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; } 
-            .status-atencao { background-color: #FFF3E0; color: #EF6C00; } 
-            .status-acima { background-color: #FFEBEE; color: #C62828; } 
+            .cell-status { text-align: center !important; width: 90px; }
+            .status-pill { display: inline-block; padding: 4px 0; width: 100%; max-width: 80px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; } 
+            .status-atencao { background-color: #FFF3E0; color: #EF6C00; border: 1px solid #FFE0B2; } 
+            .status-acima { background-color: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; } 
         </style>
         <div id="table-container"></div>
     `;
@@ -151,14 +151,22 @@
                     return parseFloat(cleanStr) || 0;
                 };
 
-                const formatNumber = (num, withCurrency = true) => {
-                    if (num === 0) return "-";
+                const formatNumber = (num, withCurrency = true, isVariance = false, rawValue = 0) => {
+                    if (num === 0 && !isVariance) return "-";
                     let options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
                     if (withCurrency) {
                         options.style = 'currency';
                         options.currency = 'BRL';
                     }
-                    return num.toLocaleString('pt-BR', options);
+                    let formatted = num.toLocaleString('pt-BR', options);
+                    
+                    // Tratamento visual para variação: adiciona o sinal de menos caso seja economia
+                    if (isVariance && rawValue < 0) {
+                        formatted = "-" + formatted;
+                    } else if (isVariance && rawValue > 0) {
+                        formatted = "+" + formatted;
+                    }
+                    return formatted;
                 };
                 
                 const formatPercentage = (val) => {
@@ -201,7 +209,7 @@
                 uniqueCols.forEach(col => {
                     tableHtml += `<th>${col}</th>`;
                 });
-                tableHtml += `<th>VARIAÇÃO R$</th><th class="center">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
+                tableHtml += `<th>VARIAÇÃO R$</th><th class="numeric">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
 
                 let totalOrcado = 0;
                 let totalRealizado = 0;
@@ -228,13 +236,13 @@
                     totalRealizado += valRealizado;
 
                     const desvio = valRealizado - valOrcado;
-                    const desvioFormatted = formatNumber(Math.abs(desvio)); 
+                    const desvioFormatted = formatNumber(Math.abs(desvio), true, true, desvio); 
                     
                     let varColorClass = "";
                     if (desvio > 0) varColorClass = "var-positive";
                     else if (desvio < 0) varColorClass = "var-negative";
                     
-                    tableHtml += `<td class="numeric cell-variance ${varColorClass}">${desvioFormatted !== "-" ? (desvio > 0 ? "+" : "") + desvioFormatted : "-"}</td>`;
+                    tableHtml += `<td class="numeric cell-variance ${varColorClass}">${desvio !== 0 ? desvioFormatted : "-"}</td>`;
 
                     let percentConsumption = valOrcado > 0 ? (valRealizado / valOrcado) * 100 : (valRealizado > 0 ? Infinity : 0);
                     
@@ -257,9 +265,11 @@
                         consumptionText = formatPercentage(percentConsumption);
                     }
                     
-                    tableHtml += `<td class="center cell-consumption">
-                        <div class="bar-container"><div class="bar-fill ${barFillClass}" style="width: ${barFillWidth}%;"></div></div>
-                        <div class="percent-value">${consumptionText}</div>
+                    tableHtml += `<td class="cell-consumption">
+                        <div class="consumption-wrapper">
+                            <div class="bar-container"><div class="bar-fill ${barFillClass}" style="width: ${barFillWidth}%;"></div></div>
+                            <div class="percent-value">${consumptionText}</div>
+                        </div>
                     </td>`;
 
                     let statusText = "";
@@ -279,7 +289,7 @@
                 tableHtml += `</tbody>`;
 
                 const totalDesvio = totalRealizado - totalOrcado;
-                const totalDesvioFormatted = formatNumber(Math.abs(totalDesvio));
+                const totalDesvioFormatted = formatNumber(Math.abs(totalDesvio), true, true, totalDesvio);
                 
                 let totalVarColorClass = "";
                 if (totalDesvio > 0) totalVarColorClass = "var-positive";
@@ -324,10 +334,12 @@
                     }
                 });
 
-                tableHtml += `<td class="numeric cell-variance ${totalVarColorClass}">${totalDesvioFormatted !== "-" ? (totalDesvio > 0 ? "+" : "") + totalDesvioFormatted : "-"}</td>`;
-                tableHtml += `<td class="center cell-consumption">
-                    <div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div>
-                    <div class="percent-value">${totalConsumptionText}</div>
+                tableHtml += `<td class="numeric cell-variance ${totalVarColorClass}">${totalDesvio !== 0 ? totalDesvioFormatted : "-"}</td>`;
+                tableHtml += `<td class="cell-consumption">
+                    <div class="consumption-wrapper">
+                        <div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div>
+                        <div class="percent-value">${totalConsumptionText}</div>
+                    </div>
                 </td>`;
                 tableHtml += `<td class="center cell-status">${totalStatusHtml}</td>`;
                 tableHtml += `</tr></tfoot>`;
