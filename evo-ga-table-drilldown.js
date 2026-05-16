@@ -260,7 +260,8 @@
                 let tableData = Object.keys(dataMap).map(cc => {
                     let ccNode = buildRowMetrics(cc, dataMap[cc].totals);
                     ccNode.children = Object.keys(dataMap[cc].contas).map(conta => buildRowMetrics(conta, dataMap[cc].contas[conta]));
-                    ccNode.children.sort((a, b) => a.name.localeCompare(b.name));
+                    // Alteração: Ordena as contas pelo maior valor de Realizado (decrescente)
+                    ccNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
                     return ccNode;
                 });
 
