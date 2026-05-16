@@ -6,10 +6,13 @@
                 display: block; 
                 width: 100%; 
                 height: 100%; 
-                overflow: auto; 
                 background: #ffffff; 
-                padding: 10px;
                 box-sizing: border-box;
+            }
+            #table-container {
+                width: 100%;
+                height: 100%;
+                overflow: auto;
             }
             table { 
                 width: 100%; 
@@ -23,12 +26,12 @@
                 top: 0;
                 background-color: #F4F6F9; 
                 z-index: 10;
-                color: #7A7A7A; 
+                color: #222222; /* Cor igualada ao Total Geral */
                 font-size: 11px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
-                padding: 12px 10px; /* Reduzido para maior densidade */
+                padding: 12px 10px; 
                 box-shadow: 0 2px 0 0 #CCCCCC; 
                 text-align: right; 
                 vertical-align: bottom;
@@ -36,9 +39,22 @@
             th:first-child { 
                 text-align: left; 
             }
+            th.sortable {
+                cursor: pointer;
+                user-select: none;
+                transition: background 0.2s;
+            }
+            th.sortable:hover {
+                background-color: #E6E9F0;
+            }
+            .sort-icon {
+                font-size: 10px;
+                margin-left: 4px;
+                color: #555;
+            }
             td { 
-                padding: 10px; /* Ajustado de 16px para 10px para densidade corporativa */
-                border-bottom: 1px solid #EAEAEA; /* Linhas levemente mais marcadas */
+                padding: 10px; 
+                border-bottom: 1px solid #EAEAEA; 
                 font-size: 13px; 
                 color: #444444; 
                 vertical-align: middle;
@@ -77,7 +93,6 @@
 
             .cell-variance { white-space: nowrap; }
 
-            /* Ajuste para consumo inline (Barra + Texto na mesma linha) */
             .cell-consumption { width: 140px; }
             .consumption-wrapper { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
             .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; overflow: hidden; }
@@ -102,6 +117,7 @@
             this._shadowRoot = this.attachShadow({ mode: "open" });
             this._shadowRoot.appendChild(template.content.cloneNode(true));
             this._props = {};
+            this._sortState = { col: null, dir: 'asc' }; // Controle de Ordenação
         }
 
         onCustomWidgetBeforeUpdate(changedProperties) {
@@ -160,7 +176,6 @@
                     }
                     let formatted = num.toLocaleString('pt-BR', options);
                     
-                    // Tratamento visual para variação: adiciona o sinal de menos caso seja economia
                     if (isVariance && rawValue < 0) {
                         formatted = "-" + formatted;
                     } else if (isVariance && rawValue > 0) {
@@ -203,66 +218,106 @@
                     dataMap[rKey][cKey] = parseNumber(value);
                 });
 
-                let tableHtml = `<table>`;
-                
-                tableHtml += `<thead><tr><th>${rowDimName}</th>`;
-                uniqueCols.forEach(col => {
-                    tableHtml += `<th>${col}</th>`;
-                });
-                tableHtml += `<th>VARIAÇÃO R$</th><th class="numeric">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
-
-                let totalOrcado = 0;
-                let totalRealizado = 0;
-
-                uniqueRows.forEach(row => {
-                    tableHtml += `<tr><td>${row}</td>`;
-                    
+                // Prepara array de dados estruturados para ordenação
+                let tableData = uniqueRows.map(row => {
                     let valOrcado = 0;
                     let valRealizado = 0;
+                    let numValues = {};
 
                     uniqueCols.forEach(col => {
                         let numValue = (dataMap[row] && dataMap[row][col] !== undefined) ? dataMap[row][col] : 0;
-                        
+                        numValues[col] = numValue;
+
                         if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) {
                             valOrcado = numValue;
                         } else if (col.toUpperCase().includes("REALIZADO")) {
                             valRealizado = numValue;
                         }
+                    });
 
+                    const desvio = valRealizado - valOrcado;
+                    const percentConsumption = valOrcado > 0 ? (valRealizado / valOrcado) * 100 : (valRealizado > 0 ? Infinity : 0);
+
+                    return { rowName: row, valOrcado, valRealizado, desvio, percentConsumption, numValues };
+                });
+
+                // Executa Ordenação caso haja estado
+                if (this._sortState.col) {
+                    tableData.sort((a, b) => {
+                        let valA = a[this._sortState.col];
+                        let valB = b[this._sortState.col];
+                        
+                        // Fallback para string comparison na primeira coluna
+                        if (typeof valA === 'string' && typeof valB === 'string') {
+                            return this._sortState.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                        }
+
+                        if (valA < valB) return this._sortState.dir === 'asc' ? -1 : 1;
+                        if (valA > valB) return this._sortState.dir === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+                }
+
+                let tableHtml = `<table>`;
+                
+                // Construção Dinâmica dos Cabeçalhos com Indicadores de Ordenação
+                let sortIconRow = this._sortState.col === 'rowName' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                tableHtml += `<thead><tr><th data-sort="rowName" class="sortable">${rowDimName}<span class="sort-icon">${sortIconRow}</span></th>`;
+                
+                uniqueCols.forEach(col => {
+                    let sortKey = '';
+                    if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) sortKey = 'valOrcado';
+                    else if (col.toUpperCase().includes("REALIZADO")) sortKey = 'valRealizado';
+
+                    let sortIcon = this._sortState.col === sortKey ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                    let sortAttr = sortKey ? `data-sort="${sortKey}" class="sortable"` : '';
+                    tableHtml += `<th ${sortAttr}>${col}<span class="sort-icon">${sortIcon}</span></th>`;
+                });
+
+                let sortIconDesvio = this._sortState.col === 'desvio' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                tableHtml += `<th data-sort="desvio" class="sortable">VARIAÇÃO R$<span class="sort-icon">${sortIconDesvio}</span></th>`;
+                tableHtml += `<th class="numeric">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
+
+                let totalOrcado = 0;
+                let totalRealizado = 0;
+
+                // Renderização a partir do Array Ordenado
+                tableData.forEach(rowObj => {
+                    tableHtml += `<tr><td>${rowObj.rowName}</td>`;
+                    
+                    uniqueCols.forEach(col => {
+                        let numValue = rowObj.numValues[col];
                         tableHtml += `<td class="numeric">${formatNumber(numValue)}</td>`;
                     });
 
-                    totalOrcado += valOrcado;
-                    totalRealizado += valRealizado;
+                    totalOrcado += rowObj.valOrcado;
+                    totalRealizado += rowObj.valRealizado;
 
-                    const desvio = valRealizado - valOrcado;
-                    const desvioFormatted = formatNumber(Math.abs(desvio), true, true, desvio); 
+                    const desvioFormatted = formatNumber(Math.abs(rowObj.desvio), true, true, rowObj.desvio); 
                     
                     let varColorClass = "";
-                    if (desvio > 0) varColorClass = "var-positive";
-                    else if (desvio < 0) varColorClass = "var-negative";
+                    if (rowObj.desvio > 0) varColorClass = "var-positive";
+                    else if (rowObj.desvio < 0) varColorClass = "var-negative";
                     
-                    tableHtml += `<td class="numeric cell-variance ${varColorClass}">${desvio !== 0 ? desvioFormatted : "-"}</td>`;
+                    tableHtml += `<td class="numeric cell-variance ${varColorClass}">${rowObj.desvio !== 0 ? desvioFormatted : "-"}</td>`;
 
-                    let percentConsumption = valOrcado > 0 ? (valRealizado / valOrcado) * 100 : (valRealizado > 0 ? Infinity : 0);
-                    
                     let barFillWidth = 0;
                     let barFillClass = "";
                     let consumptionText = "";
                     
-                    if (percentConsumption === Infinity) {
+                    if (rowObj.percentConsumption === Infinity) {
                         barFillWidth = 100;
                         barFillClass = "fill-red";
                         consumptionText = "∞";
-                    } else if (percentConsumption === 0) {
+                    } else if (rowObj.percentConsumption === 0) {
                         barFillWidth = 0;
                         consumptionText = "-";
                     } else {
-                        barFillWidth = Math.min(100, percentConsumption); 
-                        if (percentConsumption < 90) barFillClass = "fill-green";
-                        else if (percentConsumption < 100) barFillClass = "fill-yellow";
+                        barFillWidth = Math.min(100, rowObj.percentConsumption); 
+                        if (rowObj.percentConsumption < 90) barFillClass = "fill-green";
+                        else if (rowObj.percentConsumption < 100) barFillClass = "fill-yellow";
                         else barFillClass = "fill-red";
-                        consumptionText = formatPercentage(percentConsumption);
+                        consumptionText = formatPercentage(rowObj.percentConsumption);
                     }
                     
                     tableHtml += `<td class="cell-consumption">
@@ -275,11 +330,11 @@
                     let statusText = "";
                     let statusPillClass = "";
                     
-                    if (percentConsumption < 90) { statusText = "Abaixo"; statusPillClass = "status-abaixo"; }
-                    else if (percentConsumption < 100) { statusText = "Atenção"; statusPillClass = "status-atencao"; }
-                    else if (percentConsumption >= 100) { statusText = "Acima"; statusPillClass = "status-acima"; }
-                    else if (valOrcado === 0 && valRealizado === 0) { statusText = "-"; statusPillClass = ""; } 
-                    else if (valOrcado === 0 && valRealizado > 0) { statusText = "Acima"; statusPillClass = "status-acima"; } 
+                    if (rowObj.percentConsumption < 90) { statusText = "Abaixo"; statusPillClass = "status-abaixo"; }
+                    else if (rowObj.percentConsumption < 100) { statusText = "Atenção"; statusPillClass = "status-atencao"; }
+                    else if (rowObj.percentConsumption >= 100) { statusText = "Acima"; statusPillClass = "status-acima"; }
+                    else if (rowObj.valOrcado === 0 && rowObj.valRealizado === 0) { statusText = "-"; statusPillClass = ""; } 
+                    else if (rowObj.valOrcado === 0 && rowObj.valRealizado > 0) { statusText = "Acima"; statusPillClass = "status-acima"; } 
 
                     let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}">${statusText}</span>` : "-";
                     tableHtml += `<td class="center cell-status">${statusHtml}</td>`;
@@ -346,6 +401,20 @@
 
                 tableHtml += `</table>`;
                 container.innerHTML = tableHtml;
+
+                // Bind Eventos de Ordenação
+                container.querySelectorAll('.sortable').forEach(th => {
+                    th.addEventListener('click', () => {
+                        const col = th.getAttribute('data-sort');
+                        if (this._sortState.col === col) {
+                            this._sortState.dir = this._sortState.dir === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            this._sortState.col = col;
+                            this._sortState.dir = 'asc';
+                        }
+                        this.renderTable(financialData); // Re-render table bound to updated state
+                    });
+                });
 
             } catch (error) {
                 container.innerHTML = `<div style='padding:10px; color:red;'>Erro ao renderizar: ${error.message}</div>`;
