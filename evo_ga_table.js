@@ -26,12 +26,12 @@
                 top: 0;
                 background-color: #F4F6F9; 
                 z-index: 10;
-                color: #222222; /* Cor igualada ao Total Geral */
+                color: #222222; 
                 font-size: 11px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
-                padding: 12px 10px; 
+                padding: 10px 10px; /* Leve redução no cabeçalho também */
                 box-shadow: 0 2px 0 0 #CCCCCC; 
                 text-align: right; 
                 vertical-align: bottom;
@@ -53,7 +53,7 @@
                 color: #555;
             }
             td { 
-                padding: 10px; 
+                padding: 6px 10px; /* <-- Ajuste principal: de 10px para 6px na vertical */
                 border-bottom: 1px solid #EAEAEA; 
                 font-size: 13px; 
                 color: #444444; 
@@ -74,7 +74,7 @@
                 color: #222222 !important;
                 box-shadow: 0 -2px 0 0 #CCCCCC; 
                 border-bottom: none;
-                padding: 12px 10px;
+                padding: 10px 10px; /* Redução para alinhar com o corpo */
             }
             tfoot td:first-child {
                 color: #222222 !important;
@@ -117,7 +117,7 @@
             this._shadowRoot = this.attachShadow({ mode: "open" });
             this._shadowRoot.appendChild(template.content.cloneNode(true));
             this._props = {};
-            this._sortState = { col: null, dir: 'asc' }; // Controle de Ordenação
+            this._sortState = { col: null, dir: 'asc' };
         }
 
         onCustomWidgetBeforeUpdate(changedProperties) {
@@ -218,7 +218,6 @@
                     dataMap[rKey][cKey] = parseNumber(value);
                 });
 
-                // Prepara array de dados estruturados para ordenação
                 let tableData = uniqueRows.map(row => {
                     let valOrcado = 0;
                     let valRealizado = 0;
@@ -241,13 +240,11 @@
                     return { rowName: row, valOrcado, valRealizado, desvio, percentConsumption, numValues };
                 });
 
-                // Executa Ordenação caso haja estado
                 if (this._sortState.col) {
                     tableData.sort((a, b) => {
                         let valA = a[this._sortState.col];
                         let valB = b[this._sortState.col];
                         
-                        // Fallback para string comparison na primeira coluna
                         if (typeof valA === 'string' && typeof valB === 'string') {
                             return this._sortState.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
                         }
@@ -260,7 +257,6 @@
 
                 let tableHtml = `<table>`;
                 
-                // Construção Dinâmica dos Cabeçalhos com Indicadores de Ordenação
                 let sortIconRow = this._sortState.col === 'rowName' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
                 tableHtml += `<thead><tr><th data-sort="rowName" class="sortable">${rowDimName}<span class="sort-icon">${sortIconRow}</span></th>`;
                 
@@ -281,7 +277,6 @@
                 let totalOrcado = 0;
                 let totalRealizado = 0;
 
-                // Renderização a partir do Array Ordenado
                 tableData.forEach(rowObj => {
                     tableHtml += `<tr><td>${rowObj.rowName}</td>`;
                     
@@ -402,7 +397,6 @@
                 tableHtml += `</table>`;
                 container.innerHTML = tableHtml;
 
-                // Bind Eventos de Ordenação
                 container.querySelectorAll('.sortable').forEach(th => {
                     th.addEventListener('click', () => {
                         const col = th.getAttribute('data-sort');
@@ -412,7 +406,7 @@
                             this._sortState.col = col;
                             this._sortState.dir = 'asc';
                         }
-                        this.renderTable(financialData); // Re-render table bound to updated state
+                        this.renderTable(financialData); 
                     });
                 });
 
