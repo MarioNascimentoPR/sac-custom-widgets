@@ -9,11 +9,44 @@
                 background: #ffffff; 
                 box-sizing: border-box;
             }
-            #table-container {
+            #widget-wrapper {
+                display: flex;
+                flex-direction: column;
                 width: 100%;
                 height: 100%;
+            }
+            #header-container {
+                padding: 4px 0 12px 0;
+                flex-shrink: 0;
+            }
+            #table-container {
+                width: 100%;
+                flex-grow: 1;
                 overflow: auto;
             }
+            .table-title {
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 16px;
+                font-weight: 700;
+                color: #222222;
+                margin: 0 0 8px 0;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .table-summary {
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 13px;
+                color: #444444;
+                line-height: 1.5;
+                margin: 0;
+                background-color: #F8F9FA;
+                padding: 10px 14px;
+                border-radius: 4px;
+                border-left: 4px solid #CCCCCC;
+            }
+            .table-summary.summary-saving { border-left-color: #2E7D32; }
+            .table-summary.summary-desvio { border-left-color: #D32F2F; }
+
             table { 
                 width: 100%; 
                 border-collapse: separate; 
@@ -115,7 +148,6 @@
             .cell-consumption { width: 140px; }
             .consumption-wrapper { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
             
-            /* Correção do Marcador: Removido overflow:hidden e ajustado posicionamento e cor */
             .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; }
             .bar-container::after { content: ''; position: absolute; right: 0; top: -2px; height: 12px; width: 2px; background-color: #222222; z-index: 2; border-radius: 1px; }
             
@@ -144,7 +176,10 @@
             .status-atencao { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; } 
             .status-acima { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; } 
         </style>
-        <div id="table-container"></div>
+        <div id="widget-wrapper">
+            <div id="header-container"></div>
+            <div id="table-container"></div>
+        </div>
     `;
 
     class EvoGATable extends HTMLElement {
@@ -171,7 +206,10 @@
 
         renderTable() {
             const financialData = this._currentData;
+            const headerContainer = this._shadowRoot.getElementById("header-container");
             const container = this._shadowRoot.getElementById("table-container");
+            
+            headerContainer.innerHTML = "";
             container.innerHTML = ""; 
 
             if (!financialData || !financialData.data || financialData.data.length === 0) {
@@ -209,9 +247,15 @@
                     let options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
                     if (withCurrency) { options.style = 'currency'; options.currency = 'BRL'; }
                     let formatted = num.toLocaleString('pt-BR', options);
-                    
                     if (isVariance && rawValue < 0) formatted = "-" + formatted;
                     return formatted;
+                };
+
+                const formatSummaryNumber = (num) => {
+                    const absNum = Math.abs(num);
+                    if (absNum >= 1000000) return (num / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "Mi";
+                    if (absNum >= 1000) return (num / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "K";
+                    return num.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
                 };
                 
                 const formatPercentage = (val) => val === 0 ? "-" : (val === Infinity ? "∞" : val.toFixed(1) + "%");
@@ -279,6 +323,42 @@
                     return ccNode;
                 });
 
+                // GERAÇÃO DO HEADER E TEXTO DINÂMICO (Antes da ordenação da tabela)
+                let totalGlobalOrcado = 0;
+                let totalGlobalRealizado = 0;
+                tableData.forEach(row => {
+                    totalGlobalOrcado += row.valOrcado;
+                    totalGlobalRealizado += row.valRealizado;
+                });
+                
+                const totalGlobalDesvio = totalGlobalRealizado - totalGlobalOrcado;
+                const varianceType = totalGlobalDesvio > 0 ? "desvio" : "saving";
+                const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
+                const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
+
+                // Identificação dos 3 principais ofensores (maiores desvios positivos)
+                const ofensores = [...tableData]
+                    .filter(item => item.desvio > 0)
+                    .sort((a, b) => b.desvio - a.desvio)
+                    .slice(0, 3);
+
+                let ofensoresText = "";
+                if (ofensores.length > 0) {
+                    const names = ofensores.map(o => o.name);
+                    if (names.length === 1) ofensoresText = ` O principal ofensor que exige atenção é o centro de custo <strong>${names[0]}</strong>.`;
+                    else if (names.length === 2) ofensoresText = ` Os principais ofensores que exigem atenção são <strong>${names[0]}</strong> e <strong>${names[1]}</strong>.`;
+                    else ofensoresText = ` Os 3 principais ofensores que exigem atenção são <strong>${names[0]}</strong>, <strong>${names[1]}</strong> e <strong>${names[2]}</strong>.`;
+                } else {
+                    ofensoresText = " Não foram identificados centros de custo operando acima do orçamento planejado.";
+                }
+
+                headerContainer.innerHTML = `
+                    <h1 class="table-title">Overview - Acompanhamento Orçamentário</h1>
+                    <p class="table-summary ${varianceClass}">
+                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado.${ofensoresText}
+                    </p>
+                `;
+
                 if (this._sortState.col) {
                     tableData.sort((a, b) => {
                         let valA = a[this._sortState.col] !== undefined ? a[this._sortState.col] : a.numValues[this._sortState.col];
@@ -311,9 +391,6 @@
                 tableHtml += `<th data-sort="desvio" class="sortable">VARIAÇÃO R$<span class="sort-icon">${sortIconDesvio}</span></th>`;
                 tableHtml += `<th class="numeric">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
 
-                let totalOrcado = 0;
-                let totalRealizado = 0;
-
                 const renderRowHtml = (rowObj, isChild = false) => {
                     let rowClass = isChild ? "row-conta" : "row-cc";
                     let expandClass = (!isChild && this._expandedRow === rowObj.name) ? "expanded" : "";
@@ -327,11 +404,6 @@
                         let numValue = rowObj.numValues[col];
                         html += `<td class="numeric">${formatNumber(numValue)}</td>`;
                     });
-
-                    if (!isChild) {
-                        totalOrcado += rowObj.valOrcado;
-                        totalRealizado += rowObj.valRealizado;
-                    }
 
                     const desvioFormatted = formatNumber(Math.abs(rowObj.desvio), true, true, rowObj.desvio); 
                     let varColorClass = rowObj.desvio > 0 ? "var-positive" : (rowObj.desvio < 0 ? "var-negative" : "");
@@ -375,19 +447,18 @@
 
                 tableHtml += `</tbody>`;
 
-                const totalDesvio = totalRealizado - totalOrcado;
-                const totalDesvioFormatted = formatNumber(Math.abs(totalDesvio), true, true, totalDesvio);
-                let totalVarColorClass = totalDesvio > 0 ? "var-positive" : (totalDesvio < 0 ? "var-negative" : "");
-                let totalPercentConsumption = totalOrcado > 0 ? (totalRealizado / totalOrcado) * 100 : (totalRealizado > 0 ? Infinity : 0);
+                const totalDesvioFormatted = formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio);
+                let totalVarColorClass = totalGlobalDesvio > 0 ? "var-positive" : (totalGlobalDesvio < 0 ? "var-negative" : "");
+                let totalPercentConsumption = totalGlobalOrcado > 0 ? (totalGlobalRealizado / totalGlobalOrcado) * 100 : (totalGlobalRealizado > 0 ? Infinity : 0);
                 
                 let totalBarFillWidth = totalPercentConsumption === Infinity ? 100 : Math.min(100, totalPercentConsumption || 0);
                 let totalBarFillClass = totalPercentConsumption === Infinity || totalPercentConsumption >= 100 ? "fill-red" : (totalPercentConsumption < 90 ? "fill-green" : "fill-yellow");
                 let totalConsumptionText = totalPercentConsumption === Infinity ? "∞" : (totalPercentConsumption === 0 ? "-" : formatPercentage(totalPercentConsumption));
-                if(totalOrcado === 0 && totalRealizado === 0) totalBarFillWidth = 0;
+                if(totalGlobalOrcado === 0 && totalGlobalRealizado === 0) totalBarFillWidth = 0;
 
                 let totalStatusText = "-"; let totalStatusPillClass = "";
-                if (totalOrcado === 0 && totalRealizado > 0) { totalStatusText = "Acima"; totalStatusPillClass = "status-acima"; }
-                else if (totalOrcado > 0 || totalRealizado > 0) {
+                if (totalGlobalOrcado === 0 && totalGlobalRealizado > 0) { totalStatusText = "Acima"; totalStatusPillClass = "status-acima"; }
+                else if (totalGlobalOrcado > 0 || totalGlobalRealizado > 0) {
                     if (totalPercentConsumption < 90) { totalStatusText = "Abaixo"; totalStatusPillClass = "status-abaixo"; }
                     else if (totalPercentConsumption < 100) { totalStatusText = "Atenção"; totalStatusPillClass = "status-atencao"; }
                     else { totalStatusText = "Acima"; totalStatusPillClass = "status-acima"; }
@@ -395,11 +466,11 @@
 
                 tableHtml += `<tfoot><tr><td>TOTAL GERAL</td>`;
                 uniqueCols.forEach(col => {
-                    if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) tableHtml += `<td class="numeric">${formatNumber(totalOrcado)}</td>`;
-                    else if (col.toUpperCase().includes("REALIZADO")) tableHtml += `<td class="numeric">${formatNumber(totalRealizado)}</td>`;
+                    if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) tableHtml += `<td class="numeric">${formatNumber(totalGlobalOrcado)}</td>`;
+                    else if (col.toUpperCase().includes("REALIZADO")) tableHtml += `<td class="numeric">${formatNumber(totalGlobalRealizado)}</td>`;
                     else tableHtml += `<td class="numeric">-</td>`;
                 });
-                tableHtml += `<td class="numeric cell-variance ${totalVarColorClass}">${totalDesvio !== 0 ? totalDesvioFormatted : "-"}</td>`;
+                tableHtml += `<td class="numeric cell-variance ${totalVarColorClass}">${totalGlobalDesvio !== 0 ? totalDesvioFormatted : "-"}</td>`;
                 tableHtml += `<td class="cell-consumption"><div class="consumption-wrapper"><div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div><div class="percent-value">${totalConsumptionText}</div></div></td>`;
                 tableHtml += `<td class="center cell-status">${totalStatusText !== "-" ? `<span class="status-pill ${totalStatusPillClass}">${totalStatusText}</span>` : "-"}</td></tr></tfoot></table>`;
                 
