@@ -13,15 +13,15 @@
             }
             table { 
                 width: 100%; 
-                border-collapse: separate; /* Alterado para suportar cabeçalho fixo */
+                border-collapse: separate; 
                 border-spacing: 0;
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
                 table-layout: auto;
             }
             th { 
-                position: sticky; /* Congela o cabeçalho */
+                position: sticky; 
                 top: 0;
-                background-color: #ffffff; /* Fundo sólido para ocultar linhas rolando por baixo */
+                background-color: #ffffff; 
                 z-index: 10;
                 color: #A0A0A0; 
                 font-size: 11px; 
@@ -29,7 +29,7 @@
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
                 padding: 16px 12px; 
-                box-shadow: 0 2px 0 0 #F2F2F2; /* Substitui border-bottom para funcionar com sticky */
+                box-shadow: 0 2px 0 0 #F2F2F2; 
                 text-align: right; 
                 vertical-align: bottom;
             }
@@ -48,6 +48,22 @@
                 color: #333333; 
                 text-align: left; 
             }
+            
+            /* Configuração do Rodapé Fixo (Sticky Footer) */
+            tfoot td {
+                position: sticky;
+                bottom: 0;
+                background-color: #ffffff;
+                z-index: 10;
+                font-weight: bold !important;
+                color: #333333 !important;
+                box-shadow: 0 -2px 0 0 #F2F2F2; 
+                border-bottom: none;
+            }
+            tfoot td:first-child {
+                color: #333333 !important;
+            }
+
             .numeric { 
                 text-align: right; 
                 font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
@@ -56,15 +72,12 @@
             }
             .center { text-align: center; }
 
-            /* Texto colorido para variação */
-            .var-positive { color: #D32F2F; font-weight: 600; } /* Acima do orçamento - Vermelho */
-            .var-negative { color: #388E3C; font-weight: 600; } /* Abaixo do orçamento - Verde */
+            .var-positive { color: #D32F2F; font-weight: 600; } 
+            .var-negative { color: #388E3C; font-weight: 600; } 
 
-            /* Alinhamento de elementos em células */
             .cell-variance { white-space: nowrap; }
             .cell-variance .var-icon { margin-right: 4px; font-size: 1.2em; vertical-align: middle; }
 
-            /* Barras de Progresso de Consumo */
             .cell-consumption { text-align: center !important; width: 120px; }
             .bar-container { position: relative; width: 100%; height: 6px; background-color: #F2F2F2; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
             .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 3px; transition: width 0.3s ease; }
@@ -73,12 +86,11 @@
             .fill-red { background-color: #F44336; }
             .percent-value { font-size: 11px; color: #666666; margin-top: 2px; }
 
-            /* Status Pills (Etiquetas) */
             .cell-status { text-align: center !important; }
             .status-pill { display: inline-block; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; } /* Verde */
-            .status-atencao { background-color: #FFF3E0; color: #EF6C00; } /* Laranja */
-            .status-acima { background-color: #FFEBEE; color: #C62828; } /* Vermelho */
+            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; } 
+            .status-atencao { background-color: #FFF3E0; color: #EF6C00; } 
+            .status-acima { background-color: #FFEBEE; color: #C62828; } 
         </style>
         <div id="table-container"></div>
     `;
@@ -190,6 +202,10 @@
                 });
                 tableHtml += `<th>VARIAÇÃO R$</th><th class="center">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
 
+                // Variáveis para acumular os totais gerais
+                let totalOrcado = 0;
+                let totalRealizado = 0;
+
                 uniqueRows.forEach(row => {
                     tableHtml += `<tr><td>${row}</td>`;
                     
@@ -208,13 +224,16 @@
                         tableHtml += `<td class="numeric">${formatNumber(numValue)}</td>`;
                     });
 
+                    // Acumula para o rodapé
+                    totalOrcado += valOrcado;
+                    totalRealizado += valRealizado;
+
                     const desvio = valRealizado - valOrcado;
                     const desvioFormatted = formatNumber(Math.abs(desvio)); 
                     
-                    let varIcon = "";
                     let varColorClass = "";
-                    if (desvio > 0) { varIcon = "▲ "; varColorClass = "var-positive"; }
-                    else if (desvio < 0) { varIcon = "▼ "; varColorClass = "var-negative"; }
+                    if (desvio > 0) varColorClass = "var-positive";
+                    else if (desvio < 0) varColorClass = "var-negative";
                     
                     tableHtml += `<td class="numeric cell-variance ${varColorClass}">${desvioFormatted !== "-" ? (desvio > 0 ? "+" : "") + desvioFormatted : "-"}</td>`;
 
@@ -254,13 +273,68 @@
                     else if (valOrcado === 0 && valRealizado > 0) { statusText = "Acima"; statusPillClass = "status-acima"; } 
 
                     let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}">${statusText}</span>` : "-";
-                    
                     tableHtml += `<td class="center cell-status">${statusHtml}</td>`;
-                    
                     tableHtml += `</tr>`;
                 });
 
-                tableHtml += `</tbody></table>`;
+                tableHtml += `</tbody>`;
+
+                // --- GERAÇÃO DO RODAPÉ DE TOTAIS ---
+                const totalDesvio = totalRealizado - totalOrcado;
+                const totalDesvioFormatted = formatNumber(Math.abs(totalDesvio));
+                
+                let totalVarColorClass = "";
+                if (totalDesvio > 0) totalVarColorClass = "var-positive";
+                else if (totalDesvio < 0) totalVarColorClass = "var-negative";
+
+                let totalPercentConsumption = totalOrcado > 0 ? (totalRealizado / totalOrcado) * 100 : (totalRealizado > 0 ? Infinity : 0);
+                let totalBarFillWidth = 0;
+                let totalBarFillClass = "";
+                let totalConsumptionText = "";
+
+                if (totalPercentConsumption === Infinity) {
+                    totalBarFillWidth = 100;
+                    totalBarFillClass = "fill-red";
+                    totalConsumptionText = "∞";
+                } else if (totalPercentConsumption === 0) {
+                    totalBarFillWidth = 0;
+                    totalConsumptionText = "-";
+                } else {
+                    totalBarFillWidth = Math.min(100, totalPercentConsumption);
+                    if (totalPercentConsumption < 90) totalBarFillClass = "fill-green";
+                    else if (totalPercentConsumption < 100) totalBarFillClass = "fill-yellow";
+                    else totalBarFillClass = "fill-red";
+                    totalConsumptionText = formatPercentage(totalPercentConsumption);
+                }
+
+                let totalStatusText = "";
+                let totalStatusPillClass = "";
+                if (totalPercentConsumption < 90) { totalStatusText = "Abaixo"; totalStatusPillClass = "status-abaixo"; }
+                else if (totalPercentConsumption < 100) { totalStatusText = "Atenção"; totalStatusPillClass = "status-atencao"; }
+                else if (totalPercentConsumption >= 100) { totalStatusText = "Acima"; totalStatusPillClass = "status-acima"; }
+
+                let totalStatusHtml = totalStatusText !== "" ? `<span class="status-pill ${totalStatusPillClass}">${totalStatusText}</span>` : "-";
+
+                tableHtml += `<tfoot><tr><td>TOTAL GERAL</td>`;
+                uniqueCols.forEach(col => {
+                    if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) {
+                        tableHtml += `<td class="numeric">${formatNumber(totalOrcado)}</td>`;
+                    } else if (col.toUpperCase().includes("REALIZADO")) {
+                        tableHtml += `<td class="numeric">${formatNumber(totalRealizado)}</td>`;
+                    } else {
+                        tableHtml += `<td class="numeric">-</td>`;
+                    }
+                });
+
+                tableHtml += `<td class="numeric cell-variance ${totalVarColorClass}">${totalDesvioFormatted !== "-" ? (totalDesvio > 0 ? "+" : "") + totalDesvioFormatted : "-"}</td>`;
+                tableHtml += `<td class="center cell-consumption">
+                    <div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div>
+                    <div class="percent-value">${totalConsumptionText}</div>
+                </td>`;
+                tableHtml += `<td class="center cell-status">${totalStatusHtml}</td>`;
+                tableHtml += `</tr></tfoot>`;
+
+                tableHtml += `</table>`;
                 container.innerHTML = tableHtml;
 
             } catch (error) {
@@ -270,7 +344,6 @@
         }
     }
 
-    // Proteção contra timeout e colisão de registro de tag no SAC
     if (!customElements.get("evo-ga-table-only")) {
         customElements.define("evo-ga-table-only", EvoGATable);
     }
