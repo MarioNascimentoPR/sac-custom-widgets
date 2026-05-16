@@ -68,20 +68,31 @@
             /* Estilos para o Drill-down (Nível 2 - Conta) */
             tr.row-conta td { 
                 background-color: #FAFAFA; 
-                border-bottom: 1px dashed #E0E0E0;
+                border-bottom: none;
+                padding-top: 3px;
+                padding-bottom: 3px; 
+                font-size: 12px;
             }
+            
+            tr.row-conta:last-child td {
+                border-bottom: 1px solid #EAEAEA;
+            }
+
             tr.row-conta td:first-child { 
-                padding-left: 32px; 
+                padding-left: 38px;
                 font-weight: 400; 
                 color: #555555; 
                 position: relative;
             }
+            
             tr.row-conta td:first-child::before { 
                 content: '↳'; 
                 position: absolute; 
-                left: 14px; 
-                top: 5px;
-                color: #BDBDBD; 
+                left: 20px; 
+                top: 50%;
+                transform: translateY(-50%);
+                color: #CCCCCC;
+                font-size: 12px;
             }
             
             tfoot td {
@@ -128,8 +139,8 @@
             this._shadowRoot.appendChild(template.content.cloneNode(true));
             this._props = {};
             this._sortState = { col: null, dir: 'asc' };
-            this._expandedRow = null; // Controle de estado do Acordeão
-            this._currentData = null; // Cache dos dados para re-renderização
+            this._expandedRow = null; 
+            this._currentData = null; 
         }
 
         onCustomWidgetBeforeUpdate(changedProperties) {
@@ -160,15 +171,14 @@
                 const dimKeys = Object.keys(dimensions);
                 const measureKeys = Object.keys(measures);
 
-                // ALERTA LÓGICO: Agora exigimos 3 dimensões
                 if (dimKeys.length < 3 || measureKeys.length < 1) {
                     container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 3 dimensões (Ex: 1. Centro de Custo, 2. Conta Contábil, 3. Orçado/Realizado) e 1 medida.</div>";
                     return;
                 }
 
-                const ccDimKey = dimKeys[0];    // Nível 1
-                const contaDimKey = dimKeys[1]; // Nível 2
-                const colDimKey = dimKeys[2];   // Colunas (Orçado/Realizado)
+                const ccDimKey = dimKeys[0];    
+                const contaDimKey = dimKeys[1]; 
+                const colDimKey = dimKeys[2];   
                 const measureKey = measureKeys[0];
 
                 const getName = (obj) => obj ? (obj.label || obj.description || obj.id || "N/D") : "N/D";
@@ -193,7 +203,6 @@
 
                 const headerName = getName(dimensions[ccDimKey]);
 
-                // 1. Mapeamento e Agregação de Dados
                 const dataMap = {};
                 const uniqueColsSet = new Set();
 
@@ -226,13 +235,11 @@
                     }
 
                     dataMap[cc].contas[conta][col] = numVal;
-                    // Agregação em tempo de execução para o nível CC
                     dataMap[cc].totals[col] = (dataMap[cc].totals[col] || 0) + numVal; 
                 });
 
                 const uniqueCols = Array.from(uniqueColsSet);
 
-                // Função auxiliar para calcular os desvios de uma linha (seja CC ou Conta)
                 const buildRowMetrics = (name, valuesMap) => {
                     let valOrcado = 0;
                     let valRealizado = 0;
@@ -250,16 +257,13 @@
                     return { name, valOrcado, valRealizado, desvio, percentConsumption, numValues };
                 };
 
-                // 2. Construção da estrutura hierárquica
                 let tableData = Object.keys(dataMap).map(cc => {
                     let ccNode = buildRowMetrics(cc, dataMap[cc].totals);
                     ccNode.children = Object.keys(dataMap[cc].contas).map(conta => buildRowMetrics(conta, dataMap[cc].contas[conta]));
-                    // Ordena as contas em ordem alfabética por padrão
                     ccNode.children.sort((a, b) => a.name.localeCompare(b.name));
                     return ccNode;
                 });
 
-                // 3. Ordenação (Aplicada apenas no Nível 1 - CC)
                 if (this._sortState.col) {
                     tableData.sort((a, b) => {
                         let valA = a[this._sortState.col] !== undefined ? a[this._sortState.col] : a.numValues[this._sortState.col];
@@ -274,7 +278,6 @@
                     });
                 }
 
-                // 4. Renderização do Cabeçalho
                 let tableHtml = `<table>`;
                 let sortIconRow = this._sortState.col === 'name' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
                 tableHtml += `<thead><tr><th data-sort="name" class="sortable">${headerName}<span class="sort-icon">${sortIconRow}</span></th>`;
@@ -296,7 +299,6 @@
                 let totalOrcado = 0;
                 let totalRealizado = 0;
 
-                // Função auxiliar para renderizar a linha (CC ou Conta)
                 const renderRowHtml = (rowObj, isChild = false) => {
                     let rowClass = isChild ? "row-conta" : "row-cc";
                     let expandClass = (!isChild && this._expandedRow === rowObj.name) ? "expanded" : "";
@@ -347,7 +349,6 @@
                     return html;
                 };
 
-                // 5. Renderização do Corpo da Tabela
                 tableData.forEach(ccRow => {
                     tableHtml += renderRowHtml(ccRow, false);
                     if (this._expandedRow === ccRow.name) {
@@ -359,7 +360,6 @@
 
                 tableHtml += `</tbody>`;
 
-                // 6. Renderização do Total
                 const totalDesvio = totalRealizado - totalOrcado;
                 const totalDesvioFormatted = formatNumber(Math.abs(totalDesvio), true, true, totalDesvio);
                 let totalVarColorClass = totalDesvio > 0 ? "var-positive" : (totalDesvio < 0 ? "var-negative" : "");
@@ -390,7 +390,6 @@
                 
                 container.innerHTML = tableHtml;
 
-                // 7. Event Listeners (Ordenação)
                 container.querySelectorAll('th.sortable').forEach(th => {
                     th.addEventListener('click', () => {
                         const col = th.getAttribute('data-sort');
@@ -404,13 +403,11 @@
                     });
                 });
 
-                // 8. Event Listeners (Acordeão)
                 container.querySelectorAll('tr.row-cc').forEach(tr => {
                     tr.addEventListener('click', (e) => {
                         const ccName = e.currentTarget.getAttribute('data-cc');
-                        // Lógica exclusiva: Se clicou no que está aberto, fecha. Se clicou em outro, abre o novo.
                         this._expandedRow = this._expandedRow === ccName ? null : ccName;
-                        this.renderTable(); // Re-renderiza a tabela com o novo estado
+                        this.renderTable(); 
                     });
                 });
 
