@@ -16,7 +16,7 @@
                 height: 100%;
             }
             #header-container {
-                padding: 4px 16px 12px 0; 
+                padding: 4px 16px 12px 10px; /* Ajuste: 10px na esquerda para alinhar com a tabela */
                 flex-shrink: 0;
             }
             #table-container {
@@ -97,9 +97,8 @@
             }
             tr.row-cc.expanded .expand-icon { transform: rotate(90deg); color: #000; }
 
-            /* Estilo da Flag de Ofensor */
             .ofensor-flag {
-                color: #D32F2F;
+                color: #EF6C00; /* Laranja para alertar ofensor (mais harmonioso que vermelho puro) */
                 margin-left: 6px;
                 font-size: 12px;
                 vertical-align: middle;
@@ -261,10 +260,10 @@
                 };
 
                 const formatSummaryNumber = (num) => {
-                    const absNum = Math.abs(num);
-                    if (absNum >= 1000000) return (num / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "Mi";
-                    if (absNum >= 1000) return (num / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "K";
-                    return num.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+                    const absNum = Math.abs(num); // Garante que o sinal não vá para o texto resumo
+                    if (absNum >= 1000000) return (absNum / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "Mi";
+                    if (absNum >= 1000) return (absNum / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "K";
+                    return absNum.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
                 };
                 
                 const formatPercentage = (val) => val === 0 ? "-" : (val === Infinity ? "∞" : val.toFixed(1) + "%");
@@ -349,7 +348,6 @@
                     .sort((a, b) => b.desvio - a.desvio)
                     .slice(0, 3);
 
-                // Injeta propriedade identificadora nos 3 principais ofensores
                 ofensores.forEach(item => item.isOfensor = true);
 
                 let ofensoresText = "";
@@ -359,7 +357,7 @@
                     else if (names.length === 2) ofensoresText = ` Os principais ofensores que exigem atenção são <strong>${names[0]}</strong> e <strong>${names[1]}</strong>.`;
                     else ofensoresText = ` Os 3 principais ofensores que exigem atenção são <strong>${names[0]}</strong>, <strong>${names[1]}</strong> e <strong>${names[2]}</strong>.`;
                 } else {
-                    ofensoresText = " Não foram identificados centros de custo operando acima do orçamento planejado.";
+                    ofensoresText = " Não foram identificados centros de custo operando acima do orçamento.";
                 }
 
                 headerContainer.innerHTML = `
@@ -408,7 +406,6 @@
                     
                     let html = `<tr class="${rowClass} ${expandClass}" ${dataAttr}>`;
                     
-                    // Injeta a flag de atenção caso a linha pai seja um dos 3 principais ofensores
                     let flagHtml = (!isChild && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
                     let nameCell = isChild ? rowObj.name : `<span class="expand-icon">▶</span>${rowObj.name}${flagHtml}`;
                     
