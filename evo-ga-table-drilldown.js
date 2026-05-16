@@ -43,14 +43,13 @@
             
             td { 
                 padding: 6px 10px; 
-                border-bottom: 1px solid #F0F0F0; /* Bordas mais claras para reduzir poluição visual */
+                border-bottom: 1px solid #F0F0F0; 
                 font-size: 13px; 
                 color: #444444; 
                 vertical-align: middle;
             }
             td:first-child { text-align: left; }
             
-            /* Estilos para o Acordeão (Nível 1 - CC) */
             tr.row-cc { cursor: pointer; transition: background-color 0.15s; }
             tr.row-cc:hover { background-color: #F8F9FA; }
             tr.row-cc td:first-child { font-weight: 600; color: #222222; }
@@ -65,7 +64,6 @@
             }
             tr.row-cc.expanded .expand-icon { transform: rotate(90deg); color: #000; }
 
-            /* Estilos para o Drill-down (Nível 2 - Conta) */
             tr.row-conta td { 
                 background-color: #FAFAFA; 
                 border-bottom: none;
@@ -117,9 +115,9 @@
             .cell-consumption { width: 140px; }
             .consumption-wrapper { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
             
-            /* Barra com marcador de limite de 100% */
-            .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; overflow: hidden; }
-            .bar-container::after { content: ''; position: absolute; right: 0; top: 0; height: 100%; width: 1px; background-color: #999999; z-index: 2; }
+            /* Correção do Marcador: Removido overflow:hidden e ajustado posicionamento e cor */
+            .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; }
+            .bar-container::after { content: ''; position: absolute; right: 0; top: -2px; height: 12px; width: 2px; background-color: #222222; z-index: 2; border-radius: 1px; }
             
             .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease; z-index: 1; }
             .fill-green { background-color: #2E7D32; }
@@ -129,7 +127,6 @@
 
             .cell-status { text-align: center !important; width: 90px; }
             
-            /* Pílulas padronizadas em tamanho e contraste de cores */
             .status-pill { 
                 display: inline-flex; 
                 align-items: center; 
@@ -213,7 +210,6 @@
                     if (withCurrency) { options.style = 'currency'; options.currency = 'BRL'; }
                     let formatted = num.toLocaleString('pt-BR', options);
                     
-                    /* Sinal de + removido para manter eixo vertical dos números uniforme */
                     if (isVariance && rawValue < 0) formatted = "-" + formatted;
                     return formatted;
                 };
