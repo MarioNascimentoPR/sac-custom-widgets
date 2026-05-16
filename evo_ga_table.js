@@ -13,18 +13,23 @@
             }
             table { 
                 width: 100%; 
-                border-collapse: collapse; 
+                border-collapse: separate; /* Alterado para suportar cabeçalho fixo */
+                border-spacing: 0;
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
                 table-layout: auto;
             }
             th { 
+                position: sticky; /* Congela o cabeçalho */
+                top: 0;
+                background-color: #ffffff; /* Fundo sólido para ocultar linhas rolando por baixo */
+                z-index: 10;
                 color: #A0A0A0; 
                 font-size: 11px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
                 padding: 16px 12px; 
-                border-bottom: 2px solid #F2F2F2; 
+                box-shadow: 0 2px 0 0 #F2F2F2; /* Substitui border-bottom para funcionar com sticky */
                 text-align: right; 
                 vertical-align: bottom;
             }
@@ -126,15 +131,13 @@
                     return obj.label || obj.description || obj.id || "N/D";
                 };
 
-                // Parser robusto para garantir cálculo matemático independente da formatação do SAC
                 const parseNumber = (val) => {
                     if (typeof val === 'number') return val;
                     if (!val || val === "-") return 0;
-                    const cleanStr = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.'); // Remove tudo exceto numéros e pontos, e troca vírgula por ponto
+                    const cleanStr = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.'); 
                     return parseFloat(cleanStr) || 0;
                 };
 
-                // Formatador visual de moeda e números
                 const formatNumber = (num, withCurrency = true) => {
                     if (num === 0) return "-";
                     let options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
@@ -148,7 +151,7 @@
                 const formatPercentage = (val) => {
                     if (val === 0) return "-";
                     if (val === Infinity) return "∞";
-                    return val.toFixed(1) + "%"; // Mostra 1 casa decimal, ex: 62.4%
+                    return val.toFixed(1) + "%"; 
                 };
 
                 const rowDimName = getName(dimensions[rowDimKey]);
@@ -175,22 +178,18 @@
                         }
                     }
 
-                    // Armazena o valor já convertido para número para cálculos mais rápidos
                     dataMap[rKey] = dataMap[rKey] || {};
                     dataMap[rKey][cKey] = parseNumber(value);
                 });
 
                 let tableHtml = `<table>`;
                 
-                // Cabeçalho Único
                 tableHtml += `<thead><tr><th>${rowDimName}</th>`;
                 uniqueCols.forEach(col => {
                     tableHtml += `<th>${col}</th>`;
                 });
-                // Novas colunas
                 tableHtml += `<th>VARIAÇÃO R$</th><th class="center">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
 
-                // Corpo da Tabela: Linhas de dados com cálculos e estilização
                 uniqueRows.forEach(row => {
                     tableHtml += `<tr><td>${row}</td>`;
                     
@@ -200,33 +199,25 @@
                     uniqueCols.forEach(col => {
                         let numValue = (dataMap[row] && dataMap[row][col] !== undefined) ? dataMap[row][col] : 0;
                         
-                        // Lógica para identificar as versões e guardar os valores para cálculos
                         if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) {
                             valOrcado = numValue;
                         } else if (col.toUpperCase().includes("REALIZADO")) {
                             valRealizado = numValue;
                         }
 
-                        // Formata visualmente o valor numérico na célula da versão
                         tableHtml += `<td class="numeric">${formatNumber(numValue)}</td>`;
                     });
 
-                    // --- CÁLCULOS ---
-                    
-                    // 1. Variação R$
                     const desvio = valRealizado - valOrcado;
-                    const desvioFormatted = formatNumber(Math.abs(desvio)); // Formata o valor absoluto
+                    const desvioFormatted = formatNumber(Math.abs(desvio)); 
                     
-                    // Define ícone e classe de cor com base na regra: gastou mais que o orçado = ruim (vermelho)
                     let varIcon = "";
                     let varColorClass = "";
                     if (desvio > 0) { varIcon = "▲ "; varColorClass = "var-positive"; }
                     else if (desvio < 0) { varIcon = "▼ "; varColorClass = "var-negative"; }
                     
-                    // Injeta coluna de Variação R$
                     tableHtml += `<td class="numeric cell-variance ${varColorClass}">${desvioFormatted !== "-" ? (desvio > 0 ? "+" : "") + desvioFormatted : "-"}</td>`;
 
-                    // 2. Consumo Orçamentário (Percentual e Barra)
                     let percentConsumption = valOrcado > 0 ? (valRealizado / valOrcado) * 100 : (valRealizado > 0 ? Infinity : 0);
                     
                     let barFillWidth = 0;
@@ -241,7 +232,6 @@
                         barFillWidth = 0;
                         consumptionText = "-";
                     } else {
-                        // Capa o preenchimento visual da barra em 100%, mas mostra o percentual real
                         barFillWidth = Math.min(100, percentConsumption); 
                         if (percentConsumption < 90) barFillClass = "fill-green";
                         else if (percentConsumption < 100) barFillClass = "fill-yellow";
@@ -249,25 +239,22 @@
                         consumptionText = formatPercentage(percentConsumption);
                     }
                     
-                    // Injeta coluna de Consumo Orçamentário com a barra e o valor
                     tableHtml += `<td class="center cell-consumption">
                         <div class="bar-container"><div class="bar-fill ${barFillClass}" style="width: ${barFillWidth}%;"></div></div>
                         <div class="percent-value">${consumptionText}</div>
                     </td>`;
 
-                    // 3. STATUS (Etiqueta Colorida)
                     let statusText = "";
                     let statusPillClass = "";
                     
                     if (percentConsumption < 90) { statusText = "Abaixo"; statusPillClass = "status-abaixo"; }
                     else if (percentConsumption < 100) { statusText = "Atenção"; statusPillClass = "status-atencao"; }
                     else if (percentConsumption >= 100) { statusText = "Acima"; statusPillClass = "status-acima"; }
-                    else if (valOrcado === 0 && valRealizado === 0) { statusText = "-"; statusPillClass = ""; } // Não aplicável
-                    else if (valOrcado === 0 && valRealizado > 0) { statusText = "Acima"; statusPillClass = "status-acima"; } // Caso especial: gasto sem orçamento
+                    else if (valOrcado === 0 && valRealizado === 0) { statusText = "-"; statusPillClass = ""; } 
+                    else if (valOrcado === 0 && valRealizado > 0) { statusText = "Acima"; statusPillClass = "status-acima"; } 
 
                     let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}">${statusText}</span>` : "-";
                     
-                    // Injeta coluna de STATUS
                     tableHtml += `<td class="center cell-status">${statusHtml}</td>`;
                     
                     tableHtml += `</tr>`;
@@ -283,5 +270,8 @@
         }
     }
 
-    customElements.define("evo-ga-table-only", EvoGATable);
+    // Proteção contra timeout e colisão de registro de tag no SAC
+    if (!customElements.get("evo-ga-table-only")) {
+        customElements.define("evo-ga-table-only", EvoGATable);
+    }
 })();
