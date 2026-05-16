@@ -66,9 +66,10 @@
 
             .numeric { 
                 text-align: right; 
-                font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* Mesma fonte do corpo */
+                font-variant-numeric: tabular-nums; /* Força largura fixa por caractere (monoespaço apenas na largura) */
                 font-weight: 500;
-                color: #666666;
+                color: #444444;
             }
             .center { text-align: center; }
 
@@ -202,7 +203,6 @@
                 });
                 tableHtml += `<th>VARIAÇÃO R$</th><th class="center">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
 
-                // Variáveis para acumular os totais gerais
                 let totalOrcado = 0;
                 let totalRealizado = 0;
 
@@ -224,7 +224,6 @@
                         tableHtml += `<td class="numeric">${formatNumber(numValue)}</td>`;
                     });
 
-                    // Acumula para o rodapé
                     totalOrcado += valOrcado;
                     totalRealizado += valRealizado;
 
@@ -279,7 +278,6 @@
 
                 tableHtml += `</tbody>`;
 
-                // --- GERAÇÃO DO RODAPÉ DE TOTAIS ---
                 const totalDesvio = totalRealizado - totalOrcado;
                 const totalDesvioFormatted = formatNumber(Math.abs(totalDesvio));
                 
