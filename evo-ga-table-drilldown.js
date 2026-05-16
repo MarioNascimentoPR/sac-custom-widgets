@@ -16,7 +16,7 @@
                 height: 100%;
             }
             #header-container {
-                padding: 4px 0 12px 0;
+                padding: 4px 16px 12px 0; 
                 flex-shrink: 0;
             }
             #table-container {
@@ -35,12 +35,12 @@
             }
             .table-summary {
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                font-size: 13px;
+                font-size: 11.5px; 
                 color: #444444;
                 line-height: 1.5;
                 margin: 0;
                 background-color: #F8F9FA;
-                padding: 10px 14px;
+                padding: 8px 12px;
                 border-radius: 4px;
                 border-left: 4px solid #CCCCCC;
             }
@@ -96,6 +96,15 @@
                 text-align: center;
             }
             tr.row-cc.expanded .expand-icon { transform: rotate(90deg); color: #000; }
+
+            /* Estilo da Flag de Ofensor */
+            .ofensor-flag {
+                color: #D32F2F;
+                margin-left: 6px;
+                font-size: 12px;
+                vertical-align: middle;
+                cursor: help;
+            }
 
             tr.row-conta td { 
                 background-color: #FAFAFA; 
@@ -323,7 +332,6 @@
                     return ccNode;
                 });
 
-                // GERAÇÃO DO HEADER E TEXTO DINÂMICO (Antes da ordenação da tabela)
                 let totalGlobalOrcado = 0;
                 let totalGlobalRealizado = 0;
                 tableData.forEach(row => {
@@ -336,11 +344,13 @@
                 const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
 
-                // Identificação dos 3 principais ofensores (maiores desvios positivos)
                 const ofensores = [...tableData]
                     .filter(item => item.desvio > 0)
                     .sort((a, b) => b.desvio - a.desvio)
                     .slice(0, 3);
+
+                // Injeta propriedade identificadora nos 3 principais ofensores
+                ofensores.forEach(item => item.isOfensor = true);
 
                 let ofensoresText = "";
                 if (ofensores.length > 0) {
@@ -397,7 +407,11 @@
                     let dataAttr = !isChild ? `data-cc="${rowObj.name}"` : "";
                     
                     let html = `<tr class="${rowClass} ${expandClass}" ${dataAttr}>`;
-                    let nameCell = isChild ? rowObj.name : `<span class="expand-icon">▶</span>${rowObj.name}`;
+                    
+                    // Injeta a flag de atenção caso a linha pai seja um dos 3 principais ofensores
+                    let flagHtml = (!isChild && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
+                    let nameCell = isChild ? rowObj.name : `<span class="expand-icon">▶</span>${rowObj.name}${flagHtml}`;
+                    
                     html += `<td>${nameCell}</td>`;
                     
                     uniqueCols.forEach(col => {
