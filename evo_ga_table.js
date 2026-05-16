@@ -21,15 +21,15 @@
             th { 
                 position: sticky; 
                 top: 0;
-                background-color: #ffffff; 
+                background-color: #F4F6F9; /* Fundo com tom de destaque */
                 z-index: 10;
-                color: #A0A0A0; 
+                color: #7A7A7A; /* Cor levemente ajustada para contrastar com o novo fundo */
                 font-size: 11px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
                 padding: 16px 12px; 
-                box-shadow: 0 2px 0 0 #F2F2F2; 
+                box-shadow: 0 3px 0 0 #CCCCCC; /* Linha divisória mais espessa e escura */
                 text-align: right; 
                 vertical-align: bottom;
             }
@@ -53,11 +53,11 @@
             tfoot td {
                 position: sticky;
                 bottom: 0;
-                background-color: #ffffff;
+                background-color: #F4F6F9; /* Fundo com tom de destaque igual ao cabeçalho */
                 z-index: 10;
                 font-weight: bold !important;
                 color: #333333 !important;
-                box-shadow: 0 -2px 0 0 #F2F2F2; 
+                box-shadow: 0 -3px 0 0 #CCCCCC; /* Linha divisória superior mais espessa e escura */
                 border-bottom: none;
             }
             tfoot td:first-child {
@@ -66,8 +66,8 @@
 
             .numeric { 
                 text-align: right; 
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* Mesma fonte do corpo */
-                font-variant-numeric: tabular-nums; /* Força largura fixa por caractere (monoespaço apenas na largura) */
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+                font-variant-numeric: tabular-nums; 
                 font-weight: 500;
                 color: #444444;
             }
@@ -80,7 +80,7 @@
             .cell-variance .var-icon { margin-right: 4px; font-size: 1.2em; vertical-align: middle; }
 
             .cell-consumption { text-align: center !important; width: 120px; }
-            .bar-container { position: relative; width: 100%; height: 6px; background-color: #F2F2F2; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+            .bar-container { position: relative; width: 100%; height: 6px; background-color: #E0E0E0; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
             .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 3px; transition: width 0.3s ease; }
             .fill-green { background-color: #4CAF50; }
             .fill-yellow { background-color: #FF9800; }
