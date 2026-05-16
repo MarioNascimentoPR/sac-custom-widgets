@@ -13,18 +13,26 @@
             }
             table { 
                 width: 100%; 
-                border-collapse: collapse; 
+                border-collapse: separate; /* Alterado de collapse para separate para melhor suporte a sticky borders */
+                border-spacing: 0;
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
                 table-layout: auto;
             }
             th { 
+                /* Configuração do Congelamento (Sticky) */
+                position: sticky;
+                top: 0;
+                background-color: #ffffff; /* Fundo opaco obrigatório */
+                z-index: 10;
+                
+                /* Estilização anterior */
                 color: #A0A0A0; 
                 font-size: 11px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
                 padding: 16px 12px; 
-                border-bottom: 2px solid #F2F2F2; 
+                box-shadow: 0 2px 0 0 #F2F2F2; /* Usar box-shadow no lugar de border-bottom para headers sticky */
                 text-align: right; 
                 vertical-align: bottom;
             }
@@ -51,15 +59,12 @@
             }
             .center { text-align: center; }
 
-            /* Texto colorido para variação */
-            .var-positive { color: #D32F2F; font-weight: 600; } /* Acima do orçamento - Vermelho */
-            .var-negative { color: #388E3C; font-weight: 600; } /* Abaixo do orçamento - Verde */
+            .var-positive { color: #D32F2F; font-weight: 600; }
+            .var-negative { color: #388E3C; font-weight: 600; }
 
-            /* Alinhamento de elementos em células */
             .cell-variance { white-space: nowrap; }
             .cell-variance .var-icon { margin-right: 4px; font-size: 1.2em; vertical-align: middle; }
 
-            /* Barras de Progresso de Consumo */
             .cell-consumption { text-align: center !important; width: 120px; }
             .bar-container { position: relative; width: 100%; height: 6px; background-color: #F2F2F2; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
             .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 3px; transition: width 0.3s ease; }
@@ -68,12 +73,11 @@
             .fill-red { background-color: #F44336; }
             .percent-value { font-size: 11px; color: #666666; margin-top: 2px; }
 
-            /* Status Pills (Etiquetas) */
             .cell-status { text-align: center !important; }
             .status-pill { display: inline-block; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; } /* Verde */
-            .status-atencao { background-color: #FFF3E0; color: #EF6C00; } /* Laranja */
-            .status-acima { background-color: #FFEBEE; color: #C62828; } /* Vermelho */
+            .status-abaixo { background-color: #E8F5E9; color: #2E7D32; }
+            .status-atencao { background-color: #FFF3E0; color: #EF6C00; }
+            .status-acima { background-color: #FFEBEE; color: #C62828; }
         </style>
         <div id="table-container"></div>
     `;
@@ -113,49 +117,4 @@
                 const measureKeys = Object.keys(measures);
 
                 if (dimKeys.length < 2 || measureKeys.length < 1) {
-                    container.innerHTML = "<div style='padding:10px;'>Adicione pelo menos 2 dimensões e 1 conta/medida no painel.</div>";
-                    return;
-                }
-
-                const rowDimKey = dimKeys[0];
-                const colDimKey = dimKeys[1];
-                const measureKey = measureKeys[0];
-
-                const getName = (obj) => {
-                    if (!obj) return "N/D";
-                    return obj.label || obj.description || obj.id || "N/D";
-                };
-
-                // Parser robusto para garantir cálculo matemático independente da formatação do SAC
-                const parseNumber = (val) => {
-                    if (typeof val === 'number') return val;
-                    if (!val || val === "-") return 0;
-                    const cleanStr = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.'); // Remove tudo exceto numéros e pontos, e troca vírgula por ponto
-                    return parseFloat(cleanStr) || 0;
-                };
-
-                // Formatador visual de moeda e números
-                const formatNumber = (num, withCurrency = true) => {
-                    if (num === 0) return "-";
-                    let options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-                    if (withCurrency) {
-                        options.style = 'currency';
-                        options.currency = 'BRL';
-                    }
-                    return num.toLocaleString('pt-BR', options);
-                };
-                
-                const formatPercentage = (val) => {
-                    if (val === 0) return "-";
-                    if (val === Infinity) return "∞";
-                    return val.toFixed(1) + "%"; // Mostra 1 casa decimal, ex: 62.4%
-                };
-
-                const rowDimName = getName(dimensions[rowDimKey]);
-
-                const uniqueCols = [...new Set(financialData.data.map(row => getName(row[colDimKey])))];
-                const uniqueRows = [...new Set(financialData.data.map(row => getName(row[rowDimKey])))];
-
-                const dataMap = {};
-                financialData.data.forEach(row => {
-                    const rKey = getName(row[row
+                    container.innerHTML = "<div style='padding:10px;'>Adicione pelo menos 2 dimensões e 1 conta/medida no pain
