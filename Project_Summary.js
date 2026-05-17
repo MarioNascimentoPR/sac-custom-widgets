@@ -12,15 +12,16 @@
         width: 100%;
         height: 100%;
         box-sizing: border-box;
+        background: #ffffff;
       }
       
-      .widget-container {
-        width: 100%;
-        height: 100%;
-        box-sizing: border-box;
-        padding: 16px;
+      #widget-wrapper {
         display: flex;
         flex-direction: column;
+        width: 100%;
+        height: 100%;
+        padding: 16px;
+        box-sizing: border-box;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         position: relative;
         overflow: hidden;
@@ -118,8 +119,14 @@
         border: 1px solid #e0e0e0;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       }
+      
+      .placeholder-text {
+        padding: 10px;
+        color: #666666;
+        font-size: 13px;
+      }
     </style>
-    <div class="widget-container">
+    <div id="widget-wrapper">
       <div class="chart-area" id="chartArea">
         <svg class="svg-overlay" id="svgOverlay"></svg>
       </div>
@@ -127,7 +134,7 @@
     </div>
   `;
 
-  class SACPerformanceBarWidget extends HTMLElement {
+  class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
       this._shadowRoot = this.attachShadow({ mode: "open" });
@@ -144,7 +151,7 @@
     connectedCallback() {
       this._resizeObserver = new ResizeObserver(() => {
         if (document.contains(this)) {
-          this._renderChart();
+          this.renderChart();
         }
       });
       this._resizeObserver.observe(this._chartArea);
@@ -165,9 +172,8 @@
       
       if ("performanceCube" in changedProperties && this.performanceCube) {
         this._currentData = this.performanceCube;
+        this.renderChart();
       }
-      
-      this._renderChart();
     }
 
     _updateStyles() {
@@ -178,43 +184,36 @@
       if (this._props.fontSizeLabels) style.setProperty("--font-size-labels", `${this._props.fontSizeLabels}px`);
     }
 
-    _renderChart() {
+    renderChart() {
       if (!document.contains(this)) {
-        setTimeout(() => this._renderChart(), 0);
+        setTimeout(() => this.renderChart(), 0);
         return;
       }
 
       const financialData = this._currentData;
+
       if (!financialData || !financialData.data || financialData.data.length === 0) {
+        this._clearDOM();
+        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>";
         return;
       }
 
       try {
-        const resultSet = financialData.data;
         const metadata = financialData.metadata;
-
         const dimensions = metadata.dimensions || {};
-        const measures = metadata.mainStructureMembers || {};
+        const mainStructureMembers = metadata.mainStructureMembers || {};
 
         const dimKeys = Object.keys(dimensions);
-        const measureKeys = Object.keys(measures);
+        const measureKeys = Object.keys(mainStructureMembers);
 
         if (dimKeys.length < 1 || measureKeys.length < 1) {
+          this._clearDOM();
+          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione 1 dimensão e 1 medida no Builder.</div>";
           return;
         }
 
         const dimId = dimKeys[0];
         const measId = measureKeys[0];
-
-        const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
-        existingBars.forEach((el) => el.remove());
-        
-        while (this._axisX.firstChild) {
-          this._axisX.removeChild(this._axisX.firstChild);
-        }
-        while (this._svgOverlay.firstChild) {
-          this._svgOverlay.removeChild(this._svgOverlay.firstChild);
-        }
 
         const parseNumber = (val) => {
           if (typeof val === 'number') return val;
@@ -222,7 +221,24 @@
           return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
         };
 
-        const maxVal = Math.max(...resultSet.map((row) => {
+        // FILTRO DEFENSIVO CONTRA AGREGADORES DA PÁGINA: Ignora o membro "(all)"
+        const filteredResultSet = financialData.data.filter(row => {
+          const dimObj = row[dimId];
+          if (!dimObj) return false;
+          const idStr = String(dimObj.id).toLowerCase();
+          const labelStr = String(dimObj.label || dimObj.description || "").toLowerCase();
+          return !idStr.includes("(all)") && !labelStr.includes("(all)") && !idStr.includes("all_members");
+        });
+
+        if (filteredResultSet.length === 0) {
+          this._clearDOM();
+          this._axisX.innerHTML = "<div class='placeholder-text'>Nenhum dado mensal detalhado para exibir (Filtro de Página Ativo).</div>";
+          return;
+        }
+
+        this._clearDOM();
+
+        const maxVal = Math.max(...filteredResultSet.map((row) => {
           const mObj = row[measId];
           const val = mObj ? (mObj.formattedValue || mObj.raw || 0) : 0;
           return parseNumber(val);
@@ -230,7 +246,7 @@
 
         const barElements = [];
 
-        resultSet.forEach((row, index) => {
+        filteredResultSet.forEach((row, index) => {
           const dimObj = row[dimId];
           const measObj = row[measId];
           if (!dimObj || !measObj) return;
@@ -249,11 +265,11 @@
           barElement.style.height = `${pctHeight}%`;
 
           let versionType = "historical";
-          if (index === resultSet.length - 1) {
+          if (index === filteredResultSet.length - 1) {
             versionType = "budget";
           } else if (row.versionContext && row.versionContext.isActualMonth) {
             versionType = "actual";
-          } else if (dimObj.properties && dimObj.properties.isCurrent === "true") {
+          } else if (dimObj.properties && (dimObj.properties.isCurrent === "true" || dimObj.properties.isCurrent === true)) {
             versionType = "actual";
           }
 
@@ -275,15 +291,26 @@
         });
 
         requestAnimationFrame(() => {
-          this._drawConnections(barElements, resultSet, measId, parseNumber);
+          this._drawConnections(barElements, filteredResultSet, measId, parseNumber);
         });
 
       } catch (error) {
-        console.error("Erro na execução interna do widget:", error);
+        console.error("Erro dinâmico de renderização:", error);
       }
     }
 
-    _drawConnections(barElements, resultSet, measId, parseNumber) {
+    _clearDOM() {
+      const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
+      existingBars.forEach((el) => el.remove());
+      while (this._axisX.firstChild) {
+        this._axisX.removeChild(this._axisX.firstChild);
+      }
+      while (this._svgOverlay.firstChild) {
+        this._svgOverlay.removeChild(this._svgOverlay.firstChild);
+      }
+    }
+
+    _drawConnections(barElements, filteredResultSet, measId, parseNumber) {
       if (!document.contains(this)) return;
       
       while (this._svgOverlay.firstChild) {
@@ -307,8 +334,8 @@
         const x2 = nextRect.left + nextRect.width / 2 - svgRect.left;
         const y2 = nextRect.top - svgRect.top;
 
-        const obj1 = resultSet[i][measId];
-        const obj2 = resultSet[i + 1][measId];
+        const obj1 = filteredResultSet[i][measId];
+        const obj2 = filteredResultSet[i + 1][measId];
         
         const val1 = obj1 ? parseNumber(obj1.formattedValue || obj1.raw || 0) : 0;
         const val2 = obj2 ? parseNumber(obj2.formattedValue || obj2.raw || 0) : 0;
@@ -365,7 +392,7 @@
     }
 
     getColorActualMonth() { return this._props.colorActualMonth; }
-    setColorAlways(val) { this._props.colorActualMonth = val; }
+    setColorActualMonth(val) { this._props.colorActualMonth = val; }
 
     getColorHistorical() { return this._props.colorHistorical; }
     setColorHistorical(val) { this._props.colorHistorical = val; }
@@ -377,8 +404,7 @@
     setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
   }
 
-  // Registrando a tag padrão com hífen compatível com as regras W3C
   if (!customElements.get("sac-summary")) {
-    customElements.define("sac-summary", SACPerformanceBarWidget);
+    customElements.define("sac-summary", EvoSummaryWidget);
   }
 })();
