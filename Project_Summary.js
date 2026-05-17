@@ -34,6 +34,7 @@
         margin-bottom: 12px;
         border-bottom: 1px solid #f0f0f0;
         padding-bottom: 8px;
+        flex-shrink: 0;
       }
 
       .widget-title {
@@ -59,6 +60,7 @@
         font-size: 11px;
         font-weight: 600;
         color: #4a5568;
+        flex-shrink: 0;
       }
 
       .legend-item {
@@ -161,6 +163,7 @@
         border-top: 1px solid #cbd5e0;
         padding-top: 8px;
         height: 20px;
+        flex-shrink: 0;
       }
       
       .axis-label {
@@ -181,13 +184,14 @@
       }
       
       .variance-tag {
-        font-size: calc(var(--font-size-labels) - 1px);
+        font-size: calc(var(--font-size-labels) - 2px);
         font-weight: 700;
-        padding: 2px 6px;
-        border-radius: 4px;
+        padding: 1px 5px;
+        border-radius: 3px;
         background-color: #ffffff;
         border: 1px solid #cbd5e0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        white-space: nowrap;
       }
       
       .placeholder-text {
@@ -214,8 +218,8 @@
             <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
               <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#2f855a"/>
             </marker>
-            <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#c53030"/>
+            <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#ef6c00"/>
             </marker>
           </defs>
         </svg>
@@ -376,7 +380,6 @@
         const seriesData = [];
         let actualIndex = -1;
 
-        // Montagem da série cronológica linear estável
         sortedMonths.forEach((m, idx) => {
           const type = m.isCurrentMonth ? "actual" : "historical";
           if (type === "actual") actualIndex = idx;
@@ -394,7 +397,7 @@
           seriesData[actualIndex].type = "actual";
         }
 
-        // ALINHAMENTO DO MÊS DO BUDGET (Anexo 1): Injeta a barra de orçamento na mesma competência do mês atual
+        // ALINHAMENTO DE COMPETÊNCIA DO BUDGET (Anexo 1)
         const targetBudgetSource = sortedMonths[actualIndex];
         seriesData.push({
           label: `budget - ${targetBudgetSource.label}`,
@@ -405,7 +408,7 @@
 
         this._clearDOM();
 
-        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.25 || 1;
+        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.30 || 1;
         const barElements = [];
 
         seriesData.forEach((d, index) => {
@@ -438,7 +441,7 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        // Execução do desenho dos conectores retos estruturados
+        // Agendamento seguro com cálculo posicional nativo interno
         requestAnimationFrame(() => {
           this._drawOrthogonalConnections(barElements, seriesData, actualIndex);
         });
@@ -451,46 +454,55 @@
     _clearDOM() {
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach((el) => el.remove());
+      
       while (this._axisX.firstChild) {
         this._axisX.removeChild(this._axisX.firstChild);
       }
+
+      // Limpeza segura dos vetores secundários injetados
       const svg = this._svgOverlay;
-      while (svg.firstChild && svg.firstChild.nodeName !== 'defs') {
-        svg.removeChild(svg.firstChild);
-      }
-      const markers = svg.querySelectorAll(':not(defs):not(marker):not(path)');
-      markers.forEach(el => el.remove());
+      const elementsToRemove = svg.querySelectorAll(':not(defs):not(marker):not(marker path)');
+      elementsToRemove.forEach(el => el.remove());
     }
 
-    // CONECTORES ORTOGONAIS (Anexo 2): Traça linhas em formato de degrau reto com setas e variação
+    // CONECTORES ORTOGONAIS EM DEGRAU (Anexo 2) - Baseado em offset interno do nó pai
     _drawOrthogonalConnections(barElements, seriesData, actualIndex) {
       if (!document.contains(this) || actualIndex === -1) return;
 
-      const svgRect = this._svgOverlay.getBoundingClientRect();
-      if (svgRect.width === 0 || svgRect.height === 0) return;
+      const svg = this._svgOverlay;
+      const chartAreaRect = this._chartArea.getBoundingClientRect();
+      if (chartAreaRect.width === 0 || chartAreaRect.height === 0) return;
 
       const pairsToConnect = [];
       if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, isToBudget: false });
       if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, isToBudget: true });
 
-      // Determina a altura máxima do teto para que as linhas paralelas não colidam entre si
-      const topY1 = barElements[actualIndex].getBoundingClientRect().top - svgRect.top;
-      const topY0 = actualIndex > 0 ? barElements[actualIndex - 1].getBoundingClientRect().top - svgRect.top : topY1;
-      const highestBarY = Math.min(topY1, topY0) - 35; 
+      // Localização exata dos topos em pixels usando offset interno em relação ao contêiner pai
+      const getBarCenterAndTop = (idx) => {
+        const bar = barElements[idx];
+        const wrapper = bar.parentElement;
+        const wrapperLeft = wrapper.offsetLeft;
+        const barLeft = bar.offsetLeft;
+        const barWidth = bar.offsetWidth;
+        const barHeight = bar.offsetHeight;
+        const containerHeight = this._chartArea.offsetHeight;
 
-      pairsToConnect.forEach((pair, pIdx) => {
-        const currentBar = barElements[pair.from];
-        const nextBar = barElements[pair.to];
+        return {
+          x: wrapperLeft + barLeft + (barWidth / 2),
+          y: containerHeight - barHeight
+        };
+      };
 
-        if (!currentBar || !nextBar) return;
+      const actualCoords = getBarCenterAndTop(actualIndex);
+      const prevCoords = actualIndex > 0 ? getBarCenterAndTop(actualIndex - 1) : actualCoords;
+      
+      // Define a linha base do teto para evitar colisão visual
+      const highestY = Math.min(actualCoords.y, prevCoords.y);
+      const ceilingY = highestY - 45;
 
-        const currRect = currentBar.getBoundingClientRect();
-        const nextRect = nextBar.getBoundingClientRect();
-
-        const x1 = currRect.left + currRect.width / 2 - svgRect.left;
-        const y1 = currRect.top - svgRect.top;
-        const x2 = nextRect.left + nextRect.width / 2 - svgRect.left;
-        const y2 = nextRect.top - svgRect.top;
+      pairsToConnect.forEach((pair) => {
+        const coordFrom = getBarCenterAndTop(pair.from);
+        const coordTo = getBarCenterAndTop(pair.to);
 
         const val1 = seriesData[pair.from].value;
         const val2 = seriesData[pair.to].value;
@@ -501,25 +513,23 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
-        const isPositiveVariance = val2 >= val1;
-        // Economia/Queda de custo (Realizado menor ou Budget menor) = Verde [cite: 124, 280]
-        const strokeColor = isPositiveVariance ? "#c53030" : "#2f855a"; 
-        const markerId = isPositiveVariance ? "url(#arrow-red)" : "url(#arrow-green)";
+        // DESIGN ORIENTADO À EXCEÇÃO: Queda ou estabilidade = Verde. Aumento = Laranja/Vermelho
+        const isIncrease = val2 > val1;
+        const strokeColor = isIncrease ? "#ef6c00" : "#2f855a"; 
+        const markerId = isIncrease ? "url(#arrow-orange)" : "url(#arrow-green)";
 
-        // Calibração do teto do degrau ortogonal para evitar sobreposição de linhas paralelas
-        const stepY = pair.isToBudget ? highestBarY : highestBarY - 18;
+        // Escalonamento do degrau ortogonal
+        const stepY = pair.isToBudget ? ceilingY : ceilingY - 20;
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        // Desenho do cano rígido em formato de degrau com seta terminal apontando para baixo (M -> H -> V)
-        path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${stepY} L ${x2} ${stepY} L ${x2} ${y2 - 6}`);
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${stepY} L ${coordTo.x} ${stepY} L ${coordTo.x} ${coordTo.y - 6}`);
         path.setAttribute("stroke", strokeColor);
         path.setAttribute("stroke-width", "1.5");
         path.setAttribute("fill", "none");
         path.setAttribute("marker-end", markerId);
-        this._svgOverlay.appendChild(path);
+        svg.appendChild(path);
 
-        // Injeção da caixa de texto de variação centralizada no eixo horizontal do degrau
-        const midX = x1 + (x2 - x1) / 2;
+        const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
 
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
         foreignObj.setAttribute("x", (midX - 35).toString());
@@ -539,12 +549,10 @@
         span.textContent = varianceText;
         span.style.color = strokeColor;
         span.style.borderColor = strokeColor;
-        span.style.fontSize = "10px";
-        span.style.padding = "1px 4px";
 
         div.appendChild(span);
         foreignObj.appendChild(div);
-        this._svgOverlay.appendChild(foreignObj);
+        svg.appendChild(foreignObj);
       });
     }
 
