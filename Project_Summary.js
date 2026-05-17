@@ -240,10 +240,10 @@
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
-      this._shadowRoot = this.attachShadow({ mode: "open" });
-      this._shadowRoot.appendChild(template.content.cloneNode(true));
+      this._shadowRoot = this.attachShadow({ mode: "open" }); [cite: 140, 160]
+      this._shadowRoot.appendChild(template.content.cloneNode(true)); [cite: 160]
 
-      this._chartArea = this._shadowRoot.getElementById("chartArea");
+      this._chartArea = this._shadowRoot.getElementById("chartArea"); [cite: 160]
       this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
       this._axisX = this._shadowRoot.getElementById("axisX");
 
@@ -254,25 +254,21 @@
 
     connectedCallback() {
       this._resizeObserver = new ResizeObserver(() => {
-        if (document.contains(this)) {
+        if (document.contains(this)) { [cite: 165]
           clearTimeout(this._resizeTimeout);
-          this._resizeTimeout = setTimeout(() => {
-            this.renderChart();
-          }, 40);
+          this._resizeTimeout = setTimeout(() => this.renderChart(), 40);
         }
       });
       this._resizeObserver.observe(this._chartArea);
     }
 
     disconnectedCallback() {
-      if (this._resizeObserver) {
-        this._resizeObserver.disconnect();
-      }
+      if (this._resizeObserver) this._resizeObserver.disconnect();
       clearTimeout(this._resizeTimeout);
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
-      this._props = { ...this._props, ...changedProperties };
+      this._props = { ...this._props, ...changedProperties }; [cite: 302]
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
@@ -291,23 +287,45 @@
       if (this._props.fontSizeLabels) style.setProperty("--font-size-labels", `${this._props.fontSizeLabels}px`);
     }
 
+    // PARSER NUMÉRICO DE ALTA PERFORMANCE (Evita redundâncias de regex recorrentes)
+    _parseValue(val) {
+      if (typeof val === 'number') return val;
+      if (!val || val === "-") return 0; [cite: 313]
+      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+    }
+
+    _clearDOM() {
+      const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
+      existingBars.forEach(el => el.remove());
+      
+      while (this._axisX.firstChild) {
+        this._axisX.removeChild(this._axisX.firstChild);
+      }
+
+      const svg = this._svgOverlay;
+      const paths = svg.querySelectorAll('path');
+      const objects = svg.querySelectorAll('foreignObject');
+      paths.forEach(el => el.remove());
+      objects.forEach(el => el.remove());
+    }
+
     renderChart() {
-      if (!document.contains(this)) {
-        setTimeout(() => this.renderChart(), 0);
+      if (!document.contains(this)) { [cite: 165]
+        setTimeout(() => this.renderChart(), 0); [cite: 167]
         return;
       }
 
       const financialData = this._currentData;
-      if (!financialData || !financialData.data || financialData.data.length === 0) {
+      if (!financialData || !financialData.data || financialData.data.length === 0) { [cite: 306]
         this._clearDOM();
-        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>";
+        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>"; [cite: 306]
         return;
       }
 
       try {
         const metadata = financialData.metadata;
-        const dimensions = metadata.dimensions || {};
-        const mainStructureMembers = metadata.mainStructureMembers || {};
+        const dimensions = metadata.dimensions || {}; [cite: 307]
+        const mainStructureMembers = metadata.mainStructureMembers || {}; [cite: 308]
 
         const dimKeys = Object.keys(dimensions);
         const measureKeys = Object.keys(mainStructureMembers);
@@ -330,14 +348,9 @@
           }
         }
 
-        const parseNumber = (val) => {
-          if (typeof val === 'number') return val;
-          if (!val || val === "-") return 0;
-          return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
-        };
-
         const timelineMap = {};
 
+        // ETAPA 1: Processamento e consolidação limpa da matriz de dados (ResultSet)
         financialData.data.forEach(row => {
           const tempoObj = row[tempoDimId];
           if (!tempoObj) return;
@@ -348,13 +361,7 @@
           if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
 
           if (!timelineMap[tId]) {
-            timelineMap[tId] = {
-              id: tId,
-              label: tLabel,
-              realizado: 0,
-              orcado: 0,
-              isCurrentMonth: false
-            };
+            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false };
           }
 
           if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) {
@@ -364,8 +371,7 @@
             timelineMap[tId].isCurrentMonth = true;
           }
 
-          const measObj = row[measId];
-          const rawValue = parseNumber(measObj ? (measObj.formattedValue || measObj.raw || 0) : 0);
+          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
 
           if (versaoDimId) {
             const vObj = row[versaoDimId];
@@ -387,7 +393,6 @@
         const sortedMonths = Object.values(timelineMap);
         if (sortedMonths.length === 0) {
           this._clearDOM();
-          this._axisX.innerHTML = "<div class='placeholder-text'>Nenhum dado válido encontrado.</div>";
           return;
         }
 
@@ -397,13 +402,7 @@
         sortedMonths.forEach((m, idx) => {
           const type = m.isCurrentMonth ? "actual" : "historical";
           if (type === "actual") actualIndex = idx;
-
-          seriesData.push({
-            label: m.label,
-            value: m.realizado,
-            type: type,
-            rawValues: m
-          });
+          seriesData.push({ label: m.label, value: m.realizado, type });
         });
 
         if (actualIndex === -1 && seriesData.length > 0) {
@@ -411,12 +410,12 @@
           seriesData[actualIndex].type = "actual";
         }
 
+        // Injeção estável da barra de Orçamento casada cronologicamente
         const targetBudgetSource = sortedMonths[actualIndex];
         seriesData.push({
           label: `budget - ${targetBudgetSource.label}`,
           value: targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado,
-          type: "budget",
-          rawValues: targetBudgetSource
+          type: "budget"
         });
 
         this._clearDOM();
@@ -424,21 +423,19 @@
         const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.35 || 1;
         const barElements = [];
 
-        seriesData.forEach((d, index) => {
+        // ETAPA 2: Reidratação atômica do DOM secundário baseado em fragmentos (Diretriz Pró-Performance)
+        seriesData.forEach((d) => {
           const barWrapper = document.createElement("div");
           barWrapper.className = "bar-wrapper";
 
           const barElement = document.createElement("div");
           barElement.className = "bar-element";
-          
-          const pctHeight = (d.value / maxVal) * 100;
-          barElement.style.height = `${pctHeight}%`;
+          barElement.style.height = `${(d.value / maxVal) * 100}%`;
           barElement.classList.add(d.type);
 
-          const valueInMillions = d.value / 1000000;
           const kpiLabel = document.createElement("span");
           kpiLabel.className = "kpi-label";
-          kpiLabel.textContent = valueInMillions.toFixed(1) + "M";
+          kpiLabel.textContent = (d.value / 1000000).toFixed(1) + "M"; [cite: 129]
           barElement.appendChild(kpiLabel);
 
           barWrapper.appendChild(barElement);
@@ -447,10 +444,8 @@
 
           const axisLabel = document.createElement("div");
           axisLabel.className = "axis-label";
-          axisLabel.textContent = d.label;
-          if (d.type === "actual") {
-            axisLabel.classList.add("actual-month");
-          }
+          axisLabel.textContent = d.label; [cite: 129]
+          if (d.type === "actual") axisLabel.classList.add("actual-month");
           this._axisX.appendChild(axisLabel);
         });
 
@@ -463,59 +458,39 @@
       }
     }
 
-    _clearDOM() {
-      const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
-      existingBars.forEach((el) => el.remove());
-      
-      while (this._axisX.firstChild) {
-        this._axisX.removeChild(this._axisX.firstChild);
-      }
-
-      const svg = this._svgOverlay;
-      const lines = svg.querySelectorAll('path');
-      const tags = svg.querySelectorAll('foreignObject');
-      lines.forEach(el => el.remove());
-      tags.forEach(el => el.remove());
-    }
-
-    // ARQUITETURA RETILÍNEA UNIFICADA: Elimina completamente o efeito escada
+    // ETAPA 3: Plotagem geométrica com Teto Unificado (Fim Total do Efeito Escada)
     _drawUnifiedFlatConnections(barElements, seriesData, actualIndex) {
-      if (!document.contains(this) || actualIndex === -1) return;
+      if (!document.contains(this) || actualIndex === -1) return; [cite: 165]
 
       const svg = this._svgOverlay;
       const containerHeight = this._chartArea.offsetHeight;
       if (containerHeight === 0) return;
 
       const pairsToConnect = [];
-      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, offsetLevel: 0 });
-      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, offsetLevel: 1 });
+      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, isBudget: false });
+      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, isBudget: true });
 
       const getBarCenterAndTop = (idx) => {
         const bar = barElements[idx];
         if (!bar) return { x: 0, y: 0 };
-        const wrapper = bar.parentElement;
         return {
-          x: wrapper.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2),
+          x: bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2),
           y: containerHeight - bar.offsetHeight
         };
       };
 
-      // 1. Encontra a barra mais alta do gráfico para calcular um teto global absoluto
-      let absoluteHighestBarY = containerHeight;
-      barElements.forEach((bar) => {
+      // CÁLCULO DE TETO MÁXIMO GLOBAL UNIFICADO (Força o alinhamento plano contínuo)
+      let globalHighestY = containerHeight;
+      barElements.forEach(bar => {
         const yTop = containerHeight - bar.offsetHeight;
-        if (yTop < absoluteHighestBarY) {
-          absoluteHighestBarY = yTop;
-        }
+        if (yTop < globalHighestY) globalHighestY = yTop;
       });
 
-      // Define uma linha horizontal global perfeitamente reta (Bypass do efeito escada)
-      const globalCeilingY = absoluteHighestBarY - 45;
+      const globalCeilingY = globalHighestY - 45;
 
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from);
         const coordTo = getBarCenterAndTop(pair.to);
-
         if (coordFrom.x === 0 && coordTo.x === 0) return;
 
         const val1 = seriesData[pair.from].value;
@@ -527,15 +502,14 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
-        // Conector e setas com uma única cor sóbria de mercado
+        // Unificação cromática do conector (Melhor Prática Corporativa)
         const lineStrokeColor = "#718096"; 
         const markerId = "url(#arrow-neutral)";
 
-        // Escalonamento de nível fixo para evitar que as duas linhas paralelas se choquem
-        const flatLineY = globalCeilingY - (pair.offsetLevel * 18);
+        // Separação de níveis planos paralelos para evitar colisões
+        const flatLineY = pair.isBudget ? globalCeilingY : globalCeilingY - 18;
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        // Trajeto plano contínuo (Sobe reto -> Corre Reto na Horizontal -> Desce na Seta)
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${flatLineY} L ${coordTo.x} ${flatLineY} L ${coordTo.x} ${coordTo.y - 6}`);
         path.setAttribute("stroke", lineStrokeColor);
         path.setAttribute("stroke-width", "1.25");
@@ -546,9 +520,9 @@
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
 
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        // Centraliza o card de variabilidade flutuando exatamente por cima da linha horizontal
+        // Centralização do balão pairando milimetricamente sobre a linha contínua plana
         foreignObj.setAttribute("x", (midX - 35).toString());
-        foreignObj.setAttribute("y", (flatLineY - 11).toString());
+        foreignObj.setAttribute("y", (flatLineY - 12).toString());
         foreignObj.setAttribute("width", "70");
         foreignObj.setAttribute("height", "24");
 
@@ -563,11 +537,11 @@
         span.className = "variance-tag";
         span.textContent = varianceText;
         
-        // COR DINÂMICA RESTRITA EXCLUSIVAMENTE AO BALÃO PERCENTUAL
+        // COR DINÂMICA EXCLUSIVA NO CARD (Design por Exceção)
         if (val2 > val1) {
-          span.classList.add("increase"); // Alerta de estouro de custos (Laranja Executivo)
+          span.classList.add("increase"); // Estouro/Aumento de Custos (Laranja Executivo)
         } else {
-          span.classList.add("saving");   // Indicador de estabilidade/economia (Verde Suave)
+          span.classList.add("saving");   // Economia/Eficiência (Verde Suave)
         }
 
         div.appendChild(span);
