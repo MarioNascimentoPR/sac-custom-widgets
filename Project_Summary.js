@@ -26,6 +26,62 @@
         position: relative;
         overflow: hidden;
       }
+
+      /* Título e Tags Indicadoras */
+      .widget-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 8px;
+      }
+
+      .widget-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #2c3e50;
+      }
+
+      .scale-tag {
+        font-size: 11px;
+        font-weight: 600;
+        color: #7f8c8d;
+        background: #f8f9fa;
+        padding: 2px 8px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+      }
+
+      /* Legenda Corporativa */
+      .widget-legend {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #4a5568;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+      }
+
+      .legend-color.hist { background-color: var(--color-historical); }
+      .legend-color.act { background-color: var(--color-actual); }
+      .legend-color.bud { 
+        background-color: transparent; 
+        border: 2px dashed var(--color-budget);
+        box-sizing: border-box;
+      }
       
       .chart-area {
         flex: 1;
@@ -60,7 +116,7 @@
       
       .bar-element {
         width: 100%;
-        max-width: 60px;
+        max-width: 55px;
         transition: height 0.3s ease, background-color 0.3s ease;
         border-radius: 4px 4px 0 0;
         position: relative;
@@ -72,8 +128,11 @@
         background-color: var(--color-historical);
       }
       
+      /* DESTAQUE DO MÊS ATUAL: Glow e Borda Sutil */
       .bar-element.actual {
         background-color: var(--color-actual);
+        box-shadow: 0 0 12px rgba(31, 119, 180, 0.45);
+        border: 1px solid #15517b;
       }
       
       .bar-element.budget {
@@ -84,17 +143,26 @@
       
       .kpi-label {
         position: absolute;
-        top: -20px;
+        top: -22px;
         font-size: var(--font-size-labels);
-        font-weight: 600;
-        color: #333333;
+        font-weight: 700;
+        color: #2d3748;
         white-space: nowrap;
+      }
+
+      /* Tag com peso visual extra para o valor real atual */
+      .bar-element.actual .kpi-label {
+        color: #1a202c;
+        background: #edf2f7;
+        padding: 1px 4px;
+        border-radius: 4px;
+        top: -24px;
       }
       
       .axis-x {
         display: flex;
         justify-content: space-between;
-        border-top: 1px solid #dcdcdc;
+        border-top: 1px solid #cbd5e0;
         padding-top: 8px;
         height: 20px;
       }
@@ -103,11 +171,17 @@
         flex: 1;
         text-align: center;
         font-size: var(--font-size-labels);
-        color: #666666;
+        font-weight: 600;
+        color: #718096;
         text-overflow: ellipsis;
         white-space: nowrap;
         overflow: hidden;
         padding: 0 4px;
+      }
+
+      .axis-label.actual-month {
+        color: var(--color-actual);
+        font-weight: 700;
       }
       
       .variance-tag {
@@ -116,17 +190,28 @@
         padding: 2px 6px;
         border-radius: 4px;
         background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #cbd5e0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
       }
       
       .placeholder-text {
         padding: 10px;
-        color: #666666;
+        color: #718096;
         font-size: 13px;
       }
     </style>
     <div id="widget-wrapper">
+      <div class="widget-header">
+        <div class="widget-title">Performance Mensal</div>
+        <div class="scale-tag">Valores em Milhões (M)</div>
+      </div>
+      
+      <div class="widget-legend">
+        <div class="legend-item"><div class="legend-color hist"></div> Histórico (Real)</div>
+        <div class="legend-item"><div class="legend-color act"></div> Mês Atual (Real)</div>
+        <div class="legend-item"><div class="legend-color bud"></div> Orçado (Budget)</div>
+      </div>
+
       <div class="chart-area" id="chartArea">
         <svg class="svg-overlay" id="svgOverlay"></svg>
       </div>
@@ -203,17 +288,14 @@
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
 
-        const dimKeys = Object.keys(dimensions);
-        const measureKeys = Object.keys(mainStructureMembers);
+        const dimId = Object.keys(dimensions)[0];
+        const measId = Object.keys(mainStructureMembers)[0];
 
-        if (dimKeys.length < 1 || measureKeys.length < 1) {
+        if (!dimId || !measId) {
           this._clearDOM();
           this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione 1 dimensão e 1 medida no Builder.</div>";
           return;
         }
-
-        const dimId = dimKeys[0];
-        const measId = measureKeys[0];
 
         const parseNumber = (val) => {
           if (typeof val === 'number') return val;
@@ -221,7 +303,7 @@
           return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
         };
 
-        // FILTRO DEFENSIVO CONTRA AGREGADORES DA PÁGINA: Ignora o membro "(all)"
+        // Filtro para eliminar nós de agregação gerais "(all)"
         const filteredResultSet = financialData.data.filter(row => {
           const dimObj = row[dimId];
           if (!dimObj) return false;
@@ -232,7 +314,7 @@
 
         if (filteredResultSet.length === 0) {
           this._clearDOM();
-          this._axisX.innerHTML = "<div class='placeholder-text'>Nenhum dado mensal detalhado para exibir (Filtro de Página Ativo).</div>";
+          this._axisX.innerHTML = "<div class='placeholder-text'>Nenhum dado detalhado disponível.</div>";
           return;
         }
 
@@ -240,11 +322,34 @@
 
         const maxVal = Math.max(...filteredResultSet.map((row) => {
           const mObj = row[measId];
-          const val = mObj ? (mObj.formattedValue || mObj.raw || 0) : 0;
-          return parseNumber(val);
-        })) * 1.15 || 1;
+          return parseNumber(mObj ? (mObj.formattedValue || mObj.raw || 0) : 0);
+        })) * 1.18 || 1;
 
         const barElements = [];
+        let actualIndex = -1;
+
+        // Mapeia e identifica os tipos de versão de cada nó antes da plotagem
+        const rowTypes = filteredResultSet.map((row, index) => {
+          const dimObj = row[dimId];
+          let type = "historical";
+          
+          if (index === filteredResultSet.length - 1) {
+            type = "budget";
+          } else if (row.versionContext && row.versionContext.isActualMonth) {
+            type = "actual";
+            actualIndex = index;
+          } else if (dimObj && dimObj.properties && (dimObj.properties.isCurrent === "true" || dimObj.properties.isCurrent === true)) {
+            type = "actual";
+            actualIndex = index;
+          }
+          return type;
+        });
+
+        // Caso o SAC não tenha retornado a flag nativa do mês atual, assume o penúltimo mês (antes do budget) como fallback
+        if (actualIndex === -1 && filteredResultSet.length > 1) {
+          actualIndex = filteredResultSet.length - 2;
+          rowTypes[actualIndex] = "actual";
+        }
 
         filteredResultSet.forEach((row, index) => {
           const dimObj = row[dimId];
@@ -253,7 +358,10 @@
           
           const labelText = dimObj.label || dimObj.description || dimObj.id || "N/D";
           const rawValue = parseNumber(measObj.formattedValue || measObj.raw || 0);
-          const formattedValue = measObj.formattedValue || rawValue.toString();
+          
+          // CONVERSÃO PARA MILHÕES: Formatação limpa de escala curta (Ex: 15.4M)
+          const valueInMillions = rawValue / 1000000;
+          const formattedValue = valueInMillions.toFixed(1) + "M";
 
           const barWrapper = document.createElement("div");
           barWrapper.className = "bar-wrapper";
@@ -264,16 +372,8 @@
           const pctHeight = (rawValue / maxVal) * 100;
           barElement.style.height = `${pctHeight}%`;
 
-          let versionType = "historical";
-          if (index === filteredResultSet.length - 1) {
-            versionType = "budget";
-          } else if (row.versionContext && row.versionContext.isActualMonth) {
-            versionType = "actual";
-          } else if (dimObj.properties && (dimObj.properties.isCurrent === "true" || dimObj.properties.isCurrent === true)) {
-            versionType = "actual";
-          }
-
-          barElement.classList.add(versionType);
+          const currentType = rowTypes[index];
+          barElement.classList.add(currentType);
 
           const kpiLabel = document.createElement("span");
           kpiLabel.className = "kpi-label";
@@ -287,15 +387,18 @@
           const axisLabel = document.createElement("div");
           axisLabel.className = "axis-label";
           axisLabel.textContent = labelText;
+          if (currentType === "actual") {
+            axisLabel.classList.add("actual-month");
+          }
           this._axisX.appendChild(axisLabel);
         });
 
         requestAnimationFrame(() => {
-          this._drawConnections(barElements, filteredResultSet, measId, parseNumber);
+          this._drawTargetedConnections(barElements, filteredResultSet, rowTypes, actualIndex, measId, parseNumber);
         });
 
       } catch (error) {
-        console.error("Erro dinâmico de renderização:", error);
+        console.error("Erro na renderização visual do widget:", error);
       }
     }
 
@@ -310,8 +413,9 @@
       }
     }
 
-    _drawConnections(barElements, filteredResultSet, measId, parseNumber) {
-      if (!document.contains(this)) return;
+    // DESENHO DIRECIONADO: Plota estritamente (Mês Anterior x Atual) e (Atual x Budget)
+    _drawTargetedConnections(barElements, filteredResultSet, rowTypes, actualIndex, measId, parseNumber) {
+      if (!document.contains(this) || actualIndex === -1) return;
       
       while (this._svgOverlay.firstChild) {
         this._svgOverlay.removeChild(this._svgOverlay.firstChild);
@@ -320,11 +424,23 @@
       const svgRect = this._svgOverlay.getBoundingClientRect();
       if (svgRect.width === 0 || svgRect.height === 0) return;
 
-      for (let i = 0; i < barElements.length - 1; i++) {
-        const currentBar = barElements[i];
-        const nextBar = barElements[i + 1];
+      const pairsToConnect = [];
 
-        if (!currentBar || !nextBar) continue;
+      // Par 1: Mês Anterior x Mês Atual (se houver histórico para trás)
+      if (actualIndex > 0) {
+        pairsToConnect.push({ from: actualIndex - 1, to: actualIndex });
+      }
+
+      // Par 2: Mês Atual x Próximo Mês (Budget)
+      if (actualIndex < barElements.length - 1) {
+        pairsToConnect.push({ from: actualIndex, to: actualIndex + 1 });
+      }
+
+      pairsToConnect.forEach(pair => {
+        const currentBar = barElements[pair.from];
+        const nextBar = barElements[pair.to];
+
+        if (!currentBar || !nextBar) return;
 
         const currRect = currentBar.getBoundingClientRect();
         const nextRect = nextBar.getBoundingClientRect();
@@ -334,8 +450,8 @@
         const x2 = nextRect.left + nextRect.width / 2 - svgRect.left;
         const y2 = nextRect.top - svgRect.top;
 
-        const obj1 = filteredResultSet[i][measId];
-        const obj2 = filteredResultSet[i + 1][measId];
+        const obj1 = filteredResultSet[pair.from][measId];
+        const obj2 = filteredResultSet[pair.to][measId];
         
         const val1 = obj1 ? parseNumber(obj1.formattedValue || obj1.raw || 0) : 0;
         const val2 = obj2 ? parseNumber(obj2.formattedValue || obj2.raw || 0) : 0;
@@ -353,10 +469,10 @@
         const cpY2 = y2;
         
         path.setAttribute("d", `M ${x1} ${y1} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${x2} ${y2}`);
-        path.setAttribute("stroke", "#cccccc");
-        path.setAttribute("stroke-width", "1.5");
+        path.setAttribute("stroke", "#a0aec0");
+        path.setAttribute("stroke-width", "1.75");
         path.setAttribute("fill", "none");
-        path.setAttribute("stroke-dasharray", "4,4");
+        path.setAttribute("stroke-dasharray", "5,4");
         this._svgOverlay.appendChild(path);
 
         const midX = x1 + (x2 - x1) / 2;
@@ -380,15 +496,15 @@
         span.textContent = varianceText;
 
         if (val2 >= val1) {
-          span.style.color = "#2e7d32";
+          span.style.color = "#2f855a"; // Verde Executivo
         } else {
-          span.style.color = "#c62828";
+          span.style.color = "#c53030"; // Vermelho Executivo
         }
 
         div.appendChild(span);
         foreignObj.appendChild(div);
         this._svgOverlay.appendChild(foreignObj);
-      }
+      });
     }
 
     getColorActualMonth() { return this._props.colorActualMonth; }
