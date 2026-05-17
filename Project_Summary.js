@@ -183,13 +183,12 @@
         font-weight: 700;
       }
       
-      /* CARD DE VARIAÇÃO EXECUTIVO */
       .variance-tag {
         font-size: calc(var(--font-size-labels) - 2px);
         font-weight: 700;
         padding: 2px 6px;
         border-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
         white-space: nowrap;
         border: 1px solid transparent;
         display: inline-block;
@@ -259,7 +258,7 @@
           clearTimeout(this._resizeTimeout);
           this._resizeTimeout = setTimeout(() => {
             this.renderChart();
-          }, 50);
+          }, 40);
         }
       });
       this._resizeObserver.observe(this._chartArea);
@@ -412,7 +411,6 @@
           seriesData[actualIndex].type = "actual";
         }
 
-        // Competência de Orçamento alinhada à barra real
         const targetBudgetSource = sortedMonths[actualIndex];
         seriesData.push({
           label: `budget - ${targetBudgetSource.label}`,
@@ -423,7 +421,7 @@
 
         this._clearDOM();
 
-        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.32 || 1;
+        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.35 || 1;
         const barElements = [];
 
         seriesData.forEach((d, index) => {
@@ -457,7 +455,7 @@
         });
 
         requestAnimationFrame(() => {
-          this._drawCleanStraightConnections(barElements, seriesData, actualIndex);
+          this._drawUnifiedFlatConnections(barElements, seriesData, actualIndex);
         });
 
       } catch (error) {
@@ -480,8 +478,8 @@
       tags.forEach(el => el.remove());
     }
 
-    // MELHORIA RETILÍNEA: Desenha as linhas horizontais limpas com cards semânticos discretos
-    _drawCleanStraightConnections(barElements, seriesData, actualIndex) {
+    // ARQUITETURA RETILÍNEA UNIFICADA: Elimina completamente o efeito escada
+    _drawUnifiedFlatConnections(barElements, seriesData, actualIndex) {
       if (!document.contains(this) || actualIndex === -1) return;
 
       const svg = this._svgOverlay;
@@ -489,8 +487,8 @@
       if (containerHeight === 0) return;
 
       const pairsToConnect = [];
-      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, isToBudget: false });
-      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, isToBudget: true });
+      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, offsetLevel: 0 });
+      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, offsetLevel: 1 });
 
       const getBarCenterAndTop = (idx) => {
         const bar = barElements[idx];
@@ -502,12 +500,17 @@
         };
       };
 
-      const actualCoords = getBarCenterAndTop(actualIndex);
-      const prevCoords = actualIndex > 0 ? getBarCenterAndTop(actualIndex - 1) : actualCoords;
-      
-      // Criação de uma linha base de teto comum para evitar o efeito escada
-      const commonHighestY = Math.min(actualCoords.y, prevCoords.y);
-      const ceilingY = commonHighestY - 45;
+      // 1. Encontra a barra mais alta do gráfico para calcular um teto global absoluto
+      let absoluteHighestBarY = containerHeight;
+      barElements.forEach((bar) => {
+        const yTop = containerHeight - bar.offsetHeight;
+        if (yTop < absoluteHighestBarY) {
+          absoluteHighestBarY = yTop;
+        }
+      });
+
+      // Define uma linha horizontal global perfeitamente reta (Bypass do efeito escada)
+      const globalCeilingY = absoluteHighestBarY - 45;
 
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from);
@@ -524,16 +527,16 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
-        // Cor da linha fixada em Cinza Corporativo Sóbrio (Melhor prática de mercado)
+        // Conector e setas com uma única cor sóbria de mercado
         const lineStrokeColor = "#718096"; 
         const markerId = "url(#arrow-neutral)";
 
-        // Escalonamento de teto fixo e reto para as duas conexões
-        const stepY = pair.isToBudget ? ceilingY : ceilingY - 18;
+        // Escalonamento de nível fixo para evitar que as duas linhas paralelas se choquem
+        const flatLineY = globalCeilingY - (pair.offsetLevel * 18);
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        // Trajeto ortogonal limpo (Sobe -> Corre Reto -> Seta no Destino)
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${stepY} L ${coordTo.x} ${stepY} L ${coordTo.x} ${coordTo.y - 6}`);
+        // Trajeto plano contínuo (Sobe reto -> Corre Reto na Horizontal -> Desce na Seta)
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${flatLineY} L ${coordTo.x} ${flatLineY} L ${coordTo.x} ${coordTo.y - 6}`);
         path.setAttribute("stroke", lineStrokeColor);
         path.setAttribute("stroke-width", "1.25");
         path.setAttribute("fill", "none");
@@ -543,8 +546,9 @@
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
 
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        // Centraliza o card de variabilidade flutuando exatamente por cima da linha horizontal
         foreignObj.setAttribute("x", (midX - 35).toString());
-        foreignObj.setAttribute("y", (stepY - 11).toString());
+        foreignObj.setAttribute("y", (flatLineY - 11).toString());
         foreignObj.setAttribute("width", "70");
         foreignObj.setAttribute("height", "24");
 
@@ -559,11 +563,11 @@
         span.className = "variance-tag";
         span.textContent = varianceText;
         
-        // COR DINÂMICA EXCLUSIVA NO CARD DE VARIÂNCIA (Bypass de estouro de custos)
+        // COR DINÂMICA RESTRITA EXCLUSIVAMENTE AO BALÃO PERCENTUAL
         if (val2 > val1) {
-          span.classList.add("increase"); // Laranja/Vermelho para estouro de despesa
+          span.classList.add("increase"); // Alerta de estouro de custos (Laranja Executivo)
         } else {
-          span.classList.add("saving");   // Verde para estabilidade ou economia
+          span.classList.add("saving");   // Indicador de estabilidade/economia (Verde Suave)
         }
 
         div.appendChild(span);
