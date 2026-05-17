@@ -21,7 +21,7 @@
         padding: 16px;
         display: flex;
         flex-direction: column;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         position: relative;
         overflow: hidden;
       }
@@ -130,18 +130,23 @@
   class SACPerformanceBarWidget extends HTMLElement {
     constructor() {
       super();
-      this.attachShadow({ mode: "open" });
-      this.shadowRoot.appendChild(template.content.cloneNode(true));
+      this._shadowRoot = this.attachShadow({ mode: "open" });
+      this._shadowRoot.appendChild(template.content.cloneNode(true));
 
-      this._chartArea = this.shadowRoot.getElementById("chartArea");
-      this._svgOverlay = this.shadowRoot.getElementById("svgOverlay");
-      this._axisX = this.shadowRoot.getElementById("axisX");
+      this._chartArea = this._shadowRoot.getElementById("chartArea");
+      this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
+      this._axisX = this._shadowRoot.getElementById("axisX");
 
       this._props = {};
+      this._currentData = null;
     }
 
     connectedCallback() {
-      this._resizeObserver = new ResizeObserver(() => this._renderChart());
+      this._resizeObserver = new ResizeObserver(() => {
+        if (document.contains(this)) {
+          this._renderChart();
+        }
+      });
       this._resizeObserver.observe(this._chartArea);
     }
 
@@ -151,11 +156,17 @@
       }
     }
 
+    onCustomWidgetBeforeUpdate(changedProperties) {
+      this._props = { ...this._props, ...changedProperties };
+    }
+
     onCustomWidgetAfterUpdate(changedProperties) {
-      for (const prop in changedProperties) {
-        this._props[prop] = changedProperties[prop];
-      }
       this._updateStyles();
+      
+      if ("performanceCube" in changedProperties && this.performanceCube) {
+        this._currentData = this.performanceCube;
+      }
+      
       this._renderChart();
     }
 
@@ -168,91 +179,128 @@
     }
 
     _renderChart() {
-      const dataBinding = this["performanceCube"];
-      if (!dataBinding || !dataBinding.data || dataBinding.data.length === 0) {
+      // Validação de Acoplamento do Nó no DOM Principal (Defesa de Escopo EvoStream)
+      if (!document.contains(this)) {
+        setTimeout(() => this._renderChart(), 0);
         return;
       }
 
-      const resultSet = dataBinding.data;
-      const metadata = dataBinding.metadata;
-
-      const dimMetadata = metadata.dimensions[Object.keys(metadata.dimensions)[0]];
-      const measMetadata = metadata.measures[Object.keys(metadata.measures)[0]];
-      
-      const dimId = dimMetadata.id;
-      const measId = measMetadata.id;
-
-      const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
-      existingBars.forEach((el) => el.remove());
-      while (this._axisX.firstChild) {
-        this._axisX.removeChild(this._axisX.firstChild);
-      }
-      while (this._svgOverlay.firstChild) {
-        this._svgOverlay.removeChild(this._svgOverlay.firstChild);
+      const financialData = this._currentData;
+      if (!financialData || !financialData.data || financialData.data.length === 0) {
+        return;
       }
 
-      const maxVal = Math.max(...resultSet.map((row) => row[measId].rawValue || 0)) * 1.15 || 1;
+      try {
+        const resultSet = financialData.data;
+        const metadata = financialData.metadata;
 
-      const barElements = [];
+        const dimensions = metadata.dimensions || {};
+        const measures = metadata.mainStructureMembers || {};
 
-      resultSet.forEach((row, index) => {
-        const dimObj = row[dimId];
-        const measObj = row[measId];
-        
-        const labelText = dimObj.description || dimObj.id;
-        const rawValue = measObj.rawValue || 0;
-        const formattedValue = measObj.formattedValue || rawValue.toString();
+        const dimKeys = Object.keys(dimensions);
+        const measureKeys = Object.keys(measures);
 
-        const barWrapper = document.createElement("div");
-        barWrapper.className = "bar-wrapper";
-
-        const barElement = document.createElement("div");
-        barElement.className = "bar-element";
-        
-        const pctHeight = (rawValue / maxVal) * 100;
-        barElement.style.height = `${pctHeight}%`;
-
-        let versionType = "historical";
-        if (index === resultSet.length - 1) {
-          versionType = "budget";
-        } else if (row.versionContext && row.versionContext.isActualMonth) {
-          versionType = "actual";
-        } else if (dimObj.properties && dimObj.properties.isCurrent === "true") {
-          versionType = "actual";
+        if (dimKeys.length < 1 || measureKeys.length < 1) {
+          return;
         }
 
-        barElement.classList.add(versionType);
+        const dimId = dimKeys[0];
+        const measId = measureKeys[0];
 
-        const kpiLabel = document.createElement("span");
-        kpiLabel.className = "kpi-label";
-        kpiLabel.textContent = formattedValue;
-        barElement.appendChild(kpiLabel);
+        // Limpeza preventiva e atômica do DOM secundário
+        const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
+        existingBars.forEach((el) => el.remove());
+        
+        while (this._axisX.firstChild) {
+          this._axisX.removeChild(this._axisX.firstChild);
+        }
+        while (this._svgOverlay.firstChild) {
+          this._svgOverlay.removeChild(this._svgOverlay.firstChild);
+        }
 
-        barWrapper.appendChild(barElement);
-        this._chartArea.appendChild(barWrapper);
-        barElements.push(barElement);
+        const parseNumber = (val) => {
+          if (typeof val === 'number') return val;
+          if (!val || val === "-") return 0;
+          return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+        };
 
-        const axisLabel = document.createElement("div");
-        axisLabel.className = "axis-label";
-        axisLabel.textContent = labelText;
-        this._axisX.appendChild(axisLabel);
-      });
+        const maxVal = Math.max(...resultSet.map((row) => {
+          const mObj = row[measId];
+          const val = mObj ? (mObj.formattedValue || mObj.raw || 0) : 0;
+          return parseNumber(val);
+        })) * 1.15 || 1;
 
-      setTimeout(() => {
-        this._drawConnections(barElements, resultSet, measId);
-      }, 50);
+        const barElements = [];
+
+        resultSet.forEach((row, index) => {
+          const dimObj = row[dimId];
+          const measObj = row[measId];
+          if (!dimObj || !measObj) return;
+          
+          const labelText = dimObj.label || dimObj.description || dimObj.id || "N/D";
+          const rawValue = parseNumber(measObj.formattedValue || measObj.raw || 0);
+          const formattedValue = measObj.formattedValue || rawValue.toString();
+
+          const barWrapper = document.createElement("div");
+          barWrapper.className = "bar-wrapper";
+
+          const barElement = document.createElement("div");
+          barElement.className = "bar-element";
+          
+          const pctHeight = (rawValue / maxVal) * 100;
+          barElement.style.height = `${pctHeight}%`;
+
+          let versionType = "historical";
+          if (index === resultSet.length - 1) {
+            versionType = "budget";
+          } else if (row.versionContext && row.versionContext.isActualMonth) {
+            versionType = "actual";
+          } else if (dimObj.properties && dimObj.properties.isCurrent === "true") {
+            versionType = "actual";
+          }
+
+          barElement.classList.add(versionType);
+
+          const kpiLabel = document.createElement("span");
+          kpiLabel.className = "kpi-label";
+          kpiLabel.textContent = formattedValue;
+          barElement.appendChild(kpiLabel);
+
+          barWrapper.appendChild(barElement);
+          this._chartArea.appendChild(barWrapper);
+          barElements.push(barElement);
+
+          const axisLabel = document.createElement("div");
+          axisLabel.className = "axis-label";
+          axisLabel.textContent = labelText;
+          this._axisX.appendChild(axisLabel);
+        });
+
+        // Agendamento seguro da renderização de vetores (SVG) pós-layout do navegador
+        requestAnimationFrame(() => {
+          this._drawConnections(barElements, resultSet, measId, parseNumber);
+        });
+
+      } catch (error) {
+        console.error("Erro na renderização do Custom Widget:", error);
+      }
     }
 
-    _drawConnections(barElements, resultSet, measId) {
+    _drawConnections(barElements, resultSet, measId, parseNumber) {
+      if (!document.contains(this)) return;
+      
       while (this._svgOverlay.firstChild) {
         this._svgOverlay.removeChild(this._svgOverlay.firstChild);
       }
 
       const svgRect = this._svgOverlay.getBoundingClientRect();
+      if (svgRect.width === 0 || svgRect.height === 0) return;
 
       for (let i = 0; i < barElements.length - 1; i++) {
         const currentBar = barElements[i];
         const nextBar = barElements[i + 1];
+
+        if (!currentBar || !nextBar) continue;
 
         const currRect = currentBar.getBoundingClientRect();
         const nextRect = nextBar.getBoundingClientRect();
@@ -262,8 +310,11 @@
         const x2 = nextRect.left + nextRect.width / 2 - svgRect.left;
         const y2 = nextRect.top - svgRect.top;
 
-        const val1 = resultSet[i][measId].rawValue || 0;
-        const val2 = resultSet[i + 1][measId].rawValue || 0;
+        const obj1 = resultSet[i][measId];
+        const obj2 = resultSet[i + 1][measId];
+        
+        const val1 = obj1 ? parseNumber(obj1.formattedValue || obj1.raw || 0) : 0;
+        const val2 = obj2 ? parseNumber(obj2.formattedValue || obj2.raw || 0) : 0;
         
         let varianceText = "0%";
         if (val1 !== 0) {
@@ -316,6 +367,7 @@
       }
     }
 
+    // Getters e Setters de propriedades do Widget
     getColorActualMonth() { return this._props.colorActualMonth; }
     setColorActualMonth(val) { this._props.colorActualMonth = val; }
 
@@ -329,5 +381,7 @@
     setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
   }
 
-  customElements.define("sac-performance-bar-widget", SACPerformanceBarWidget);
+  if (!customElements.get("sac-performance-bar-widget")) {
+    customElements.define("sac-performance-bar-widget", SACPerformanceBarWidget);
+  }
 })();
