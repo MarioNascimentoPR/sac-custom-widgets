@@ -192,7 +192,6 @@
       }
 
       const maxVal = Math.max(...resultSet.map((row) => row[measId].rawValue || 0)) * 1.15 || 1;
-      const containerHeight = this._chartArea.clientHeight;
 
       const barElements = [];
 
@@ -317,7 +316,6 @@
       }
     }
 
-    // Getters e Setters
     getColorActualMonth() { return this._props.colorActualMonth; }
     setColorActualMonth(val) { this._props.colorActualMonth = val; }
 
