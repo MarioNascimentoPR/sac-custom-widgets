@@ -239,22 +239,21 @@
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
-      this._shadowRoot = this.attachShadow({ mode: "open" });
-      this._shadowRoot.appendChild(template.content.cloneNode(true));
+      this._shadowRoot = this.attachShadow({ mode: "open" }); [cite: 160]
+      this._shadowRoot.appendChild(template.content.cloneNode(true)); [cite: 160]
 
-      this._chartArea = this._shadowRoot.getElementById("chartArea");
-      this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
-      this._axisX = this._shadowRoot.getElementById("axisX");
+      this._chartArea = this._shadowRoot.getElementById("chartArea"); [cite: 160]
+      this._svgOverlay = this._shadowRoot.getElementById("svgOverlay"); [cite: 160]
+      this._axisX = this._shadowRoot.getElementById("axisX"); [cite: 160]
 
-      this._props = {};
-      this._currentData = null;
+      this._props = {}; [cite: 301]
+      this._currentData = null; [cite: 302]
       this._animationFrameId = null;
     }
 
     connectedCallback() {
-      // PROTEÇÃO DE TIMEOUT: Uso do microtask/animationFrame para desatolar a thread do SAC nas mudanças de tamanho
       this._resizeObserver = new ResizeObserver(() => {
-        if (document.contains(this)) {
+        if (document.contains(this)) { [cite: 165]
           cancelAnimationFrame(this._animationFrameId);
           this._animationFrameId = requestAnimationFrame(() => this.renderChart());
         }
@@ -268,7 +267,7 @@
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
-      this._props = { ...this._props, ...changedProperties };
+      this._props = { ...this._props, ...changedProperties }; [cite: 302]
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
@@ -289,9 +288,9 @@
     }
 
     _parseValue(val) {
-      if (typeof val === 'number') return val;
-      if (!val || val === "-") return 0;
-      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+      if (typeof val === 'number') return val; [cite: 312]
+      if (!val || val === "-") return 0; [cite: 313]
+      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0; [cite: 313]
     }
 
     _clearDOM() {
@@ -310,32 +309,32 @@
     }
 
     renderChart() {
-      if (!document.contains(this)) return;
+      if (!document.contains(this)) return; [cite: 165]
 
       const financialData = this._currentData;
-      if (!financialData || !financialData.data || financialData.data.length === 0) {
+      if (!financialData || !financialData.data || financialData.data.length === 0) { [cite: 306]
         this._clearDOM();
-        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>";
+        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>"; [cite: 306]
         return;
       }
 
       try {
         const metadata = financialData.metadata;
-        const dimensions = metadata.dimensions || {};
-        const mainStructureMembers = metadata.mainStructureMembers || {};
+        const dimensions = metadata.dimensions || {}; [cite: 307]
+        const mainStructureMembers = metadata.mainStructureMembers || {}; [cite: 308]
 
         const dimKeys = Object.keys(dimensions);
         const measureKeys = Object.keys(mainStructureMembers);
 
         if (dimKeys.length < 1 || measureKeys.length < 1) {
           this._clearDOM();
-          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione as Dimensões e Medidas no Builder.</div>";
+          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione as Dimensões e Medidas no Builder.</div>"; [cite: 309]
           return;
         }
 
         const measId = measureKeys[0];
-        let tempoDimId = dimKeys[0];
-        let versaoDimId = dimKeys[1] || null;
+        let tempoDimId = dimKeys[0]; [cite: 310]
+        let versaoDimId = dimKeys[1] || null; [cite: 311]
 
         if (dimKeys.length >= 2) {
           const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
@@ -352,12 +351,12 @@
           if (!tempoObj) return;
 
           const tId = String(tempoObj.id);
-          const tLabel = tempoObj.label || tempoObj.description || tId;
+          const tLabel = tempoObj.label || tempoObj.description || tId; [cite: 312]
 
           if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
 
           if (!timelineMap[tId]) {
-            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false };
+            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false }; [cite: 328]
           }
 
           if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) {
@@ -367,18 +366,18 @@
             timelineMap[tId].isCurrentMonth = true;
           }
 
-          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
+          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0); [cite: 324]
 
           if (versaoDimId) {
             const vObj = row[versaoDimId];
             if (vObj) {
               const vId = String(vObj.id).toUpperCase();
-              const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
+              const vLabel = String(vObj.label || vObj.description || "").toUpperCase(); [cite: 312]
               
-              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
+              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { [cite: 333]
                 timelineMap[tId].orcado += rawValue;
               } else {
-                timelineMap[tId].realizado += rawValue;
+                timelineMap[tId].realizado += rawValue; [cite: 334]
               }
             }
           } else {
@@ -398,7 +397,7 @@
         sortedMonths.forEach((m, idx) => {
           const type = m.isCurrentMonth ? "actual" : "historical";
           if (type === "actual") actualIndex = idx;
-          seriesData.push({ label: m.label, value: m.realizado, type });
+          seriesData.push({ label: m.label, value: m.realizado, type }); [cite: 338]
         });
 
         if (actualIndex === -1 && seriesData.length > 0) {
@@ -418,7 +417,6 @@
         const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.35 || 1;
         const barElements = [];
 
-        // Montagem atômica limpa das barras
         seriesData.forEach((d) => {
           const barWrapper = document.createElement("div");
           barWrapper.className = "bar-wrapper";
@@ -452,15 +450,15 @@
     }
 
     _drawUnifiedFlatConnections(barElements, seriesData, actualIndex) {
-      if (!document.contains(this) || actualIndex === -1) return;
+      if (!document.contains(this) || actualIndex === -1) return; [cite: 165]
 
       const svg = this._svgOverlay;
       const containerHeight = this._chartArea.offsetHeight;
       if (containerHeight === 0) return;
 
       const pairsToConnect = [];
-      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, isBudget: false });
-      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, isBudget: true });
+      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex });
+      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1 });
 
       const getBarCenterAndTop = (idx) => {
         const bar = barElements[idx];
@@ -471,14 +469,16 @@
         };
       };
 
-      let globalHighestY = containerHeight;
+      // REGRA DE UNIFICAÇÃO DO TETO: Calcula a altura da maior barra absoluta
+      let maxBarHeight = 0;
       barElements.forEach(bar => {
-        const yTop = containerHeight - bar.offsetHeight;
-        if (yTop < globalHighestY) globalHighestY = yTop;
+        if (bar.offsetHeight > maxBarHeight) {
+          maxBarHeight = bar.offsetHeight;
+        }
       });
 
-      // UNIFICAÇÃO HORIZONTAL PERFEITA: Garante alinhamento reto absoluto nas duas conexões
-      const globalCeilingY = globalHighestY - 45;
+      // Define uma linha horizontal estritamente reta e fixa no topo do gráfico
+      const globalCeilingY = containerHeight - maxBarHeight - 45;
 
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from);
@@ -494,14 +494,12 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
-        const lineStrokeColor = "#718096"; 
+        const lineStrokeColor = "#718096"; [cite: 123]
         const markerId = "url(#arrow-neutral)";
 
-        // Escalonamento plano paralelo sutil para não encavalar os balões horizontais
-        const flatLineY = pair.isBudget ? globalCeilingY : globalCeilingY - 18;
-
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${flatLineY} L ${coordTo.x} ${flatLineY} L ${coordTo.x} ${coordTo.y - 6}`);
+        // Trajeto plano de ponta a ponta sem degraus intermédios
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${globalCeilingY} L ${coordTo.x} ${globalCeilingY} L ${coordTo.x} ${coordTo.y - 6}`);
         path.setAttribute("stroke", lineStrokeColor);
         path.setAttribute("stroke-width", "1.25");
         path.setAttribute("fill", "none");
@@ -511,8 +509,9 @@
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
 
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        // O card de variabilidade é centralizado e fixado por cima da linha horizontal única
         foreignObj.setAttribute("x", (midX - 35).toString());
-        foreignObj.setAttribute("y", (flatLineY - 12).toString());
+        foreignObj.setAttribute("y", (globalCeilingY - 12).toString());
         foreignObj.setAttribute("width", "70");
         foreignObj.setAttribute("height", "24");
 
