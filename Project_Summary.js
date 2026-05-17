@@ -239,21 +239,26 @@
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
-      this._shadowRoot = this.attachShadow({ mode: "open" }); [cite: 160]
-      this._shadowRoot.appendChild(template.content.cloneNode(true)); [cite: 160]
-
-      this._chartArea = this._shadowRoot.getElementById("chartArea"); [cite: 160]
-      this._svgOverlay = this._shadowRoot.getElementById("svgOverlay"); [cite: 160]
-      this._axisX = this._shadowRoot.getElementById("axisX"); [cite: 160]
-
-      this._props = {}; [cite: 301]
-      this._currentData = null; [cite: 302]
+      // O construtor inicializa apenas propriedades de escopo leve (Padrão Pró-Performance)
+      this._props = {};
+      this._currentData = null;
       this._animationFrameId = null;
+      this._shadowRoot = null;
     }
 
     connectedCallback() {
+      // Criação tardia e síncrona do DOM apenas quando acoplado à tela ativa (Garante aceleração)
+      if (!this._shadowRoot) {
+        this._shadowRoot = this.attachShadow({ mode: "open" });
+        this._shadowRoot.appendChild(template.content.cloneNode(true));
+        
+        this._chartArea = this._shadowRoot.getElementById("chartArea");
+        this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
+        this._axisX = this._shadowRoot.getElementById("axisX");
+      }
+
       this._resizeObserver = new ResizeObserver(() => {
-        if (document.contains(this)) { [cite: 165]
+        if (document.contains(this)) {
           cancelAnimationFrame(this._animationFrameId);
           this._animationFrameId = requestAnimationFrame(() => this.renderChart());
         }
@@ -267,19 +272,22 @@
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
-      this._props = { ...this._props, ...changedProperties }; [cite: 302]
+      this._props = { ...this._props, ...changedProperties };
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
       this._updateStyles();
       if ("performanceCube" in changedProperties && this.performanceCube) {
         this._currentData = this.performanceCube;
-        cancelAnimationFrame(this._animationFrameId);
-        this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+        if (this._shadowRoot) {
+          cancelAnimationFrame(this._animationFrameId);
+          this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+        }
       }
     }
 
     _updateStyles() {
+      if (!this._shadowRoot) return;
       const style = this.style;
       if (this._props.colorActualMonth) style.setProperty("--color-actual", this._props.colorActualMonth);
       if (this._props.colorHistorical) style.setProperty("--color-historical", this._props.colorHistorical);
@@ -288,9 +296,9 @@
     }
 
     _parseValue(val) {
-      if (typeof val === 'number') return val; [cite: 312]
-      if (!val || val === "-") return 0; [cite: 313]
-      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0; [cite: 313]
+      if (typeof val === 'number') return val;
+      if (!val || val === "-") return 0;
+      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
     _clearDOM() {
@@ -309,32 +317,32 @@
     }
 
     renderChart() {
-      if (!document.contains(this)) return; [cite: 165]
+      if (!document.contains(this) || !this._shadowRoot) return;
 
       const financialData = this._currentData;
-      if (!financialData || !financialData.data || financialData.data.length === 0) { [cite: 306]
+      if (!financialData || !financialData.data || financialData.data.length === 0) {
         this._clearDOM();
-        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>"; [cite: 306]
+        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>";
         return;
       }
 
       try {
         const metadata = financialData.metadata;
-        const dimensions = metadata.dimensions || {}; [cite: 307]
-        const mainStructureMembers = metadata.mainStructureMembers || {}; [cite: 308]
+        const dimensions = metadata.dimensions || {};
+        const mainStructureMembers = metadata.mainStructureMembers || {};
 
         const dimKeys = Object.keys(dimensions);
         const measureKeys = Object.keys(mainStructureMembers);
 
         if (dimKeys.length < 1 || measureKeys.length < 1) {
           this._clearDOM();
-          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione as Dimensões e Medidas no Builder.</div>"; [cite: 309]
+          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione as Dimensões e Medidas no Builder.</div>";
           return;
         }
 
         const measId = measureKeys[0];
-        let tempoDimId = dimKeys[0]; [cite: 310]
-        let versaoDimId = dimKeys[1] || null; [cite: 311]
+        let tempoDimId = dimKeys[0];
+        let versaoDimId = dimKeys[1] || null;
 
         if (dimKeys.length >= 2) {
           const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
@@ -351,12 +359,12 @@
           if (!tempoObj) return;
 
           const tId = String(tempoObj.id);
-          const tLabel = tempoObj.label || tempoObj.description || tId; [cite: 312]
+          const tLabel = tempoObj.label || tempoObj.description || tId;
 
           if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
 
           if (!timelineMap[tId]) {
-            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false }; [cite: 328]
+            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false };
           }
 
           if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) {
@@ -366,18 +374,18 @@
             timelineMap[tId].isCurrentMonth = true;
           }
 
-          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0); [cite: 324]
+          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
 
           if (versaoDimId) {
             const vObj = row[versaoDimId];
             if (vObj) {
               const vId = String(vObj.id).toUpperCase();
-              const vLabel = String(vObj.label || vObj.description || "").toUpperCase(); [cite: 312]
+              const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
               
-              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { [cite: 333]
+              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
                 timelineMap[tId].orcado += rawValue;
               } else {
-                timelineMap[tId].realizado += rawValue; [cite: 334]
+                timelineMap[tId].realizado += rawValue;
               }
             }
           } else {
@@ -397,7 +405,7 @@
         sortedMonths.forEach((m, idx) => {
           const type = m.isCurrentMonth ? "actual" : "historical";
           if (type === "actual") actualIndex = idx;
-          seriesData.push({ label: m.label, value: m.realizado, type }); [cite: 338]
+          seriesData.push({ label: m.label, value: m.realizado, type });
         });
 
         if (actualIndex === -1 && seriesData.length > 0) {
@@ -450,7 +458,7 @@
     }
 
     _drawUnifiedFlatConnections(barElements, seriesData, actualIndex) {
-      if (!document.contains(this) || actualIndex === -1) return; [cite: 165]
+      if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
 
       const svg = this._svgOverlay;
       const containerHeight = this._chartArea.offsetHeight;
@@ -469,7 +477,7 @@
         };
       };
 
-      // REGRA DE UNIFICAÇÃO DO TETO: Calcula a altura da maior barra absoluta
+      // EXTRAÇÃO SÍNCRONA DO PONTO MÁXIMO DA SÉRIE (Acaba com o efeito escada definitivamente)
       let maxBarHeight = 0;
       barElements.forEach(bar => {
         if (bar.offsetHeight > maxBarHeight) {
@@ -477,7 +485,6 @@
         }
       });
 
-      // Define uma linha horizontal estritamente reta e fixa no topo do gráfico
       const globalCeilingY = containerHeight - maxBarHeight - 45;
 
       pairsToConnect.forEach((pair) => {
@@ -494,11 +501,10 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
-        const lineStrokeColor = "#718096"; [cite: 123]
+        const lineStrokeColor = "#718096";
         const markerId = "url(#arrow-neutral)";
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        // Trajeto plano de ponta a ponta sem degraus intermédios
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${globalCeilingY} L ${coordTo.x} ${globalCeilingY} L ${coordTo.x} ${coordTo.y - 6}`);
         path.setAttribute("stroke", lineStrokeColor);
         path.setAttribute("stroke-width", "1.25");
@@ -509,7 +515,6 @@
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
 
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        // O card de variabilidade é centralizado e fixado por cima da linha horizontal única
         foreignObj.setAttribute("x", (midX - 35).toString());
         foreignObj.setAttribute("y", (globalCeilingY - 12).toString());
         foreignObj.setAttribute("width", "70");
@@ -547,7 +552,7 @@
     getColorBudget() { return this._props.colorBudget; }
     setColorBudget(val) { this._props.colorBudget = val; }
 
-    getFontSizeLabels() { return this._props.fontSizeLabels; }
+    getFontSizeLabels() { return this._props.props.fontSizeLabels; }
     setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
   }
 
