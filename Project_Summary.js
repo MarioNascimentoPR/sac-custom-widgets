@@ -209,7 +209,16 @@
       </div>
 
       <div class="chart-area" id="chartArea">
-        <svg class="svg-overlay" id="svgOverlay"></svg>
+        <svg class="svg-overlay" id="svgOverlay">
+          <defs>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#2f855a"/>
+            </marker>
+            <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#c53030"/>
+            </marker>
+          </defs>
+        </svg>
       </div>
       <div class="axis-x" id="axisX"></div>
     </div>
@@ -292,15 +301,11 @@
         }
 
         const measId = measureKeys[0];
-        
-        // IDENTIFICAÇÃO DINÂMICA DE EIXOS: Procura qual dimensão representa Tempo e qual é a Versão
         let tempoDimId = dimKeys[0];
         let versaoDimId = dimKeys[1] || null;
 
-        // Se o usuário inverter a ordem no Builder, corrige o mapeamento dinamicamente baseado na descrição
         if (dimKeys.length >= 2) {
           const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
-          const descSecond = String(dimensions[dimKeys[1]].description || "").toUpperCase();
           if (descFirst.includes("VERSÃO") || descFirst.includes("VERSION") || descFirst.includes("CENÁRIO")) {
             tempoDimId = dimKeys[1];
             versaoDimId = dimKeys[0];
@@ -313,7 +318,6 @@
           return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
         };
 
-        // 1. Agrupamento e consolidação dos registros por Mês eliminando nós agregadores "(all)"
         const timelineMap = {};
 
         financialData.data.forEach(row => {
@@ -335,7 +339,6 @@
             };
           }
 
-          // Checa se o membro de tempo possui a propriedade nativa do SAC indicando período atual
           if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) {
             timelineMap[tId].isCurrentMonth = true;
           }
@@ -343,7 +346,6 @@
             timelineMap[tId].isCurrentMonth = true;
           }
 
-          // Segregação Atômica de Valores por Versão (Mapeia Public.Realizado e Public.Orçado)
           const measObj = row[measId];
           const rawValue = parseNumber(measObj ? (measObj.formattedValue || measObj.raw || 0) : 0);
 
@@ -360,7 +362,6 @@
               }
             }
           } else {
-            // Fallback caso a dimensão de versão ainda não tenha sido arrastada para o Builder
             timelineMap[tId].realizado += rawValue;
           }
         });
@@ -372,44 +373,41 @@
           return;
         }
 
-        // 2. Criação da Série Cronológica: Históricos (Realizado) + Último Mês Opcional (Budget)
         const seriesData = [];
         let actualIndex = -1;
 
+        // Montagem da série cronológica linear estável
         sortedMonths.forEach((m, idx) => {
-          // Se for o último elemento absoluto da série, ele assume o papel de Budget/Orçado subsequente
-          if (idx === sortedMonths.length - 1) {
-            seriesData.push({
-              label: m.label,
-              value: m.orcado > 0 ? m.orcado : m.realizado, // Garante captura da partição de orçamento
-              type: "budget",
-              rawValues: m
-            });
-          } else {
-            const type = m.isCurrentMonth ? "actual" : "historical";
-            if (type === "actual") actualIndex = idx;
+          const type = m.isCurrentMonth ? "actual" : "historical";
+          if (type === "actual") actualIndex = idx;
 
-            seriesData.push({
-              label: m.label,
-              value: m.realizado,
-              type: type,
-              rawValues: m
-            });
-          }
+          seriesData.push({
+            label: m.label,
+            value: m.realizado,
+            type: type,
+            rawValues: m
+          });
         });
 
-        // Fallback visual estável para garantir destaque caso a flag isCurrentMonth não venha ativa do SAC
-        if (actualIndex === -1 && seriesData.length > 1) {
-          actualIndex = seriesData.length - 2;
+        if (actualIndex === -1 && seriesData.length > 0) {
+          actualIndex = seriesData.length - 1;
           seriesData[actualIndex].type = "actual";
         }
 
+        // ALINHAMENTO DO MÊS DO BUDGET (Anexo 1): Injeta a barra de orçamento na mesma competência do mês atual
+        const targetBudgetSource = sortedMonths[actualIndex];
+        seriesData.push({
+          label: `budget - ${targetBudgetSource.label}`,
+          value: targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado,
+          type: "budget",
+          rawValues: targetBudgetSource
+        });
+
         this._clearDOM();
 
-        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.18 || 1;
+        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.25 || 1;
         const barElements = [];
 
-        // 3. Renderização física das barras e eixos no Shadow DOM
         seriesData.forEach((d, index) => {
           const barWrapper = document.createElement("div");
           barWrapper.className = "bar-wrapper";
@@ -421,7 +419,6 @@
           barElement.style.height = `${pctHeight}%`;
           barElement.classList.add(d.type);
 
-          // Formatação limpa de escala curta (Dividido por 1.000.000 com sufixo M)
           const valueInMillions = d.value / 1000000;
           const kpiLabel = document.createElement("span");
           kpiLabel.className = "kpi-label";
@@ -441,13 +438,13 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        // 4. Plotagem vetorial das duas únicas linhas de conexões requeridas
+        // Execução do desenho dos conectores retos estruturados
         requestAnimationFrame(() => {
-          this._drawTargetedConnections(barElements, seriesData, actualIndex);
+          this._drawOrthogonalConnections(barElements, seriesData, actualIndex);
         });
 
       } catch (error) {
-        console.error("Erro interno no processamento de eixos dinâmicos:", error);
+        console.error("Erro interno no processamento visual:", error);
       }
     }
 
@@ -457,26 +454,31 @@
       while (this._axisX.firstChild) {
         this._axisX.removeChild(this._axisX.firstChild);
       }
-      while (this._svgOverlay.firstChild) {
-        this._svgOverlay.removeChild(this._svgOverlay.firstChild);
+      const svg = this._svgOverlay;
+      while (svg.firstChild && svg.firstChild.nodeName !== 'defs') {
+        svg.removeChild(svg.firstChild);
       }
+      const markers = svg.querySelectorAll(':not(defs):not(marker):not(path)');
+      markers.forEach(el => el.remove());
     }
 
-    _drawTargetedConnections(barElements, seriesData, actualIndex) {
+    // CONECTORES ORTOGONAIS (Anexo 2): Traça linhas em formato de degrau reto com setas e variação
+    _drawOrthogonalConnections(barElements, seriesData, actualIndex) {
       if (!document.contains(this) || actualIndex === -1) return;
-      
-      while (this._svgOverlay.firstChild) {
-        this._svgOverlay.removeChild(this._svgOverlay.firstChild);
-      }
 
       const svgRect = this._svgOverlay.getBoundingClientRect();
       if (svgRect.width === 0 || svgRect.height === 0) return;
 
       const pairsToConnect = [];
-      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex });
-      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1 });
+      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, isToBudget: false });
+      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, isToBudget: true });
 
-      pairsToConnect.forEach(pair => {
+      // Determina a altura máxima do teto para que as linhas paralelas não colidam entre si
+      const topY1 = barElements[actualIndex].getBoundingClientRect().top - svgRect.top;
+      const topY0 = actualIndex > 0 ? barElements[actualIndex - 1].getBoundingClientRect().top - svgRect.top : topY1;
+      const highestBarY = Math.min(topY1, topY0) - 35; 
+
+      pairsToConnect.forEach((pair, pIdx) => {
         const currentBar = barElements[pair.from];
         const nextBar = barElements[pair.to];
 
@@ -499,25 +501,29 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
+        const isPositiveVariance = val2 >= val1;
+        // Economia/Queda de custo (Realizado menor ou Budget menor) = Verde [cite: 124, 280]
+        const strokeColor = isPositiveVariance ? "#c53030" : "#2f855a"; 
+        const markerId = isPositiveVariance ? "url(#arrow-red)" : "url(#arrow-green)";
+
+        // Calibração do teto do degrau ortogonal para evitar sobreposição de linhas paralelas
+        const stepY = pair.isToBudget ? highestBarY : highestBarY - 18;
+
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const cpX1 = x1 + (x2 - x1) / 2;
-        const cpY1 = y1;
-        const cpX2 = x1 + (x2 - x1) / 2;
-        const cpY2 = y2;
-        
-        path.setAttribute("d", `M ${x1} ${y1} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${x2} ${y2}`);
-        path.setAttribute("stroke", "#a0aec0");
-        path.setAttribute("stroke-width", "1.75");
+        // Desenho do cano rígido em formato de degrau com seta terminal apontando para baixo (M -> H -> V)
+        path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${stepY} L ${x2} ${stepY} L ${x2} ${y2 - 6}`);
+        path.setAttribute("stroke", strokeColor);
+        path.setAttribute("stroke-width", "1.5");
         path.setAttribute("fill", "none");
-        path.setAttribute("stroke-dasharray", "5,4");
+        path.setAttribute("marker-end", markerId);
         this._svgOverlay.appendChild(path);
 
+        // Injeção da caixa de texto de variação centralizada no eixo horizontal do degrau
         const midX = x1 + (x2 - x1) / 2;
-        const midY = y1 + (y2 - y1) / 2;
 
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
         foreignObj.setAttribute("x", (midX - 35).toString());
-        foreignObj.setAttribute("y", (midY - 12).toString());
+        foreignObj.setAttribute("y", (stepY - 11).toString());
         foreignObj.setAttribute("width", "70");
         foreignObj.setAttribute("height", "24");
 
@@ -531,12 +537,10 @@
         const span = document.createElement("span");
         span.className = "variance-tag";
         span.textContent = varianceText;
-
-        if (val2 >= val1) {
-          span.style.color = "#2f855a";
-        } else {
-          span.style.color = "#c53030";
-        }
+        span.style.color = strokeColor;
+        span.style.borderColor = strokeColor;
+        span.style.fontSize = "10px";
+        span.style.padding = "1px 4px";
 
         div.appendChild(span);
         foreignObj.appendChild(div);
