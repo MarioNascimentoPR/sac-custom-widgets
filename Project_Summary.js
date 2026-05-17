@@ -27,12 +27,11 @@
         overflow: hidden;
       }
 
-      /* Título e Tags Indicadoras */
       .widget-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         border-bottom: 1px solid #f0f0f0;
         padding-bottom: 8px;
       }
@@ -53,11 +52,10 @@
         border: 1px solid #e2e8f0;
       }
 
-      /* Legenda Corporativa */
       .widget-legend {
         display: flex;
         gap: 16px;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
         font-size: 11px;
         font-weight: 600;
         color: #4a5568;
@@ -128,7 +126,6 @@
         background-color: var(--color-historical);
       }
       
-      /* DESTAQUE DO MÊS ATUAL: Glow e Borda Sutil */
       .bar-element.actual {
         background-color: var(--color-actual);
         box-shadow: 0 0 12px rgba(31, 119, 180, 0.45);
@@ -150,7 +147,6 @@
         white-space: nowrap;
       }
 
-      /* Tag com peso visual extra para o valor real atual */
       .bar-element.actual .kpi-label {
         color: #1a202c;
         background: #edf2f7;
@@ -207,8 +203,8 @@
       </div>
       
       <div class="widget-legend">
-        <div class="legend-item"><div class="legend-color hist"></div> Histórico (Real)</div>
-        <div class="legend-item"><div class="legend-color act"></div> Mês Atual (Real)</div>
+        <div class="legend-item"><div class="legend-color hist"></div> Histórico (Realizado)</div>
+        <div class="legend-item"><div class="legend-color act"></div> Mês Atual (Realizado)</div>
         <div class="legend-item"><div class="legend-color bud"></div> Orçado (Budget)</div>
       </div>
 
@@ -254,7 +250,6 @@
 
     onCustomWidgetAfterUpdate(changedProperties) {
       this._updateStyles();
-      
       if ("performanceCube" in changedProperties && this.performanceCube) {
         this._currentData = this.performanceCube;
         this.renderChart();
@@ -276,7 +271,6 @@
       }
 
       const financialData = this._currentData;
-
       if (!financialData || !financialData.data || financialData.data.length === 0) {
         this._clearDOM();
         this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>";
@@ -288,13 +282,29 @@
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
 
-        const dimId = Object.keys(dimensions)[0];
-        const measId = Object.keys(mainStructureMembers)[0];
+        const dimKeys = Object.keys(dimensions);
+        const measureKeys = Object.keys(mainStructureMembers);
 
-        if (!dimId || !measId) {
+        if (dimKeys.length < 1 || measureKeys.length < 1) {
           this._clearDOM();
-          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione 1 dimensão e 1 medida no Builder.</div>";
+          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione as Dimensões e Medidas no Builder.</div>";
           return;
+        }
+
+        const measId = measureKeys[0];
+        
+        // IDENTIFICAÇÃO DINÂMICA DE EIXOS: Procura qual dimensão representa Tempo e qual é a Versão
+        let tempoDimId = dimKeys[0];
+        let versaoDimId = dimKeys[1] || null;
+
+        // Se o usuário inverter a ordem no Builder, corrige o mapeamento dinamicamente baseado na descrição
+        if (dimKeys.length >= 2) {
+          const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
+          const descSecond = String(dimensions[dimKeys[1]].description || "").toUpperCase();
+          if (descFirst.includes("VERSÃO") || descFirst.includes("VERSION") || descFirst.includes("CENÁRIO")) {
+            tempoDimId = dimKeys[1];
+            versaoDimId = dimKeys[0];
+          }
         }
 
         const parseNumber = (val) => {
@@ -303,81 +313,119 @@
           return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
         };
 
-        // Filtro para eliminar nós de agregação gerais "(all)"
-        const filteredResultSet = financialData.data.filter(row => {
-          const dimObj = row[dimId];
-          if (!dimObj) return false;
-          const idStr = String(dimObj.id).toLowerCase();
-          const labelStr = String(dimObj.label || dimObj.description || "").toLowerCase();
-          return !idStr.includes("(all)") && !labelStr.includes("(all)") && !idStr.includes("all_members");
+        // 1. Agrupamento e consolidação dos registros por Mês eliminando nós agregadores "(all)"
+        const timelineMap = {};
+
+        financialData.data.forEach(row => {
+          const tempoObj = row[tempoDimId];
+          if (!tempoObj) return;
+
+          const tId = String(tempoObj.id);
+          const tLabel = tempoObj.label || tempoObj.description || tId;
+
+          if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
+
+          if (!timelineMap[tId]) {
+            timelineMap[tId] = {
+              id: tId,
+              label: tLabel,
+              realizado: 0,
+              orcado: 0,
+              isCurrentMonth: false
+            };
+          }
+
+          // Checa se o membro de tempo possui a propriedade nativa do SAC indicando período atual
+          if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) {
+            timelineMap[tId].isCurrentMonth = true;
+          }
+          if (row.versionContext && row.versionContext.isActualMonth) {
+            timelineMap[tId].isCurrentMonth = true;
+          }
+
+          // Segregação Atômica de Valores por Versão (Mapeia Public.Realizado e Public.Orçado)
+          const measObj = row[measId];
+          const rawValue = parseNumber(measObj ? (measObj.formattedValue || measObj.raw || 0) : 0);
+
+          if (versaoDimId) {
+            const vObj = row[versaoDimId];
+            if (vObj) {
+              const vId = String(vObj.id).toUpperCase();
+              const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
+              
+              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
+                timelineMap[tId].orcado += rawValue;
+              } else {
+                timelineMap[tId].realizado += rawValue;
+              }
+            }
+          } else {
+            // Fallback caso a dimensão de versão ainda não tenha sido arrastada para o Builder
+            timelineMap[tId].realizado += rawValue;
+          }
         });
 
-        if (filteredResultSet.length === 0) {
+        const sortedMonths = Object.values(timelineMap);
+        if (sortedMonths.length === 0) {
           this._clearDOM();
-          this._axisX.innerHTML = "<div class='placeholder-text'>Nenhum dado detalhado disponível.</div>";
+          this._axisX.innerHTML = "<div class='placeholder-text'>Nenhum dado válido encontrado.</div>";
           return;
+        }
+
+        // 2. Criação da Série Cronológica: Históricos (Realizado) + Último Mês Opcional (Budget)
+        const seriesData = [];
+        let actualIndex = -1;
+
+        sortedMonths.forEach((m, idx) => {
+          // Se for o último elemento absoluto da série, ele assume o papel de Budget/Orçado subsequente
+          if (idx === sortedMonths.length - 1) {
+            seriesData.push({
+              label: m.label,
+              value: m.orcado > 0 ? m.orcado : m.realizado, // Garante captura da partição de orçamento
+              type: "budget",
+              rawValues: m
+            });
+          } else {
+            const type = m.isCurrentMonth ? "actual" : "historical";
+            if (type === "actual") actualIndex = idx;
+
+            seriesData.push({
+              label: m.label,
+              value: m.realizado,
+              type: type,
+              rawValues: m
+            });
+          }
+        });
+
+        // Fallback visual estável para garantir destaque caso a flag isCurrentMonth não venha ativa do SAC
+        if (actualIndex === -1 && seriesData.length > 1) {
+          actualIndex = seriesData.length - 2;
+          seriesData[actualIndex].type = "actual";
         }
 
         this._clearDOM();
 
-        const maxVal = Math.max(...filteredResultSet.map((row) => {
-          const mObj = row[measId];
-          return parseNumber(mObj ? (mObj.formattedValue || mObj.raw || 0) : 0);
-        })) * 1.18 || 1;
-
+        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.18 || 1;
         const barElements = [];
-        let actualIndex = -1;
 
-        // Mapeia e identifica os tipos de versão de cada nó antes da plotagem
-        const rowTypes = filteredResultSet.map((row, index) => {
-          const dimObj = row[dimId];
-          let type = "historical";
-          
-          if (index === filteredResultSet.length - 1) {
-            type = "budget";
-          } else if (row.versionContext && row.versionContext.isActualMonth) {
-            type = "actual";
-            actualIndex = index;
-          } else if (dimObj && dimObj.properties && (dimObj.properties.isCurrent === "true" || dimObj.properties.isCurrent === true)) {
-            type = "actual";
-            actualIndex = index;
-          }
-          return type;
-        });
-
-        // Caso o SAC não tenha retornado a flag nativa do mês atual, assume o penúltimo mês (antes do budget) como fallback
-        if (actualIndex === -1 && filteredResultSet.length > 1) {
-          actualIndex = filteredResultSet.length - 2;
-          rowTypes[actualIndex] = "actual";
-        }
-
-        filteredResultSet.forEach((row, index) => {
-          const dimObj = row[dimId];
-          const measObj = row[measId];
-          if (!dimObj || !measObj) return;
-          
-          const labelText = dimObj.label || dimObj.description || dimObj.id || "N/D";
-          const rawValue = parseNumber(measObj.formattedValue || measObj.raw || 0);
-          
-          // CONVERSÃO PARA MILHÕES: Formatação limpa de escala curta (Ex: 15.4M)
-          const valueInMillions = rawValue / 1000000;
-          const formattedValue = valueInMillions.toFixed(1) + "M";
-
+        // 3. Renderização física das barras e eixos no Shadow DOM
+        seriesData.forEach((d, index) => {
           const barWrapper = document.createElement("div");
           barWrapper.className = "bar-wrapper";
 
           const barElement = document.createElement("div");
           barElement.className = "bar-element";
           
-          const pctHeight = (rawValue / maxVal) * 100;
+          const pctHeight = (d.value / maxVal) * 100;
           barElement.style.height = `${pctHeight}%`;
+          barElement.classList.add(d.type);
 
-          const currentType = rowTypes[index];
-          barElement.classList.add(currentType);
-
+          // Formatação limpa de escala curta (Dividido por 1.000.000 com sufixo M)
+          const valueInMillions = d.value / 1000000;
           const kpiLabel = document.createElement("span");
           kpiLabel.className = "kpi-label";
-          kpiLabel.textContent = formattedValue;
+          kpiLabel.textContent = valueInMillions.toFixed(1) + "M";
           barElement.appendChild(kpiLabel);
 
           barWrapper.appendChild(barElement);
@@ -386,19 +434,20 @@
 
           const axisLabel = document.createElement("div");
           axisLabel.className = "axis-label";
-          axisLabel.textContent = labelText;
-          if (currentType === "actual") {
+          axisLabel.textContent = d.label;
+          if (d.type === "actual") {
             axisLabel.classList.add("actual-month");
           }
           this._axisX.appendChild(axisLabel);
         });
 
+        // 4. Plotagem vetorial das duas únicas linhas de conexões requeridas
         requestAnimationFrame(() => {
-          this._drawTargetedConnections(barElements, filteredResultSet, rowTypes, actualIndex, measId, parseNumber);
+          this._drawTargetedConnections(barElements, seriesData, actualIndex);
         });
 
       } catch (error) {
-        console.error("Erro na renderização visual do widget:", error);
+        console.error("Erro interno no processamento de eixos dinâmicos:", error);
       }
     }
 
@@ -413,8 +462,7 @@
       }
     }
 
-    // DESENHO DIRECIONADO: Plota estritamente (Mês Anterior x Atual) e (Atual x Budget)
-    _drawTargetedConnections(barElements, filteredResultSet, rowTypes, actualIndex, measId, parseNumber) {
+    _drawTargetedConnections(barElements, seriesData, actualIndex) {
       if (!document.contains(this) || actualIndex === -1) return;
       
       while (this._svgOverlay.firstChild) {
@@ -425,16 +473,8 @@
       if (svgRect.width === 0 || svgRect.height === 0) return;
 
       const pairsToConnect = [];
-
-      // Par 1: Mês Anterior x Mês Atual (se houver histórico para trás)
-      if (actualIndex > 0) {
-        pairsToConnect.push({ from: actualIndex - 1, to: actualIndex });
-      }
-
-      // Par 2: Mês Atual x Próximo Mês (Budget)
-      if (actualIndex < barElements.length - 1) {
-        pairsToConnect.push({ from: actualIndex, to: actualIndex + 1 });
-      }
+      if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex });
+      if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1 });
 
       pairsToConnect.forEach(pair => {
         const currentBar = barElements[pair.from];
@@ -450,11 +490,8 @@
         const x2 = nextRect.left + nextRect.width / 2 - svgRect.left;
         const y2 = nextRect.top - svgRect.top;
 
-        const obj1 = filteredResultSet[pair.from][measId];
-        const obj2 = filteredResultSet[pair.to][measId];
-        
-        const val1 = obj1 ? parseNumber(obj1.formattedValue || obj1.raw || 0) : 0;
-        const val2 = obj2 ? parseNumber(obj2.formattedValue || obj2.raw || 0) : 0;
+        const val1 = seriesData[pair.from].value;
+        const val2 = seriesData[pair.to].value;
         
         let varianceText = "0%";
         if (val1 !== 0) {
@@ -496,9 +533,9 @@
         span.textContent = varianceText;
 
         if (val2 >= val1) {
-          span.style.color = "#2f855a"; // Verde Executivo
+          span.style.color = "#2f855a";
         } else {
-          span.style.color = "#c53030"; // Vermelho Executivo
+          span.style.color = "#c53030";
         }
 
         div.appendChild(span);
