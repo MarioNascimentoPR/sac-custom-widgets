@@ -240,12 +240,17 @@
 
       this._props = {};
       this._currentData = null;
+      this._resizeTimeout = null;
     }
 
     connectedCallback() {
       this._resizeObserver = new ResizeObserver(() => {
         if (document.contains(this)) {
-          this.renderChart();
+          // Debounce tático para mitigar loops de render assíncronos no SAC
+          clearTimeout(this._resizeTimeout);
+          this._resizeTimeout = setTimeout(() => {
+            this.renderChart();
+          }, 60);
         }
       });
       this._resizeObserver.observe(this._chartArea);
@@ -255,6 +260,7 @@
       if (this._resizeObserver) {
         this._resizeObserver.disconnect();
       }
+      clearTimeout(this._resizeTimeout);
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
@@ -397,7 +403,7 @@
           seriesData[actualIndex].type = "actual";
         }
 
-        // ALINHAMENTO DE COMPETÊNCIA DO BUDGET (Anexo 1)
+        // Sincronismo do mês do Budget (Anexo 1)
         const targetBudgetSource = sortedMonths[actualIndex];
         seriesData.push({
           label: `budget - ${targetBudgetSource.label}`,
@@ -406,6 +412,7 @@
           rawValues: targetBudgetSource
         });
 
+        // Limpeza atômica e síncrona
         this._clearDOM();
 
         const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.30 || 1;
@@ -441,7 +448,7 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        // Agendamento seguro com cálculo posicional nativo interno
+        // Execução do desenho tático usando frame de animação nativa
         requestAnimationFrame(() => {
           this._drawOrthogonalConnections(barElements, seriesData, actualIndex);
         });
@@ -452,6 +459,7 @@
     }
 
     _clearDOM() {
+      // Expulsa de forma limpa os invólucros de barras anteriores
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach((el) => el.remove());
       
@@ -459,33 +467,36 @@
         this._axisX.removeChild(this._axisX.firstChild);
       }
 
-      // Limpeza segura dos vetores secundários injetados
+      // Expulsa estritamente todos os vetores órfãos gerados por resizes consecutivos
       const svg = this._svgOverlay;
-      const elementsToRemove = svg.querySelectorAll(':not(defs):not(marker):not(marker path)');
-      elementsToRemove.forEach(el => el.remove());
+      const lines = svg.querySelectorAll('path');
+      const tags = svg.querySelectorAll('foreignObject');
+      lines.forEach(el => el.remove());
+      tags.forEach(el => el.remove());
     }
 
-    // CONECTORES ORTOGONAIS EM DEGRAU (Anexo 2) - Baseado em offset interno do nó pai
     _drawOrthogonalConnections(barElements, seriesData, actualIndex) {
       if (!document.contains(this) || actualIndex === -1) return;
 
       const svg = this._svgOverlay;
-      const chartAreaRect = this._chartArea.getBoundingClientRect();
-      if (chartAreaRect.width === 0 || chartAreaRect.height === 0) return;
+      const containerHeight = this._chartArea.offsetHeight;
+      const containerWidth = this._chartArea.offsetWidth;
+      if (containerWidth === 0 || containerHeight === 0) return;
 
       const pairsToConnect = [];
       if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, isToBudget: false });
       if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, isToBudget: true });
 
-      // Localização exata dos topos em pixels usando offset interno em relação ao contêiner pai
+      // Cálculo de posição relativa robusta baseada em propriedades offset
       const getBarCenterAndTop = (idx) => {
         const bar = barElements[idx];
+        if (!bar) return { x: 0, y: 0 };
         const wrapper = bar.parentElement;
+        
         const wrapperLeft = wrapper.offsetLeft;
         const barLeft = bar.offsetLeft;
         const barWidth = bar.offsetWidth;
         const barHeight = bar.offsetHeight;
-        const containerHeight = this._chartArea.offsetHeight;
 
         return {
           x: wrapperLeft + barLeft + (barWidth / 2),
@@ -496,13 +507,16 @@
       const actualCoords = getBarCenterAndTop(actualIndex);
       const prevCoords = actualIndex > 0 ? getBarCenterAndTop(actualIndex - 1) : actualCoords;
       
-      // Define a linha base do teto para evitar colisão visual
+      // Calibração de teto para afastar cruzamentos
       const highestY = Math.min(actualCoords.y, prevCoords.y);
       const ceilingY = highestY - 45;
 
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from);
         const coordTo = getBarCenterAndTop(pair.to);
+
+        // Bloqueia plotagem caso as coordenadas venham zeradas por estarem ocultas
+        if (coordFrom.x === 0 && coordTo.x === 0) return;
 
         const val1 = seriesData[pair.from].value;
         const val2 = seriesData[pair.to].value;
@@ -513,12 +527,11 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
-        // DESIGN ORIENTADO À EXCEÇÃO: Queda ou estabilidade = Verde. Aumento = Laranja/Vermelho
+        // REGRA DE CORES INVERTIDA (Anexo 2): Custos maiores = Alerta (Laranja). Queda = Sucesso (Verde).
         const isIncrease = val2 > val1;
         const strokeColor = isIncrease ? "#ef6c00" : "#2f855a"; 
         const markerId = isIncrease ? "url(#arrow-orange)" : "url(#arrow-green)";
 
-        // Escalonamento do degrau ortogonal
         const stepY = pair.isToBudget ? ceilingY : ceilingY - 20;
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
