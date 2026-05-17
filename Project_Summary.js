@@ -111,12 +111,12 @@
         justify-content: flex-end;
         position: relative;
         z-index: 1;
-        padding: 0 8px;
+        padding: 0 6px;
       }
       
       .bar-element {
         width: 100%;
-        max-width: 55px;
+        max-width: 50px;
         transition: height 0.3s ease, background-color 0.3s ease;
         border-radius: 4px 4px 0 0;
         position: relative;
@@ -130,7 +130,7 @@
       
       .bar-element.actual {
         background-color: var(--color-actual);
-        box-shadow: 0 0 12px rgba(31, 119, 180, 0.45);
+        box-shadow: 0 0 12px rgba(31, 119, 180, 0.4);
         border: 1px solid #15517b;
       }
       
@@ -162,7 +162,7 @@
         justify-content: space-between;
         border-top: 1px solid #cbd5e0;
         padding-top: 8px;
-        height: 20px;
+        height: 24px;
         flex-shrink: 0;
       }
       
@@ -175,7 +175,7 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         overflow: hidden;
-        padding: 0 4px;
+        padding: 0 2px;
       }
 
       .axis-label.actual-month {
@@ -183,15 +183,28 @@
         font-weight: 700;
       }
       
+      /* CARD DE VARIAÇÃO EXECUTIVO */
       .variance-tag {
         font-size: calc(var(--font-size-labels) - 2px);
         font-weight: 700;
-        padding: 1px 5px;
-        border-radius: 3px;
-        background-color: #ffffff;
-        border: 1px solid #cbd5e0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        padding: 2px 6px;
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         white-space: nowrap;
+        border: 1px solid transparent;
+        display: inline-block;
+      }
+
+      .variance-tag.saving {
+        background-color: #e6f4ea;
+        color: #137333;
+        border-color: #ceead6;
+      }
+
+      .variance-tag.increase {
+        background-color: #fef7e0;
+        color: #b06000;
+        border-color: #feebc8;
       }
       
       .placeholder-text {
@@ -215,11 +228,8 @@
       <div class="chart-area" id="chartArea">
         <svg class="svg-overlay" id="svgOverlay">
           <defs>
-            <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#2f855a"/>
-            </marker>
-            <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#ef6c00"/>
+            <marker id="arrow-neutral" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#718096"/>
             </marker>
           </defs>
         </svg>
@@ -246,11 +256,10 @@
     connectedCallback() {
       this._resizeObserver = new ResizeObserver(() => {
         if (document.contains(this)) {
-          // Debounce tático para mitigar loops de render assíncronos no SAC
           clearTimeout(this._resizeTimeout);
           this._resizeTimeout = setTimeout(() => {
             this.renderChart();
-          }, 60);
+          }, 50);
         }
       });
       this._resizeObserver.observe(this._chartArea);
@@ -403,7 +412,7 @@
           seriesData[actualIndex].type = "actual";
         }
 
-        // Sincronismo do mês do Budget (Anexo 1)
+        // Competência de Orçamento alinhada à barra real
         const targetBudgetSource = sortedMonths[actualIndex];
         seriesData.push({
           label: `budget - ${targetBudgetSource.label}`,
@@ -412,10 +421,9 @@
           rawValues: targetBudgetSource
         });
 
-        // Limpeza atômica e síncrona
         this._clearDOM();
 
-        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.30 || 1;
+        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.32 || 1;
         const barElements = [];
 
         seriesData.forEach((d, index) => {
@@ -448,9 +456,8 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        // Execução do desenho tático usando frame de animação nativa
         requestAnimationFrame(() => {
-          this._drawOrthogonalConnections(barElements, seriesData, actualIndex);
+          this._drawCleanStraightConnections(barElements, seriesData, actualIndex);
         });
 
       } catch (error) {
@@ -459,7 +466,6 @@
     }
 
     _clearDOM() {
-      // Expulsa de forma limpa os invólucros de barras anteriores
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach((el) => el.remove());
       
@@ -467,7 +473,6 @@
         this._axisX.removeChild(this._axisX.firstChild);
       }
 
-      // Expulsa estritamente todos os vetores órfãos gerados por resizes consecutivos
       const svg = this._svgOverlay;
       const lines = svg.querySelectorAll('path');
       const tags = svg.querySelectorAll('foreignObject');
@@ -475,47 +480,39 @@
       tags.forEach(el => el.remove());
     }
 
-    _drawOrthogonalConnections(barElements, seriesData, actualIndex) {
+    // MELHORIA RETILÍNEA: Desenha as linhas horizontais limpas com cards semânticos discretos
+    _drawCleanStraightConnections(barElements, seriesData, actualIndex) {
       if (!document.contains(this) || actualIndex === -1) return;
 
       const svg = this._svgOverlay;
       const containerHeight = this._chartArea.offsetHeight;
-      const containerWidth = this._chartArea.offsetWidth;
-      if (containerWidth === 0 || containerHeight === 0) return;
+      if (containerHeight === 0) return;
 
       const pairsToConnect = [];
       if (actualIndex > 0) pairsToConnect.push({ from: actualIndex - 1, to: actualIndex, isToBudget: false });
       if (actualIndex < barElements.length - 1) pairsToConnect.push({ from: actualIndex, to: actualIndex + 1, isToBudget: true });
 
-      // Cálculo de posição relativa robusta baseada em propriedades offset
       const getBarCenterAndTop = (idx) => {
         const bar = barElements[idx];
         if (!bar) return { x: 0, y: 0 };
         const wrapper = bar.parentElement;
-        
-        const wrapperLeft = wrapper.offsetLeft;
-        const barLeft = bar.offsetLeft;
-        const barWidth = bar.offsetWidth;
-        const barHeight = bar.offsetHeight;
-
         return {
-          x: wrapperLeft + barLeft + (barWidth / 2),
-          y: containerHeight - barHeight
+          x: wrapper.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2),
+          y: containerHeight - bar.offsetHeight
         };
       };
 
       const actualCoords = getBarCenterAndTop(actualIndex);
       const prevCoords = actualIndex > 0 ? getBarCenterAndTop(actualIndex - 1) : actualCoords;
       
-      // Calibração de teto para afastar cruzamentos
-      const highestY = Math.min(actualCoords.y, prevCoords.y);
-      const ceilingY = highestY - 45;
+      // Criação de uma linha base de teto comum para evitar o efeito escada
+      const commonHighestY = Math.min(actualCoords.y, prevCoords.y);
+      const ceilingY = commonHighestY - 45;
 
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from);
         const coordTo = getBarCenterAndTop(pair.to);
 
-        // Bloqueia plotagem caso as coordenadas venham zeradas por estarem ocultas
         if (coordFrom.x === 0 && coordTo.x === 0) return;
 
         const val1 = seriesData[pair.from].value;
@@ -527,17 +524,18 @@
           varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
         }
 
-        // REGRA DE CORES INVERTIDA (Anexo 2): Custos maiores = Alerta (Laranja). Queda = Sucesso (Verde).
-        const isIncrease = val2 > val1;
-        const strokeColor = isIncrease ? "#ef6c00" : "#2f855a"; 
-        const markerId = isIncrease ? "url(#arrow-orange)" : "url(#arrow-green)";
+        // Cor da linha fixada em Cinza Corporativo Sóbrio (Melhor prática de mercado)
+        const lineStrokeColor = "#718096"; 
+        const markerId = "url(#arrow-neutral)";
 
-        const stepY = pair.isToBudget ? ceilingY : ceilingY - 20;
+        // Escalonamento de teto fixo e reto para as duas conexões
+        const stepY = pair.isToBudget ? ceilingY : ceilingY - 18;
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        // Trajeto ortogonal limpo (Sobe -> Corre Reto -> Seta no Destino)
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${stepY} L ${coordTo.x} ${stepY} L ${coordTo.x} ${coordTo.y - 6}`);
-        path.setAttribute("stroke", strokeColor);
-        path.setAttribute("stroke-width", "1.5");
+        path.setAttribute("stroke", lineStrokeColor);
+        path.setAttribute("stroke-width", "1.25");
         path.setAttribute("fill", "none");
         path.setAttribute("marker-end", markerId);
         svg.appendChild(path);
@@ -560,8 +558,13 @@
         const span = document.createElement("span");
         span.className = "variance-tag";
         span.textContent = varianceText;
-        span.style.color = strokeColor;
-        span.style.borderColor = strokeColor;
+        
+        // COR DINÂMICA EXCLUSIVA NO CARD DE VARIÂNCIA (Bypass de estouro de custos)
+        if (val2 > val1) {
+          span.classList.add("increase"); // Laranja/Vermelho para estouro de despesa
+        } else {
+          span.classList.add("saving");   // Verde para estabilidade ou economia
+        }
 
         div.appendChild(span);
         foreignObj.appendChild(div);
