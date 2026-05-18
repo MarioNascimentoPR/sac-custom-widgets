@@ -57,7 +57,7 @@
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
       .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; height: 0%; transition: height 0.3s ease-out; }
       .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
+      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-shadow: border-box; }
       .bar-element.budget {
         background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
@@ -174,6 +174,7 @@
       this._isDropdownOpen = false; 
       this._yearRegex = /\d{4}/;
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
+      this._ytdSeriesMock = [{ value: 0 }, { value: 0 }, { value: 0 }];
 
       this._boundWindowClick = (e) => {
         if (!this._isDropdownOpen) return;
@@ -483,11 +484,9 @@
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
 
-        // Reconciliação atômica eliminando Churn operacional do DOM
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
-        // Batching Geométrico corrigido: Garante leitura correta dos nós filhos escopados
         requestAnimationFrame(() => {
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
           this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
@@ -661,7 +660,6 @@
       const monthStatusText = isMonthSaving ? "economia de custos" : "aumento de despesas";
       const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
       
-      // Defesa e imunização absoluta contra vulnerabilidades XSS
       this._hlMonthLi.textContent = "";
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}):`;
       this._hlMonthLi.appendChild(s1); this._hlMonthLi.appendChild(document.createTextNode(` Fechamento com ${monthStatusText} de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
@@ -678,13 +676,14 @@
     }
 
     getColorActualMonth() { return this._props.colorActualMonth; }
-    setColorActualMonth(val) { this._props.colorActualMonth = val; }
+    setColorActualMonth(value) { this._props.colorActualMonth = value; }
     getColorHistorical() { return this._props.colorHistorical; }
-    setColorHistorical(val) { this._props.colorHistorical = val; }
+    setColorHistorical(value) { this._props.colorHistorical = value; }
     getColorBudget() { return this._props.colorBudget; }
-    setColorBudget(val) { this._props.colorBudget = val; }
+    setColorBudget(value) { this._props.colorBudget = value; }
     getFontSizeLabels() { return this._props.fontSizeLabels; }
-    setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
+    setFontSizeLabels(value) { this._props.fontSizeLabels = value; }
   }
-  if (!customElements.get("sac-summary")) { customElements.define("sac-summary", EvoSummaryWidget); }
+  
+  customElements.define("sac-summary", EvoSummaryWidget);
 })();
