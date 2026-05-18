@@ -50,7 +50,6 @@
         color: #2c3e50;
       }
 
-      /* CONTAINER DO FILTRO DE DATA EXECUTIVO (Valor Único Mês/Ano) */
       .filter-container-finance {
         display: flex;
         align-items: center;
@@ -70,7 +69,7 @@
         background-color: #f8fafc;
         border: 1px solid #cbd5e0;
         border-radius: 6px;
-        padding: 3px 24px 3px 8px;
+        padding: 3px 28px 3px 8px;
         cursor: pointer;
         outline: none;
         font-family: inherit;
@@ -79,13 +78,27 @@
         background-repeat: no-repeat;
         background-position: right 8px center;
         background-size: 12px;
-        min-width: 105px;
+        min-width: 115px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         transition: border-color 0.2s ease;
       }
 
       .filter-select-finance:focus {
         border-color: var(--color-actual);
+      }
+
+      /* Estilização corporativa para os grupos de ano e opções */
+      .filter-select-finance optgroup {
+        font-weight: 700;
+        color: #718096;
+        background: #edf2f7;
+        font-style: normal;
+      }
+      
+      .filter-select-finance option {
+        font-weight: 600;
+        color: #2d3748;
+        background: #ffffff;
       }
 
       .scale-tag {
@@ -455,7 +468,7 @@
       this._animationFrameId = null;
       this._shadowRoot = null;
       this._resizeTimeout = null;
-      this._selectedCutoffId = null; // Armazena o valor único do filtro escolhido
+      this._selectedCutoffId = null;
     }
 
     connectedCallback() {
@@ -485,7 +498,6 @@
         this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
         this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
 
-        // Escuta a alteração do Filtro de Data e re-renderiza o painel
         this._dateCutoffSelect.addEventListener("change", (e) => {
           this._selectedCutoffId = e.target.value;
           this.renderChart();
@@ -518,7 +530,8 @@
       this._updateStyles();
       if ("performanceCube" in changedProperties && this.performanceCube) {
         this._currentData = this.performanceCube;
-        this._selectedCutoffId = null; // Reseta o filtro ao trocar o set de dados geral
+        this._selectedCutoffId = null;
+        this._dateCutoffSelect.innerHTML = ""; // Limpa os nós de agrupamento antigos para reconstrução limpa
         if (this._shadowRoot) {
           cancelAnimationFrame(this._animationFrameId);
           this._animationFrameId = requestAnimationFrame(() => this.renderChart());
@@ -639,24 +652,30 @@
           defaultActualIndex = fullSeriesData.length - 1;
         }
 
-        // ALIMENTAÇÃO DINÂMICA DO DROPDOWN FILTRO DE CORTE (Formato Mês/Ano)
+        // LÓGICA DE MONTAGEM DO DROPDOWN AGRUPADO POR NOS DE ANO (Fim da lista extensa e incompleta)
         if (this._dateCutoffSelect.children.length === 0) {
+          const yearGroupsMap = {};
+          
           fullSeriesData.forEach(d => {
+            if (!yearGroupsMap[d.yearValue]) {
+              const group = document.createElement("optgroup");
+              group.setAttribute("label", `EXERCÍCIO ${d.yearValue}`);
+              yearGroupsMap[d.yearValue] = group;
+              this._dateCutoffSelect.appendChild(group);
+            }
             const opt = document.createElement("option");
             opt.value = d.id;
             opt.textContent = d.label;
-            this._dateCutoffSelect.appendChild(opt);
+            yearGroupsMap[d.yearValue].appendChild(opt);
           });
-          // Por padrão corporativo, inicializa apontando para a maior data do sistema (Mês Ativo)
+
           this._selectedCutoffId = fullSeriesData[defaultActualIndex].id;
           this._dateCutoffSelect.value = this._selectedCutoffId;
         }
 
-        // CAPTURA DO INDEX DE CORTE SELECIONADO PELO FILTRO ÚNICO
         let actualIndex = fullSeriesData.findIndex(d => d.id === this._selectedCutoffId);
         if (actualIndex === -1) actualIndex = defaultActualIndex;
 
-        // Sobrescreve dinamicamente as classes para que o mês escolhido no filtro vire a barra "Mês Atual"
         fullSeriesData.forEach((d, idx) => {
           d.type = (idx === actualIndex) ? "actual" : "historical";
         });
@@ -666,16 +685,14 @@
 
         this._clearDOM();
 
-        // LIMITADOR INTELIGENTE (ÚLTIMOS 12 MESES CONFORME A DATA DE CORTE SELECIONADA)
+        // Isolamento de janela móvel para plotar as barras na tela
         let visibleSeriesData = [];
         const startIndex = Math.max(0, actualIndex - 11);
         visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
 
-        // Reposiciona o ponteiro de realce na nova esteira visível de 12 meses
         let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
         if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
 
-        // Injeção da coluna casada de orçamento do período de corte
         visibleSeriesData.push({
           label: `budget - ${fullSeriesData[actualIndex].label}`,
           value: calculatedBudget,
@@ -699,8 +716,6 @@
         });
 
         this._drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex);
-        
-        // CONSOLIDAÇÃO DO PAINEL DO YTD CONSUMINDO TODO O HISTÓRICO ATÉ A DATA DE CORTE
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
@@ -769,7 +784,6 @@
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
 
-      // Realiza a somatória do acumulado olhando retroativamente ATÉ o mês limite de corte (actualIndex)
       fullSeriesData.forEach((d, idx) => {
         if (idx <= actualIndex) {
           if (d.yearValue === currentYear) {
@@ -777,7 +791,6 @@
             totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value;
           }
         }
-        // Resgata o histórico homólogo completo do ano passado travado no mesmo mês
         if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
           totalRealizadoYTDAntigo += d.value;
         }
