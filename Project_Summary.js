@@ -487,7 +487,7 @@
         isSaving: ytdDiff <= 0
       };
 
-      const fullSeriesById = new Map(fullSeriesData.map(d => [d.id, d]));
+      const fullSeriesById = fullSeriesData._byIdMap || new Map(fullSeriesData.map(d => [d.id, d]));
       const itemFinanceiroMap = new Map();
       const targetMonthNum = targetNode.monthNum;
       const previousMonthNum = targetMonthNum > 1 ? targetMonthNum - 1 : 12;
@@ -758,8 +758,12 @@
       this._lastHighlightKey = "";
       this._lastPeriodSummaryKey = "";
       this._isHighlightDetailOpen = false;
+      this._pendingHighlightDetailItems = [];
+      this._highlightDetailRendered = false;
       this._responsiveSignature = "";
       this._activeTooltipPayload = null;
+      this._pendingTooltipPosition = null;
+      this._tooltipMoveQueued = false;
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -971,11 +975,11 @@
 
     _buildTooltipItems(compositionMap, previousCompositionMap) {
       return Object.entries(compositionMap || {})
-        .map(([name, value]) => ({
-          name,
-          value,
-          previousValue: previousCompositionMap && previousCompositionMap[name] !== undefined ? previousCompositionMap[name] : null
-        }))
+        .map(([name, value]) => {
+          const previousValue = previousCompositionMap && previousCompositionMap[name] !== undefined ? previousCompositionMap[name] : null;
+          const delta = this._getTooltipDelta({ value, previousValue });
+          return { name, value, previousValue, delta };
+        })
         .filter(item => Math.abs(item.value) > 0)
         .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
     }
@@ -1006,6 +1010,8 @@
 
     _getTooltipPayload(seriesData) {
       if (!seriesData) return null;
+      if (seriesData._tooltipPayload) return seriesData._tooltipPayload;
+
       const compositionMap = seriesData.type === "budget"
         ? seriesData.compositionBudget
         : seriesData.compositionRealizado;
@@ -1016,17 +1022,20 @@
       if (items.length === 0) return null;
 
       const scopeLabel = seriesData.type === "budget" ? "Orçado" : "Realizado";
-      return {
+      const payload = {
         title: seriesData.label || "Composição",
         subtitle: scopeLabel,
-        items
+        items,
+        key: `${seriesData.type}|${seriesData.id || seriesData.label}|${items.map(item => `${item.name}:${item.value}:${item.previousValue}`).join("|")}`
       };
+      seriesData._tooltipPayload = payload;
+      return payload;
     }
 
     _renderBarTooltip(payload) {
       if (!this._barTooltip || !payload) return;
       const rows = payload.items.map(item => {
-        const delta = this._getTooltipDelta(item);
+        const delta = item.delta;
         return `<div class="bar-tooltip-row"><span class="bar-tooltip-name">${this._escapeHtml(item.name)}</span><span class="bar-tooltip-value-wrap"><span class="bar-tooltip-value">${this._escapeHtml(this._formatTooltipValue(item.value))}</span><span class="bar-tooltip-delta-tag ${this._escapeHtml(delta.className)}">${this._escapeHtml(delta.label)}</span></span></div>`;
       }).join("");
 
@@ -1062,12 +1071,20 @@
         return;
       }
 
-      const payloadKey = `${payload.title}|${payload.subtitle}|${payload.items.map(item => `${item.name}:${item.value}:${item.previousValue}`).join("|")}`;
+      const payloadKey = payload.key;
       if (!this._activeTooltipPayload || this._activeTooltipPayload !== payloadKey) {
         this._renderBarTooltip(payload);
         this._activeTooltipPayload = payloadKey;
       }
-      this._positionBarTooltip(event.clientX, event.clientY);
+      this._pendingTooltipPosition = { clientX: event.clientX, clientY: event.clientY };
+      if (!this._tooltipMoveQueued) {
+        this._tooltipMoveQueued = true;
+        requestAnimationFrame(() => {
+          this._tooltipMoveQueued = false;
+          if (!this._pendingTooltipPosition || !this._activeTooltipPayload) return;
+          this._positionBarTooltip(this._pendingTooltipPosition.clientX, this._pendingTooltipPosition.clientY);
+        });
+      }
     }
 
     _hideBarTooltip() {
@@ -1075,6 +1092,7 @@
       this._barTooltip.classList.remove("show");
       this._barTooltip.setAttribute("aria-hidden", "true");
       this._activeTooltipPayload = null;
+      this._pendingTooltipPosition = null;
     }
 
     _escapeHtml(value) {
@@ -1138,10 +1156,75 @@
       if (this._highlightDetailSection) {
         this._highlightDetailSection.classList.toggle("show", this._isHighlightDetailOpen);
       }
+      if (this._isHighlightDetailOpen && !this._highlightDetailRendered) {
+        this._renderHighlightDetailItems();
+      }
       if (this._highlightToggleBtn) {
         this._highlightToggleBtn.textContent = this._isHighlightDetailOpen ? "Ocultar detalhamento" : "Ver detalhamento";
         this._highlightToggleBtn.setAttribute("aria-expanded", this._isHighlightDetailOpen ? "true" : "false");
       }
+    }
+
+    _buildHighlightDetailItem(item) {
+      const statusText = item.isSaving ? "variação favorável" : "variação desfavorável";
+      const semanticColor = item.isSaving ? "#2E7D32" : "#D32F2F";
+      const directionalArrow = item.isSaving ? "▼ " : "▲ ";
+      const contributionText = item.contributionPct > 0
+        ? `, representando ${Math.min(item.contributionPct, 999).toFixed(1)}% da variação líquida YTD`
+        : "";
+      const budgetShareText = item.budgetShare > 0 ? ` e participação de ${item.budgetShare.toFixed(1)}% no orçamento analisado` : "";
+
+      const liItem = document.createElement("li");
+      const sLabel = document.createElement("strong"); sLabel.textContent = `${item.priorityLabel} - ${item.itemName}: `;
+      liItem.appendChild(sLabel);
+
+      liItem.appendChild(document.createTextNode("No acumulado YTD, apresenta "));
+      const spanStatus = document.createElement("span"); spanStatus.textContent = statusText; spanStatus.style.color = semanticColor; spanStatus.style.fontWeight = "700";
+      liItem.appendChild(spanStatus);
+
+      liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(item.desvio/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(item.pctVar).toFixed(2)}%)${contributionText}${budgetShareText}. Realizado acumulado de R$ ${(item.realizado/1000000).toFixed(2)}M versus orçamento de R$ ${(item.budget/1000000).toFixed(2)}M.`));
+
+      if (item.trendLabel && item.trendLabel !== "comportamento estável") {
+        const trendColor = item.insightType === "acceleration" ? "#D32F2F" : (item.isSaving ? "#2E7D32" : "#EF6C00");
+        liItem.appendChild(document.createTextNode(" Comportamento recente: "));
+        const spanTrend = document.createElement("span"); spanTrend.textContent = item.trendLabel; spanTrend.style.color = trendColor; spanTrend.style.fontWeight = "700";
+        liItem.appendChild(spanTrend);
+        liItem.appendChild(document.createTextNode(`, com variação mensal de ${(item.monthDiff >= 0 ? "+" : "")}${(item.monthDiff/1000000).toFixed(2)}M.`));
+      }
+
+      if (Math.abs(item.yoyDiff) > 0) {
+        liItem.appendChild(document.createTextNode(` Em relação ao mesmo intervalo do ano anterior, o realizado apresentou variação de ${(item.yoyDiff >= 0 ? "+" : "")}${(item.yoyDiff/1000000).toFixed(2)}M (${item.yoyDiff >= 0 ? "aumento" : "redução"} de ${Math.abs(item.yoyPct).toFixed(1)}%).`));
+      }
+
+      if (item.driverConta && Math.abs(item.driverImpact) > 0) {
+        const cSaving = item.driverImpact <= 0;
+        const cColor = cSaving ? "#2E7D32" : "#D32F2F";
+        const driverShareText = item.driverShare > 0 ? `, equivalente a ${Math.min(item.driverShare, 999).toFixed(1)}% da variação do item` : "";
+
+        liItem.appendChild(document.createTextNode(" Principal natureza contábil: "));
+        const spanConta = document.createElement("span"); spanConta.textContent = item.driverConta; spanConta.style.fontWeight = "700";
+        liItem.appendChild(spanConta); liItem.appendChild(document.createTextNode(" com variação de "));
+
+        const spanContaDiff = document.createElement("span");
+        spanContaDiff.textContent = `${item.driverImpact >= 0 ? "+" : ""}${(item.driverImpact/1000000).toFixed(2)}M`;
+        spanContaDiff.style.color = cColor;
+        spanContaDiff.style.fontWeight = "700";
+        liItem.appendChild(spanContaDiff);
+        liItem.appendChild(document.createTextNode(`${driverShareText}.`));
+      }
+
+      return liItem;
+    }
+
+    _renderHighlightDetailItems() {
+      if (!this._hlDetailUl) return;
+      this._hlDetailUl.textContent = "";
+      const fragment = document.createDocumentFragment();
+      this._pendingHighlightDetailItems.forEach(item => {
+        fragment.appendChild(this._buildHighlightDetailItem(item));
+      });
+      this._hlDetailUl.appendChild(fragment);
+      this._highlightDetailRendered = true;
     }
 
     _toggleDropdownDOM() {
@@ -1158,7 +1241,7 @@
       this._updateStyles();
       if ("performanceCube" in changedProperties && this.performanceCube) {
         if (this._profiler.verifyRedundancy(this.performanceCube)) {
-          if (ENABLE_TELEMETRY) this._lblRedund.textContent = this._profiler.metrics.redundantRenders;
+          if (ENABLE_TELEMETRY) this._setText(this._lblRedund, this._profiler.metrics.redundantRenders);
           return; 
         }
 
@@ -1171,6 +1254,8 @@
         this._analysisCache = null;
         this._lastHighlightKey = "";
         this._lastPeriodSummaryKey = "";
+        this._pendingHighlightDetailItems = [];
+        this._highlightDetailRendered = false;
         if (this._shadowRoot) {
           this._treeDropdownContent.textContent = ""; 
           this.requestUpdate();
@@ -1404,6 +1489,7 @@
             return a.monthNum - b.monthNum;
           });
 
+          fullSeriesData._byIdMap = new Map(fullSeriesData.map(item => [item.id, item]));
           const periodMap = new Map(fullSeriesData.map(item => [`${item.yearValue}-${item.monthNum}`, item]));
           fullSeriesData.forEach(item => {
             const previousMonthNum = item.monthNum === 1 ? 12 : item.monthNum - 1;
@@ -1539,25 +1625,25 @@
             const jsTotalTime = tEndJS - tArrivalData;
             const domTotalTime = tFinalPaint - tDOMPaintStart;
 
-            this._lblTotal.textContent = `${(tFinalPaint - tArrivalData).toFixed(2)} ms`;
-            this._lblJS.textContent = `${jsTotalTime.toFixed(2)} ms`;
-            this._lblDOM.textContent = `${domTotalTime.toFixed(2)} ms`;
-            this._lblFPS.textContent = `${this._profiler.metrics.fps} FPS`;
+            this._setText(this._lblTotal, `${(tFinalPaint - tArrivalData).toFixed(2)} ms`);
+            this._setText(this._lblJS, `${jsTotalTime.toFixed(2)} ms`);
+            this._setText(this._lblDOM, `${domTotalTime.toFixed(2)} ms`);
+            this._setText(this._lblFPS, `${this._profiler.metrics.fps} FPS`);
             
-            this._lblParsing.textContent = `${this._profiler.metrics.steps.parsing.toFixed(2)} ms`;
-            this._lblAggr.textContent = `${this._profiler.metrics.steps.aggregation.toFixed(2)} ms`;
-            this._lblStepDOM.textContent = `${this._profiler.metrics.steps.domCreation.toFixed(2)} ms`;
-            this._lblStepSVG.textContent = `${this._profiler.metrics.steps.svgDrawing.toFixed(2)} ms`;
-            this._lblStepHL.textContent = `${this._profiler.metrics.steps.highlights.toFixed(2)} ms`;
+            this._setText(this._lblParsing, `${this._profiler.metrics.steps.parsing.toFixed(2)} ms`);
+            this._setText(this._lblAggr, `${this._profiler.metrics.steps.aggregation.toFixed(2)} ms`);
+            this._setText(this._lblStepDOM, `${this._profiler.metrics.steps.domCreation.toFixed(2)} ms`);
+            this._setText(this._lblStepSVG, `${this._profiler.metrics.steps.svgDrawing.toFixed(2)} ms`);
+            this._setText(this._lblStepHL, `${this._profiler.metrics.steps.highlights.toFixed(2)} ms`);
             
-            this._lblMem.textContent = `${(this._profiler.metrics.memory / 1024 / 1024).toFixed(2)} MB`;
-            this._lblVol.textContent = `${financialData.data.length} rows`;
+            this._setText(this._lblMem, `${(this._profiler.metrics.memory / 1024 / 1024).toFixed(2)} MB`);
+            this._setText(this._lblVol, `${financialData.data.length} rows`);
 
             const stressProjections = this._profiler.runStressProjection(financialData.data.length, jsTotalTime);
-            this._st10k.textContent = `${stressProjections.k10.toFixed(2)} ms`;
-            this._st25k.textContent = `${stressProjections.k25.toFixed(2)} ms`;
-            this._st50k.textContent = `${stressProjections.k50.toFixed(2)} ms`;
-            this._st100k.textContent = `${stressProjections.k100.toFixed(2)} ms`;
+            this._setText(this._st10k, `${stressProjections.k10.toFixed(2)} ms`);
+            this._setText(this._st25k, `${stressProjections.k25.toFixed(2)} ms`);
+            this._setText(this._st50k, `${stressProjections.k50.toFixed(2)} ms`);
+            this._setText(this._st100k, `${stressProjections.k100.toFixed(2)} ms`);
           }
         });
 
@@ -1843,6 +1929,8 @@
 
       this._lastHighlightKey = highlightKey;
       this._isHighlightDetailOpen = false;
+      this._pendingHighlightDetailItems = [];
+      this._highlightDetailRendered = false;
       this._syncHighlightDetailVisibility();
       this._hlSummaryUl.textContent = "";
       this._hlDetailUl.textContent = "";
@@ -1901,54 +1989,10 @@
         this._setStyle(this._highlightToggleBtn, "display", analysis.outlierTable.length > 0 ? "inline-flex" : "none");
       }
 
-      analysis.outlierTable.forEach(item => {
-        const statusText = item.isSaving ? "variação favorável" : "variação desfavorável";
-        const semanticColor = item.isSaving ? "#2E7D32" : "#D32F2F";
-        const directionalArrow = item.isSaving ? "▼ " : "▲ ";
-        const contributionText = item.contributionPct > 0
-          ? `, representando ${Math.min(item.contributionPct, 999).toFixed(1)}% da variação líquida YTD`
-          : "";
-        const budgetShareText = item.budgetShare > 0 ? ` e participação de ${item.budgetShare.toFixed(1)}% no orçamento analisado` : "";
-
-        const liItem = document.createElement("li");
-        const sLabel = document.createElement("strong"); sLabel.textContent = `${item.priorityLabel} - ${item.itemName}: `;
-        liItem.appendChild(sLabel);
-
-        liItem.appendChild(document.createTextNode("No acumulado YTD, apresenta "));
-        const spanStatus = document.createElement("span"); spanStatus.textContent = statusText; spanStatus.style.color = semanticColor; spanStatus.style.fontWeight = "700";
-        liItem.appendChild(spanStatus);
-
-        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(item.desvio/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(item.pctVar).toFixed(2)}%)${contributionText}${budgetShareText}. Realizado acumulado de R$ ${(item.realizado/1000000).toFixed(2)}M versus orçamento de R$ ${(item.budget/1000000).toFixed(2)}M.`));
-
-        if (item.trendLabel && item.trendLabel !== "comportamento estável") {
-          const trendColor = item.insightType === "acceleration" ? "#D32F2F" : (item.isSaving ? "#2E7D32" : "#EF6C00");
-          liItem.appendChild(document.createTextNode(" Comportamento recente: "));
-          const spanTrend = document.createElement("span"); spanTrend.textContent = item.trendLabel; spanTrend.style.color = trendColor; spanTrend.style.fontWeight = "700";
-          liItem.appendChild(spanTrend);
-          liItem.appendChild(document.createTextNode(`, com variação mensal de ${(item.monthDiff >= 0 ? "+" : "")}${(item.monthDiff/1000000).toFixed(2)}M.`));
-        }
-
-        if (Math.abs(item.yoyDiff) > 0) {
-          liItem.appendChild(document.createTextNode(` Em relação ao mesmo intervalo do ano anterior, o realizado apresentou variação de ${(item.yoyDiff >= 0 ? "+" : "")}${(item.yoyDiff/1000000).toFixed(2)}M (${item.yoyDiff >= 0 ? "aumento" : "redução"} de ${Math.abs(item.yoyPct).toFixed(1)}%).`));
-        }
-
-        if (item.driverConta && Math.abs(item.driverImpact) > 0) {
-          const cSaving = item.driverImpact <= 0;
-          const cColor = cSaving ? "#2E7D32" : "#D32F2F";
-          const driverShareText = item.driverShare > 0 ? `, equivalente a ${Math.min(item.driverShare, 999).toFixed(1)}% da variação do item` : "";
-          
-          liItem.appendChild(document.createTextNode(" Principal natureza contábil: "));
-          const spanConta = document.createElement("span"); spanConta.textContent = item.driverConta; spanConta.style.fontWeight = "700";
-          liItem.appendChild(spanConta); liItem.appendChild(document.createTextNode(" com variação de "));
-          
-          const spanContaDiff = document.createElement("span");
-          spanContaDiff.textContent = `${item.driverImpact >= 0 ? "+" : ""}${(item.driverImpact/1000000).toFixed(2)}M`;
-          spanContaDiff.style.color = cColor; spanContaDiff.style.fontWeight = "700";
-          liItem.appendChild(spanContaDiff); liItem.appendChild(document.createTextNode(`${driverShareText}.`));
-        }
-
-        this._hlDetailUl.appendChild(liItem);
-      });
+      this._pendingHighlightDetailItems = analysis.outlierTable;
+      if (this._isHighlightDetailOpen) {
+        this._renderHighlightDetailItems();
+      }
 
       if (ENABLE_TELEMETRY) {
         this._profiler.metrics.steps.highlights = performance.now() - tHLStart;
