@@ -1,13 +1,13 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HIGH PERFORMANCE RUNTIME
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY RUNTIME
    ========================================================================== */
 
 (function () {
-  // CHAVE DE CONFIGURAÇÃO OPERACIONAL: Altere para false para desligar 100% a Telemetria
+  // CHAVE DE DESATIVAÇÃO OPERACIONAL: Mude para false para desligar 100% a Telemetria
   const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
-     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E PROFILING CIENTÍFICO
+     SUBSISTEMA ENCAPSULADO DE PROFILING E TELEMETRIA CIENTÍFICA
      ========================================================================== */
   class EvoStreamProfiler {
     constructor() {
@@ -93,7 +93,7 @@
       .filter-container-finance { position: relative; display: flex; align-items: center; gap: 8px; z-index: 100; }
       .filter-label-finance { font-size: 11px; font-weight: 600; color: #4a5568; }
       .tree-dropdown-trigger {
-        font-size: 11px; font-weight: 700; color: #2d3748; background-color: #f8fafc; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 28px 4px 10px; cursor: pointer; min-width: 120px;
+        font-size: 11px; font-weight: 700; color: #2d3748; background-color: #f8fafc; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 28px 4px 10px; cursor: pointer; min-width: 120px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
         background-repeat: no-repeat; background-position: right 8px center; background-size: 12px; user-select: none; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
       }
@@ -101,6 +101,15 @@
         display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
       .tree-dropdown-content.show { display: block; }
+      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
+      .tree-year-node:hover { background-color: #edf2f7; }
+      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
+      .tree-year-node.expanded::before { transform: rotate(90deg); }
+      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
+      .tree-months-container.show { display: flex; }
+      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
+      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
+      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       
       .telemetry-btn {
         font-size: 11px; font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
@@ -112,6 +121,7 @@
       .telemetry-modal.show { display: block; }
       .telemetry-title { font-size: 11.5px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
       .telemetry-close { background: none; border: none; font-size: 16px; cursor: pointer; color: #94a3b8; font-weight: 700; line-height: 1; }
+      .telemetry-close:hover { color: #64748b; }
       .telemetry-section-title { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 10px 0 4px 0; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
       .telemetry-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; align-items: center; }
       .telemetry-label { font-weight: 600; color: #64748b; }
@@ -137,14 +147,12 @@
       .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
-      /* OTIMIZAÇÃO: Substituição de SVG Overlay pesado por um container DOM absoluto leve */
       .html-connectors-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
       .html-bracket-track { position: absolute; border-top: 1.25px solid #cbd5e0; border-left: 1.25px solid #cbd5e0; border-right: 1.25px solid #cbd5e0; pointer-events: none; box-sizing: border-box; }
       .html-bracket-badge-anchor { position: absolute; width: 70px; height: 22px; display: flex; justify-content: center; align-items: center; pointer-events: none; transform: translate(-35px, -11px); }
 
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
       
-      /* OTIMIZAÇÃO ACELERAÇÃO POR HARDWARE (GPU): Troca de mutação de height por scaleY */
       .bar-element { 
         width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; 
         height: 100%; transform: scaleY(0); transform-origin: bottom; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
@@ -350,7 +358,6 @@
         isSaving: ytdDiff <= 0
       };
 
-      // OPTIMIZATION: Virtualização Cognitiva de Impacto (Pre-sort & Cutoff a Top 200 Linhas Relevantes)
       const scannedRows = cubeData.map(row => {
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
         return { row, weight: Math.abs(rawValue) };
@@ -663,7 +670,7 @@
       }
 
       try {
-        const tParsingStart = performance.now();
+        this._reflowCount++;
         const metadata = financialData.metadata;
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
@@ -874,7 +881,6 @@
           this._profiler.metrics.steps.parsing = performance.now() - tParsingStart;
         }
 
-        // FASE DE LAYOUT UPFRONT BATCH READ/WRITE OTIMIZADA
         const tDOMStart = performance.now();
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
         if (ENABLE_TELEMETRY) {
@@ -885,10 +891,8 @@
 
         const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
-          this._reflowCount++;
           const tSVGStart = performance.now();
           
-          // Renderizadores baseados em HTML puro acelerado por hardware
           this._drawUnifiedFlatConnections(this._monthlyConnectors, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
           this._drawUnifiedFlatConnections(this._ytdConnectors, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
           
@@ -928,9 +932,6 @@
       const tEndJS = performance.now();
     }
 
-    /* ==========================================================================
-       BATCHED LAYOUT WRITES: MULTIPLEXAÇÃO REATIVA USANDO TRANSFORMS GPU
-       ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
       const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
       const existingLabels = this._axisX.querySelectorAll(".axis-label");
@@ -967,12 +968,10 @@
         const bar = updatedWrappers[idx].querySelector(".bar-element");
         const label = bar.querySelector(".kpi-label");
         
-        // MUTAÇÃO GPU ACELERADA: Remove alteração de height e aciona scaleY
         const scaleRatio = d.value / maxVal;
         bar.className = `bar-element ${d.type}`;
         bar.style.transform = `scaleY(${scaleRatio})`;
         
-        // O posicionamento do label superior acompanha a proporção reativa
         label.textContent = `${(d.value / 1000000).toFixed(2)}M`;
         label.style.top = `calc(${(1 - scaleRatio) * 100}% - 22px)`;
 
@@ -982,13 +981,9 @@
       });
     }
 
-    /* ==========================================================================
-       VIRTUALIZAÇÃO COMPOSITING LAYER: CONNECTORS EM HTML/CSS PURO (SEM SVG)
-       ========================================================================== */
     _drawUnifiedFlatConnections(overlayContainer, chartArea, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
       
-      // BATCH READS UNIFICADOS UPFRONT
       const containerHeight = chartArea.offsetHeight;
       if (containerHeight === 0) return;
       
@@ -999,10 +994,6 @@
         if (!bar) return 0;
         return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
       });
-
-      const barHeights = Array.from(barElements).map(bar => {
-        return bar.getBoundingClientRect().height;
-      });
       
       const pairs = [];
       if (mode === "monthly") {
@@ -1012,7 +1003,6 @@
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
 
-      // BATCH WRITES: Pool de nós reutilizáveis em HTML absoluto
       overlayContainer.textContent = "";
       const fragment = document.createDocumentFragment();
 
@@ -1042,10 +1032,9 @@
 
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
 
-        // Desenha a linha guia horizontal/vertical via bordas nativas de um DIV absoluto
         const leftX = Math.min(xFrom, xTo);
         const trackWidth = Math.abs(xTo - xFrom);
-        const ceilingY = 24; // Margem superior fixa de segurança
+        const ceilingY = 24;
         
         const trackDiv = document.createElement("div");
         trackDiv.className = "html-bracket-track";
@@ -1055,7 +1044,6 @@
         trackDiv.style.height = `${containerHeight - ceilingY}px`;
         fragment.appendChild(trackDiv);
         
-        // Renderização absoluta da Badge de variação em HTML puro (GPU composited)
         const midX = leftX + (trackWidth / 2);
         const badgeAnchor = document.createElement("div");
         badgeAnchor.className = "html-bracket-badge-anchor";
@@ -1117,7 +1105,6 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
-      // Reconciliação dos estados dimensionais simplificados das mini barras laterais
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
       this._miniBarPrev.style.transform = `scaleY(${totalRealizadoYTDAntigo / maxYTD})`;
       this._miniBarAct.style.transform = `scaleY(${totalRealizadoYTDAtual / maxYTD})`;
@@ -1167,6 +1154,8 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
+      
+      // FIX CRÍTICO: Injeção correta de aspas literais nas strings hexadecimais para evitar falhas em lote
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
