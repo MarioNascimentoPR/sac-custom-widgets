@@ -452,12 +452,10 @@
     analyze(cubeData, targetNode, currentYear, previousYear, tempoDimId, versaoDimId, itemFinanceiroDimId, contaContabilDimId, measId, fullSeriesData, profiler) {
       const tStartAggregation = performance.now();
       const varianceTable = { month: {}, ytd: {} };
-      const driverTable = [];
       const outlierTable = [];
-      const rankingTable = [];
 
       const monthActual = targetNode.value;
-      const monthBudget = targetNode.originalNode.orcado > 0 ? targetNode.originalNode.orcado : targetNode.originalNode.realizado;
+      const monthBudget = targetNode.budgetValue > 0 ? targetNode.budgetValue : targetNode.value;
       const monthDiff = monthActual - monthBudget;
 
       varianceTable.month = {
@@ -471,7 +469,7 @@
       fullSeriesData.forEach(d => {
         if (d.yearValue === currentYear && d.monthNum <= targetNode.monthNum) {
           totalRealizadoYTDAtual += d.value;
-          totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
+          totalBudgetYTDCompleto += d.budgetValue || 0;
         }
         if (d.yearValue === previousYear && d.monthNum <= targetNode.monthNum) {
           totalRealizadoYTDAntigo += d.value;
@@ -601,7 +599,6 @@
           score
         };
 
-        driverTable.push(featureRow);
         if (
           Math.abs(desvioNominal) >= adaptiveFloor ||
           Math.abs(variancePct) >= 2 ||
@@ -612,16 +609,15 @@
         }
       });
 
-      rankingTable.push(...outlierTable);
-      rankingTable.sort((a, b) => b.score - a.score);
-      const selectedInsights = this._selectNarrativeRows(rankingTable, varianceTable.ytd.isSaving);
-      const summary = this._buildSummary(selectedInsights, varianceTable);
+      outlierTable.sort((a, b) => b.score - a.score);
+      const selectedInsights = this._selectNarrativeRows(outlierTable, varianceTable.ytd.isSaving);
+      const summary = this._buildSummary(selectedInsights);
 
       if (ENABLE_TELEMETRY && profiler) {
         profiler.metrics.steps.aggregation = performance.now() - tStartAggregation;
       }
 
-      return { varianceTable, driverTable, outlierTable: selectedInsights, rankingTable, summary };
+      return { outlierTable: selectedInsights, summary };
     }
 
     _getMemberLabel(row, dimId, fallback) {
@@ -709,14 +705,9 @@
       return selected.slice(0, 4).sort((a, b) => b.score - a.score);
     }
 
-    _buildSummary(selectedInsights, varianceTable) {
-      const adverseCount = selectedInsights.filter(item => !item.isSaving).length;
-      const savingCount = selectedInsights.filter(item => item.isSaving).length;
+    _buildSummary(selectedInsights) {
       return {
-        posture: varianceTable.ytd.isSaving ? "saving" : "adverse",
-        mainDriver: selectedInsights[0] || null,
-        adverseCount,
-        savingCount
+        mainDriver: selectedInsights[0] || null
       };
     }
 
@@ -1401,7 +1392,7 @@
 
         if (
           this._seriesCache &&
-          this._seriesCache.sourceData === financialData &&
+          this._seriesCache.sourceSignature === this._dataSignature &&
           this._seriesCache.metadataSignature === this._metadataSignature &&
           this._seriesCache.runtimeCutoffKey === runtimeCutoffKey
         ) {
@@ -1425,7 +1416,6 @@
                 realizado: 0,
                 orcado: 0,
                 isCurrentMonth: false,
-                rowContext: row,
                 realizadoItems: {},
                 orcadoItems: {}
               };
@@ -1480,7 +1470,7 @@
             const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
 
             fullSeriesData.push({ 
-              id: m.id, label: alignedLabel, value: m.realizado, type: m.isCurrentMonth ? "actual" : "historical", originalNode: m, yearValue: parsedYear, monthNum: targetMonthIndex, rawRow: m.rowContext, compositionRealizado: m.realizadoItems, compositionBudget: m.orcadoItems
+              id: m.id, label: alignedLabel, value: m.realizado, budgetValue: m.orcado, type: m.isCurrentMonth ? "actual" : "historical", yearValue: parsedYear, monthNum: targetMonthIndex, compositionRealizado: m.realizadoItems, compositionBudget: m.orcadoItems
             });
           });
 
@@ -1511,7 +1501,7 @@
           }
 
           this._seriesCache = {
-            sourceData: financialData,
+            sourceSignature: this._dataSignature,
             metadataSignature: this._metadataSignature,
             runtimeCutoffKey,
             fullSeriesData,
@@ -1582,8 +1572,8 @@
           d.type = (idx === actualIndex) ? "actual" : "historical";
         });
 
-        const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
-        const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
+        const targetBudgetSource = fullSeriesData[actualIndex];
+        const calculatedBudget = targetBudgetSource.budgetValue > 0 ? targetBudgetSource.budgetValue : targetBudgetSource.value;
 
         const startIndex = Math.max(0, actualIndex - 11); 
         const visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
@@ -1592,7 +1582,7 @@
         if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
 
         visibleSeriesData.push({
-          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum, compositionBudget: targetBudgetSource.orcadoItems || {}, previousSeriesData: fullSeriesData[actualIndex].previousSeriesData || null
+          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum, compositionBudget: targetBudgetSource.compositionBudget || {}, previousSeriesData: fullSeriesData[actualIndex].previousSeriesData || null
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
@@ -1841,7 +1831,7 @@
         if (idx <= actualIndex) {
           if (d.yearValue === currentYear) {
             totalRealizadoYTDAtual += d.value;
-            totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
+            totalBudgetYTDCompleto += d.budgetValue || 0;
           }
         }
         if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
