@@ -236,22 +236,25 @@
       .view-tab.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
       .view-panel { display: none; flex-direction: column; min-width: 0; }
       .view-panel.active { display: flex; }
-      .executive-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+      .executive-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
       .executive-kpi {
-        display: flex; flex-direction: column; gap: 6px; border: 1px solid #dbe3ec; border-radius: 8px; padding: 13px 14px; background: #ffffff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        display: flex; flex-direction: column; gap: 5px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 11px 12px; background: #f8fafc;
       }
       .executive-kpi-label { font-size: var(--small-font-size); font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.55px; }
-      .executive-kpi-value { font-size: calc(var(--title-font-size) + 2px); line-height: 1.12; font-weight: 800; color: #0f172a; min-height: 24px; }
+      .executive-kpi-value { font-size: calc(var(--title-font-size) + 1px); line-height: 1.12; font-weight: 800; color: #0f172a; min-height: 22px; }
+      .executive-kpi-value.driver-kpi-value {
+        font-size: var(--ui-font-size); line-height: 1.25; min-height: 34px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      }
       .executive-kpi-sub { font-size: var(--small-font-size); color: #475569; }
       .risk-pill {
-        display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-width: 88px; border-radius: 999px; padding: 5px 10px; font-size: var(--small-font-size); font-weight: 700; border: 1px solid transparent;
+        display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-width: 82px; border-radius: 4px; padding: 4px 8px; font-size: var(--small-font-size); font-weight: 700; border: 1px solid transparent;
       }
       .risk-pill.good { background: #e6f4ea; color: #137333; border-color: #ceead6; }
       .risk-pill.watch { background: #fff4e5; color: #b45309; border-color: #fed7aa; }
       .risk-pill.alert { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
-      .executive-grid { display: grid; grid-template-columns: minmax(360px, 1.55fr) minmax(260px, 0.85fr); gap: var(--layout-gap); align-items: stretch; }
+      .executive-grid { display: grid; grid-template-columns: minmax(320px, 1.35fr) minmax(260px, 0.9fr); gap: var(--layout-gap); align-items: stretch; }
       .executive-panel {
-        border: 1px solid #dbe3ec; border-radius: 8px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        border: 1px solid #e2e8f0; border-radius: 6px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0;
       }
       .executive-panel-title { font-size: var(--small-font-size); font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 12px; }
       .waterfall-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
@@ -259,26 +262,28 @@
       .waterfall-mode-tabs { display: inline-flex; border: 1px solid #dbe3ec; border-radius: 7px; background: #f8fafc; padding: 2px; gap: 2px; }
       .waterfall-mode-btn { border: none; background: transparent; color: #475569; font-size: var(--small-font-size); font-weight: 700; border-radius: 5px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
       .waterfall-mode-btn.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
-      .waterfall-caption { font-size: var(--small-font-size); color: #64748b; margin-bottom: 10px; min-height: 16px; }
+      .waterfall-caption { font-size: var(--small-font-size); color: #64748b; margin-bottom: 8px; min-height: 16px; }
       .waterfall-chart {
-        position: relative; display: flex; align-items: stretch; gap: 12px; min-height: 270px; height: 270px; overflow-x: auto; padding: 12px 12px 8px;
-        border: 1px solid #e8eef5; border-radius: 8px; background: repeating-linear-gradient(to top, #ffffff 0, #ffffff 39px, #f6f9fc 40px);
+        position: relative; display: flex; align-items: stretch; gap: 8px; min-height: 205px; height: 205px; overflow-x: auto; padding: 9px 8px 6px;
+        border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc;
       }
-      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 96px; height: 100%; position: relative; }
+      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 68px; height: 100%; position: relative; }
       .waterfall-value {
-        height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: var(--small-font-size); font-weight: 800; color: #0f172a;
-        white-space: nowrap; font-variant-numeric: tabular-nums; background: #ffffff; border: 1px solid #dbe3ec; border-radius: 999px; padding: 2px 7px; box-sizing: border-box;
+        height: 20px; display: inline-flex; align-items: flex-start; justify-content: center; font-size: calc(var(--small-font-size) - 0.5px); font-weight: 700; color: #334155;
+        white-space: nowrap; font-variant-numeric: tabular-nums; box-sizing: border-box;
       }
-      .waterfall-bar-wrap { position: relative; flex: 1; width: 100%; border-bottom: 2px solid #cbd5e0; margin-top: 4px; }
+      .waterfall-bar-wrap { position: relative; flex: 1; width: 100%; border-bottom: 1px solid #cbd5e0; margin-top: 3px; }
       .waterfall-bar {
-        position: absolute; left: 8%; right: 8%; width: 84%; border-radius: 7px 7px 2px 2px; min-height: 6px;
-        box-shadow: 0 6px 12px rgba(15, 23, 42, 0.12), inset 0 -1px 0 rgba(15, 23, 42, 0.12); cursor: help; transition: transform 0.15s ease, filter 0.15s ease;
+        position: absolute; left: 18%; right: 18%; width: 64%; border-radius: 3px 3px 0 0; min-height: 4px;
+        box-shadow: none; cursor: help; transition: opacity 0.15s ease;
       }
-      .waterfall-bar:hover { transform: translateY(-2px); filter: brightness(1.04); }
-      .waterfall-bar.total { background: #1f77b4; }
-      .waterfall-bar.positive { background: #c5221f; }
-      .waterfall-bar.negative { background: #137333; }
-      .waterfall-label { margin-top: 8px; font-size: var(--small-font-size); font-weight: 700; color: #334155; text-align: center; line-height: 1.2; min-height: 34px; max-width: 104px; overflow: hidden; text-overflow: ellipsis; }
+      .waterfall-bar:hover { opacity: 0.82; }
+      .waterfall-bar.total { background: #64748b; }
+      .waterfall-bar.total-start { background: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box; background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.45) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.45) 50%, rgba(174, 199, 232, 0.45) 75%, transparent 75%, transparent); background-size: 5px 5px; }
+      .waterfall-bar.total-end { background: var(--color-actual); }
+      .waterfall-bar.positive { background: #d32f2f; }
+      .waterfall-bar.negative { background: #2e7d32; }
+      .waterfall-label { margin-top: 6px; font-size: calc(var(--small-font-size) - 0.5px); font-weight: 600; color: #475569; text-align: center; line-height: 1.2; min-height: 30px; max-width: 76px; overflow: hidden; text-overflow: ellipsis; }
       .waterfall-empty { align-self: center; color: #64748b; font-size: var(--ui-font-size); padding: 20px; }
       .waterfall-tooltip-note { margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: var(--small-font-size); }
       .executive-summary-list { margin: 0; padding-left: 18px; color: #334155; font-size: var(--ui-font-size); line-height: 1.6; display: flex; flex-direction: column; gap: 10px; }
@@ -288,6 +293,7 @@
       .supplier-kpi-value { font-size: calc(var(--title-font-size) + 1px); line-height: 1.15; font-weight: 700; color: #0f172a; }
       .supplier-kpi-sub { font-size: var(--small-font-size); color: #475569; }
       .supplier-panel { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0; }
+      .supplier-insight-list { margin: 0 0 12px 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: #334155; font-size: var(--ui-font-size); line-height: 1.45; }
       .supplier-table { width: 100%; border-collapse: collapse; font-size: var(--ui-font-size); color: #334155; }
       .supplier-table th { text-align: left; font-size: var(--small-font-size); color: #64748b; text-transform: uppercase; letter-spacing: 0.55px; padding: 7px 8px; border-bottom: 1px solid #e2e8f0; }
       .supplier-table td { padding: 9px 8px; border-bottom: 1px solid #eef2f6; font-weight: 600; }
@@ -478,7 +484,7 @@
           </div>
           <div class="executive-kpi">
             <div class="executive-kpi-label">Principal Driver</div>
-            <div class="executive-kpi-value" id="execProjectedGap">-</div>
+            <div class="executive-kpi-value driver-kpi-value" id="execProjectedGap">-</div>
             <div class="executive-kpi-sub" id="execProjectedGapSub">-</div>
           </div>
           <div class="executive-kpi">
@@ -569,9 +575,9 @@
             <div class="supplier-kpi-sub" id="supplierTopValue">-</div>
           </div>
           <div class="supplier-kpi">
-            <div class="supplier-kpi-label">Base Analisada</div>
+            <div class="supplier-kpi-label">Maior Desvio YTD</div>
             <div class="supplier-kpi-value" id="supplierCount">-</div>
-            <div class="supplier-kpi-sub" id="supplierCountSub">fornecedores com realizado no período</div>
+            <div class="supplier-kpi-sub" id="supplierCountSub">-</div>
           </div>
           <div class="supplier-kpi">
             <div class="supplier-kpi-label">Concentração Top 5</div>
@@ -581,6 +587,7 @@
         </div>
         <div class="supplier-panel">
           <div class="executive-panel-title">Análise de Fornecedores</div>
+          <ul class="supplier-insight-list" id="supplierInsightList"></ul>
           <div id="supplierTableWrap"></div>
         </div>
       </div>
@@ -1014,6 +1021,7 @@
         this._supplierCount = this._shadowRoot.getElementById("supplierCount");
         this._supplierTop5Share = this._shadowRoot.getElementById("supplierTop5Share");
         this._supplierPeriodLabel = this._shadowRoot.getElementById("supplierPeriodLabel");
+        this._supplierInsightList = this._shadowRoot.getElementById("supplierInsightList");
         this._supplierTableWrap = this._shadowRoot.getElementById("supplierTableWrap");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
@@ -1754,7 +1762,8 @@
       this._setText(this._execActualYtdSub, `${ytdGapText} (${context.diffYtdPercent.toFixed(1)}%) vs orçamento YTD`);
       this._setText(this._execForecast, `${context.consumoBudgetPercent.toFixed(1)}%`);
       this._setText(this._execForecastSub, `${formatM(context.totalRealizadoYTDAtual)} consumidos de ${formatM(context.totalBudgetYTDCompleto)}`);
-      this._setText(this._execProjectedGap, mainDriver ? this._compactWaterfallLabel(mainDriver.itemName) : "-");
+      this._setText(this._execProjectedGap, mainDriver ? mainDriver.itemName : "-");
+      if (this._execProjectedGap) this._execProjectedGap.title = mainDriver ? mainDriver.itemName : "";
       this._setText(this._execProjectedGapSub, mainDriver ? `${driverText} de impacto YTD` : "Sem driver material identificado");
       this._setClass(this._execRiskPill, `risk-pill ${risk.className}`);
       this._setText(this._execRiskPill, risk.label);
@@ -1781,10 +1790,10 @@
       const explainedGap = model.rows.reduce((sum, item) => sum + item.delta, 0);
       const residualGap = model.totalDelta - explainedGap;
       const steps = [
-        { label: model.startLabel, value: model.startValue, type: "total" },
+        { label: model.startLabel, value: model.startValue, type: "total", role: "total-start" },
         ...model.rows.map(item => ({ label: item.itemName, itemName: item.itemName, delta: item.delta, type: item.delta >= 0 ? "positive" : "negative" })),
         ...(Math.abs(residualGap) > 0.00001 ? [{ label: "Demais itens", delta: residualGap, type: residualGap >= 0 ? "positive" : "negative" }] : []),
-        { label: model.endLabel, value: model.endValue, type: "total" }
+        { label: model.endLabel, value: model.endValue, type: "total", role: "total-end" }
       ];
 
       let current = model.startValue;
@@ -1829,7 +1838,7 @@
         const wrapEl = document.createElement("div");
         wrapEl.className = "waterfall-bar-wrap";
         const barEl = document.createElement("div");
-        barEl.className = `waterfall-bar ${step.type}`;
+        barEl.className = `waterfall-bar ${step.type} ${step.role || ""}`;
         barEl.style.bottom = `${bottomPct}%`;
         barEl.style.height = `${heightPct}%`;
         if (step.itemName) {
@@ -1911,7 +1920,7 @@
         if (!isCurrentMonth && !isCurrentYtd) return;
 
         const fornecedor = this._getRowMemberLabel(row, this._fornecedorDimId, "Fornecedor não informado");
-        if (this._shouldIgnoreCompositionMember(fornecedor)) return;
+        if (this._isInvalidSupplierName(fornecedor)) return;
         const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
         const isBudget = this._versaoDimId ? this._isBudgetVersionObject(row[this._versaoDimId]) : false;
         const supplier = ensureSupplier(fornecedor);
@@ -1943,6 +1952,53 @@
       return { rows, currentTotal, ytdTotal };
     }
 
+    _isInvalidSupplierName(name) {
+      const normalized = String(name || "").trim().toUpperCase();
+      if (!normalized) return true;
+      return (
+        this._shouldIgnoreCompositionMember(normalized) ||
+        normalized === "-" ||
+        normalized === "N/A" ||
+        normalized === "NA" ||
+        normalized === "NULL" ||
+        normalized === "NULO" ||
+        normalized === "NÃO ATRIBUÍDO" ||
+        normalized === "NAO ATRIBUIDO" ||
+        normalized === "NÃO ATRIBUIDA" ||
+        normalized === "NAO ATRIBUIDA" ||
+        normalized === "NOT ASSIGNED" ||
+        normalized === "UNASSIGNED" ||
+        normalized.includes("SEM FORNECEDOR") ||
+        normalized.includes("FORNECEDOR NÃO") ||
+        normalized.includes("FORNECEDOR NAO")
+      );
+    }
+
+    _renderSupplierInsights(analysis, topSupplier, deviationSupplier, top5Share) {
+      if (!this._supplierInsightList) return;
+      this._supplierInsightList.textContent = "";
+      const formatM = (value) => `${value >= 0 ? "" : "-"}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
+      const bullets = [];
+      if (topSupplier) {
+        bullets.push(`${topSupplier.name} concentra ${topSupplier.ytdShare.toFixed(1)}% do realizado YTD analisado.`);
+      }
+      if (deviationSupplier) {
+        bullets.push(`Maior desvio YTD em ${deviationSupplier.name}: ${formatM(deviationSupplier.ytdDelta)}.`);
+      }
+      bullets.push(top5Share >= 70
+        ? `Alta concentração: Top 5 responde por ${top5Share.toFixed(1)}% do realizado YTD.`
+        : `Concentração Top 5 em ${top5Share.toFixed(1)}%, sem concentração extrema no corte atual.`);
+      if (!analysis.rows.length) bullets.splice(0, bullets.length, "Sem fornecedores válidos com realizado para o período selecionado.");
+
+      const fragment = document.createDocumentFragment();
+      bullets.forEach(text => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        fragment.appendChild(li);
+      });
+      this._supplierInsightList.appendChild(fragment);
+    }
+
     _renderSupplierView(context) {
       if (!this._supplierView) return;
       const formatM = (value) => `${value >= 0 ? "" : "-"}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
@@ -1952,20 +2008,24 @@
         this._setText(this._supplierCount, "-");
         this._setText(this._supplierTop5Share, "-");
         this._setText(this._supplierPeriodLabel, context.currentBarNode ? context.currentBarNode.label : "-");
+        if (this._supplierInsightList) this._supplierInsightList.textContent = "";
         if (this._supplierTableWrap) this._supplierTableWrap.innerHTML = `<div class="supplier-empty">A dimensão Fornecedor ainda não foi vinculada ao widget.</div>`;
         return;
       }
 
       const analysis = this._buildSupplierAnalysis(context);
       const topSupplier = analysis.rows[0] || null;
+      const deviationSupplier = [...analysis.rows].sort((a, b) => Math.abs(b.ytdDelta) - Math.abs(a.ytdDelta))[0] || null;
       const top5Total = analysis.rows.slice(0, 5).reduce((sum, item) => sum + Math.abs(item.ytdRealizado), 0);
       const top5Share = analysis.ytdTotal !== 0 ? (top5Total / analysis.ytdTotal) * 100 : 0;
 
       this._setText(this._supplierTopName, topSupplier ? topSupplier.name : "-");
       this._setText(this._supplierTopValue, topSupplier ? `${formatM(topSupplier.ytdRealizado)} no YTD` : "Sem realizado no período");
-      this._setText(this._supplierCount, analysis.rows.length);
+      this._setText(this._supplierCount, deviationSupplier ? deviationSupplier.name : "-");
+      this._setText(this._supplierCountSub, deviationSupplier ? `${formatM(deviationSupplier.ytdDelta)} vs orçamento YTD` : "Sem desvio no período");
       this._setText(this._supplierTop5Share, `${top5Share.toFixed(1)}%`);
-      this._setText(this._supplierPeriodLabel, `Corte ${context.currentBarNode.label}`);
+      this._setText(this._supplierPeriodLabel, `${analysis.rows.length} fornecedores | Corte ${context.currentBarNode.label}`);
+      this._renderSupplierInsights(analysis, topSupplier, deviationSupplier, top5Share);
 
       if (!this._supplierTableWrap) return;
       if (!analysis.rows.length) {
@@ -2008,11 +2068,11 @@
         const snapshot = await this._captureWidgetPng();
         this._exportPptBtn.disabled = true;
         this._setText(this._exportPptBtn, "Gerando PPT...");
-        const pptBlob = this._buildPptxBlob(snapshot.dataUrl, snapshot.width, snapshot.height);
+        const pptBlob = this._buildPowerPointHtmlBlob(snapshot.dataUrl, snapshot.width, snapshot.height);
         const url = URL.createObjectURL(pptBlob);
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `performance-summary-${this._activeView}.pptx`;
+        anchor.download = `performance-summary-${this._activeView}.ppt`;
         anchor.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } catch (error) {
@@ -2072,6 +2132,39 @@
       ctx.scale(scale, scale);
       ctx.drawImage(image, 0, 0, width, height);
       return { dataUrl: canvas.toDataURL("image/png"), width, height };
+    }
+
+    _buildPowerPointHtmlBlob(pngDataUrl, width, height) {
+      const slideWidthIn = 13.333;
+      const slideHeightIn = Math.max(7.5, slideWidthIn * (height / width));
+      const html = `<!DOCTYPE html>
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:p="urn:schemas-microsoft-com:office:powerpoint"
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8">
+          <meta name="ProgId" content="PowerPoint.Slide">
+          <meta name="Generator" content="Performance Summary Widget">
+          <title>Performance Summary</title>
+          <xml>
+            <o:DocumentProperties>
+              <o:Title>Performance Summary</o:Title>
+              <o:Author>Performance Summary Widget</o:Author>
+            </o:DocumentProperties>
+          </xml>
+          <style>
+            body { margin: 0; background: #ffffff; }
+            .slide { width: ${slideWidthIn}in; height: ${slideHeightIn}in; background: #ffffff; overflow: hidden; }
+            .slide img { display: block; width: 100%; height: auto; }
+          </style>
+        </head>
+        <body>
+          <div class="slide">
+            <img src="${pngDataUrl}" alt="Performance Summary">
+          </div>
+        </body>
+        </html>`;
+      return new Blob([html], { type: "application/vnd.ms-powerpoint;charset=utf-8" });
     }
 
     _buildPptxBlob(pngDataUrl, width, height) {
