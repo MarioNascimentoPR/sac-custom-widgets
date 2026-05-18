@@ -55,7 +55,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        z-index: 100; /* Força prioridade máxima sobre o SVG do gráfico */
+        z-index: 100;
       }
 
       .filter-label-finance {
@@ -490,6 +490,11 @@
                 <td class="num-cell bold-val" id="val-diff-row">-</td>
                 <td class="num-cell bold-val" id="val-pct-row">-</td>
               </tr>
+              <tr class="comparison-row">
+                <td class="row-title" id="lbl-prev-month-row">Mesmo Mês Ano Ant.</td>
+                <td class="num-cell bold-val" id="val-prev-month-row">-</td>
+                <td class="num-cell bold-val" id="val-prev-month-pct-row">-</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -529,10 +534,9 @@
       this._shadowRoot = null;
       this._resizeTimeout = null;
       
-      // BLINDAGEM DE ESTADO DE CORES E CICLO VIVO
       this._selectedCutoffId = null;
       this._isTreeBuilt = false; 
-      this._isDropdownOpen = false; // Controle booleano nativo (Bypass de quebra de listeners)
+      this._isDropdownOpen = false; 
     }
 
     connectedCallback() {
@@ -554,6 +558,11 @@
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
         
+        // Ponteiros para a nova linha comparativa mensal
+        this._lblPrevMonthRow = this._shadowRoot.getElementById("lbl-prev-month-row");
+        this._valPrevMonthRow = this._shadowRoot.getElementById("val-prev-month-row");
+        this._valPrevMonthPctRow = this._shadowRoot.getElementById("val-prev-month-pct-row");
+        
         this._titleColYtd = this._shadowRoot.getElementById("title-col-ytd");
         this._ytdCurrentLbl = this._shadowRoot.getElementById("ytd-current-lbl");
         this._ytdAbsRow = this._shadowRoot.getElementById("ytd-abs-row");
@@ -563,7 +572,6 @@
         this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
         this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
 
-        // SOLUÇÃO DO TRAVAMENTO: O ouvinte do Trigger manipula estritamente a variável booleana de estado persistente
         this._treeDropdownTrigger.addEventListener("click", (e) => {
           e.stopPropagation();
           this._isDropdownOpen = !this._isDropdownOpen;
@@ -636,7 +644,6 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
-    // ISOLAMENTO DE DESTRUIÇÃO: Limpa apenas os vetores e as barras, deixando a árvore viva e operando
     _clearDOM() {
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach(el => el.remove());
@@ -754,7 +761,6 @@
           defaultActualIndex = fullSeriesData.length - 1;
         }
 
-        // MONTAGEM DO FILTRO EM ÁRVORE IMPERMEÁVEL DE SUCESSO (Não sofre innerHTML wipe)
         if (!this._isTreeBuilt && fullSeriesData.length > 0) {
           this._treeDropdownContent.innerHTML = ""; 
           const yearsMap = {};
@@ -787,7 +793,7 @@
             monthItem.addEventListener("click", (e) => {
               e.stopPropagation();
               this._selectedCutoffId = d.id;
-              this._isDropdownOpen = false; // Fecha suavemente via booleano nativo
+              this._isDropdownOpen = false; 
               this._toggleDropdownDOM();
               this.renderChart();
             });
@@ -826,8 +832,9 @@
 
         this._clearDOM();
 
+        // REQUISITO CUMPRIDO: Modificado o startIndex para capturar e plotar os últimos 13 meses na tela
         let visibleSeriesData = [];
-        const startIndex = Math.max(0, actualIndex - 11);
+        const startIndex = Math.max(0, actualIndex - 12); 
         visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
 
         let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
@@ -912,14 +919,35 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 
+      // 1. Atualização dos campos do Mês Atual (Garante duas casas decimais fixas)
       this._titleColCurrent.textContent = `Mês Atual (${monthLabel.toUpperCase()})`;
       this._lblActRow.textContent = `Realizado Comercial`; 
       this._valActRow.textContent = formatM(actualVal);
       this._valBudRow.textContent = formatM(budgetVal);
       this._valDiffRow.textContent = formatM(diffNominal);
       this._valPctRow.textContent = formatPercent(diffPercent);
-      this._valPctRow.style.color = (diffNominal < 0) ? "#cbd5e0" : ((actualVal > budgetVal) ? "#c5221f" : "#137333");
+      this._valPctRow.style.color = (diffNominal < 0) ? "#c5221f" : "#137333";
 
+      // REQUISITO CUMPRIDO: Localiza e calcula a linha homologa YoY para o mesmo mês do ano anterior
+      const prevYearMonthNode = fullSeriesData.find(d => d.yearValue === previousYear && d.monthNum === currentBarNode.monthNum);
+      const prevYearMonthVal = prevYearMonthNode ? prevYearMonthNode.value : 0;
+      
+      const diffMonthYoY = actualVal - prevYearMonthVal;
+      let pctMonthYoY = prevYearMonthVal !== 0 ? (diffMonthYoY / prevYearMonthVal) * 100 : 0;
+      const isMonthYoYRetraction = actualVal < prevYearMonthVal;
+      
+      if (isMonthYoYRetraction && pctMonthYoY > 0) {
+        pctMonthYoY = -pctMonthYoY;
+      } else if (!isMonthYoYRetraction && pctMonthYoY < 0) {
+        pctMonthYoY = Math.abs(pctMonthYoY);
+      }
+
+      this._lblPrevMonthRow.textContent = `Mesmo Mês Ano Ant. (${previousYear})`;
+      this._valPrevMonthRow.textContent = formatM(prevYearMonthVal);
+      this._valPrevMonthPctRow.textContent = formatPercent(pctMonthYoY) + " YoY";
+      this._valPrevMonthPctRow.style.color = isMonthYoYRetraction ? "#c5221f" : "#137333";
+
+      // 2. Lógica Comparativa Cumulativa (YTD)
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
