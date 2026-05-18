@@ -34,7 +34,6 @@
       this._shadowRoot = this.attachShadow({ mode: "open" });
       this._shadowRoot.appendChild(templateStyling.content.cloneNode(true));
       
-      // Proteção de escopo para os listeners
       this._changeProperty = this._changeProperty.bind(this);
 
       const inputAct = this._shadowRoot.getElementById("cls-act");
