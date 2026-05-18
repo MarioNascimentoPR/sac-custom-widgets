@@ -7,6 +7,13 @@
         --color-historical: #7f7f7f;
         --color-budget: #aec7e8;
         --font-size-labels: 12px;
+        --color-saving: #137333;
+        --color-saving-bg: #e6f4ea;
+        --color-saving-border: #ceead6;
+        --color-increase: #c5221f;
+        --color-increase-bg: #fce8e6;
+        --color-increase-border: #fad2cf;
+        --color-border-axis: #718096;
         
         display: block;
         width: 100%;
@@ -39,16 +46,9 @@
         gap: 12px;
       }
 
-      .header-left-block {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .widget-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #2c3e50;
-      }
+      .header-left-block { display: flex; flex-direction: column; }
+      .widget-title { font-size: 13px; font-weight: 700; color: #2c3e50; }
+      .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
 
       .filter-container-finance {
         position: relative;
@@ -57,12 +57,7 @@
         gap: 6px;
         z-index: 100;
       }
-
-      .filter-label-finance {
-        font-size: 11px;
-        font-weight: 600;
-        color: #4a5568;
-      }
+      .filter-label-finance { font-size: 11px; font-weight: 600; color: #4a5568; }
 
       .tree-dropdown-trigger {
         font-size: 11px;
@@ -100,40 +95,22 @@
         min-width: 160px;
         padding: 6px 0;
       }
-
       .tree-dropdown-content.show { display: block; }
 
       .tree-year-node {
-        font-weight: 700;
-        color: #2d3748;
-        padding: 6px 10px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        user-select: none;
+        font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none;
       }
       .tree-year-node:hover { background-color: #edf2f7; }
-      .tree-year-node::before {
-        content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block;
-      }
+      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
       .tree-year-node.expanded::before { transform: rotate(90deg); }
 
-      .tree-months-container {
-        display: none; flex-direction: column; padding-left: 14px; background: #f7fafc;
-      }
+      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
       .tree-months-container.show { display: flex; }
-
       .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
       .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
       .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
 
-      .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
-
-      .widget-legend {
-        display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0;
-      }
+      .widget-legend { display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0; }
       .legend-item { display: flex; align-items: center; gap: 5px; }
       .legend-color { width: 10px; height: 10px; border-radius: 2px; }
       .legend-color.hist { background-color: var(--color-historical); }
@@ -144,35 +121,21 @@
         background-size: 4px 4px;
       }
 
-      .main-visualization-layout {
-        display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch;
-      }
+      .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 24px; flex-shrink: 0; align-items: stretch; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
       .visualization-column.monthly-col { flex: 3; }
       .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
 
-      .ytd-chart-header-title {
-        font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto;
-      }
+      .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; }
       
-      .chart-container-block {
-        position: relative; height: 145px; padding-top: 32px; box-sizing: border-box; width: 100%;
-      }
-      .chart-area {
-        width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; 
-      }
+      .chart-container-block { position: relative; height: 145px; padding-top: 32px; box-sizing: border-box; width: 100%; }
+      .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
       
-      .bar-wrapper {
-        display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 1;
-      }
-      .bar-element {
-        width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px;
-      }
+      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 1; }
+      .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
       .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual {
-        background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box;
-      }
+      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
       .bar-element.budget {
         background-color: transparent; border: 1px solid var(--color-budget); border-bottom: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
@@ -190,15 +153,15 @@
       .variance-tag {
         font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); white-space: nowrap; border: 1px solid transparent; display: inline-block;
       }
-      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border-color: #ceead6; }
-      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border-color: #fad2cf; }
+      .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
+      .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
 
       /* ==========================================================================
-         GRID INTEGRADO DE PERFORMANCE E INSIGHTS (OTIMIZADO)
+         GRID EXECUTIVO UNIFICADO COM METRICAS E HIGHLIGHTS ESTRUTURADOS
          ========================================================================== */
       .insight-grid {
         display: grid;
-        grid-template-columns: 1.2fr 1fr;
+        grid-template-columns: 1.1fr 1fr;
         gap: 24px;
         margin-top: auto;
         padding-top: 16px;
@@ -264,19 +227,8 @@
       .row-m-style .cell-label::before { background: var(--color-actual); }
       .row-ytd-style .cell-label::before { background: #2b6cb0; }
 
-      .cell-value {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-        font-weight: 700;
-        color: #1e293b;
-        white-space: nowrap;
-      }
-
-      .cell-status-wrapper {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-      }
+      .cell-value { font-size: calc(var(--font-size-labels) - 0.5px); text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1e293b; white-space: nowrap; }
+      .cell-status-wrapper { display: flex; justify-content: flex-end; align-items: center; }
 
       .status-badge-finance {
         font-size: 10px;
@@ -288,14 +240,14 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 75px;
+        min-width: 78px;
         box-sizing: border-box;
       }
-      .status-badge-finance.success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
-      .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+      .status-badge-finance.success { background-color: var(--color-saving-bg); color: var(--color-saving); border: 1px solid var(--color-saving-border); }
+      .status-badge-finance.warning { background-color: var(--color-increase-bg); color: var(--color-increase); border: 1px solid var(--color-increase-border); }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; border: 1px solid #e8eaed; }
 
-      /* AREA DE HIGHLIGHTS DINÂMICOS */
+      /* QUADRANTE DE HIGHLIGHTS EM TOPICOS ESCANEAVEIS */
       .highlight-card-area {
         display: flex;
         flex-direction: column;
@@ -317,19 +269,30 @@
         padding-bottom: 6px;
         border-bottom: 2px solid #cbd5e0;
       }
-      .highlight-icon-box {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
+      .highlight-icon-box { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+      
+      .highlight-scannable-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
       }
-      .highlight-content-text {
+      .highlight-topic-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
         font-size: 11.5px;
-        line-height: 1.5;
+        line-height: 1.4;
         color: #4a5568;
         font-weight: 500;
-        text-align: justify;
       }
+      .topic-bullet {
+        margin-top: 3px;
+        width: 5px; height: 5px; background-color: #4a5568; border-radius: 50%; flex-shrink: 0;
+      }
+      .topic-text strong { color: #0f172a; }
 
       .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
@@ -357,7 +320,13 @@
         <div class="monthly-col visualization-column">
           <div class="chart-container-block">
             <div class="chart-area" id="chartArea">
-              <svg class="svg-overlay" id="svgOverlay"></svg>
+              <svg class="svg-overlay" id="svgOverlay">
+                <defs>
+                  <marker id="arrow-neutral" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#718096"/>
+                  </marker>
+                </defs>
+              </svg>
             </div>
           </div>
           <div class="axis-x-block">
@@ -366,7 +335,7 @@
         </div>
 
         <div class="visualization-column ytd-col">
-          <div class="ytd-chart-header-title">Evolução YTD Acumulada</div>
+          <div class="ytd-chart-header-title" id="ytd-chart-header-title">Evolução YTD Acumulada</div>
           <div class="chart-container-block">
             <div class="chart-area" id="ytdChartArea">
               <svg class="svg-overlay" id="svgYtdOverlay"></svg>
@@ -387,7 +356,7 @@
 
       <div class="insight-grid" id="insightGrid" style="display: none;">
         <div class="grid-column-finance">
-          <div class="column-title-finance">Acompanhamento de Metas Orçamentárias</div>
+          <div class="column-title-finance">Métricas de Performance Operacional</div>
           <div class="panel-content-rows">
             <div class="data-row-item row-m-style">
               <div class="cell-label">Desvio Mês (Real x Orçado)</div>
@@ -397,7 +366,7 @@
             <div class="data-row-item row-m-style">
               <div class="cell-label">Consumo do Budget no Mês</div>
               <div class="cell-value" id="val-pct-consumption-row">-</div>
-              <div class="cell-status-wrapper"><span class="status-badge-finance neutral">Mês</span></div>
+              <div class="cell-status-wrapper"><span class="status-badge-finance neutral" id="month-consumption-badge">Mês</span></div>
             </div>
             <div class="data-row-item row-ytd-style">
               <div class="cell-label">Desvio YTD (Real x Orçado)</div>
@@ -407,7 +376,7 @@
             <div class="data-row-item row-ytd-style">
               <div class="cell-label">Consumo do Budget Período (YTD)</div>
               <div class="cell-value" id="ytd-pct-row">-</div>
-              <div class="cell-status-wrapper"><span class="status-badge-finance neutral">YTD</span></div>
+              <div class="cell-status-wrapper"><span class="status-badge-finance neutral" id="ytd-consumption-badge">YTD</span></div>
             </div>
           </div>
         </div>
@@ -417,7 +386,20 @@
             <span class="highlight-icon-box">💡</span>
             <span>Highlights</span>
           </div>
-          <div class="highlight-content-text" id="highlightContentText">-</div>
+          <ul class="highlight-scannable-list">
+            <li class="highlight-topic-item">
+              <div class="topic-bullet"></div>
+              <div class="topic-text" id="topic-month-perf">-</div>
+            </li>
+            <li class="highlight-topic-item">
+              <div class="topic-bullet"></div>
+              <div class="topic-text" id="topic-ytd-perf">-</div>
+            </li>
+            <li class="highlight-topic-item">
+              <div class="topic-bullet"></div>
+              <div class="topic-text" id="topic-conclusion-perf">-</div>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -450,15 +432,21 @@
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
         this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
+        this._ytdChartHeaderTitle = this._shadowRoot.getElementById("ytd-chart-header-title");
         
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
         this._valPctConsumptionRow = this._shadowRoot.getElementById("val-pct-consumption-row");
+        this._monthConsumptionBadge = this._shadowRoot.getElementById("month-consumption-badge");
         
         this._ytdDiffRow = this._shadowRoot.getElementById("ytd-diff-row");
         this._ytdDiffPctBadge = this._shadowRoot.getElementById("ytd-diff-pct-badge");
         this._ytdPctRow = this._shadowRoot.getElementById("ytd-pct-row");
-        this._highlightContentText = this._shadowRoot.getElementById("highlightContentText");
+        this._ytdConsumptionBadge = this._shadowRoot.getElementById("ytd-consumption-badge");
+        
+        this._topicMonthPerf = this._shadowRoot.getElementById("topic-month-perf");
+        this._topicYtdPerf = this._shadowRoot.getElementById("topic-ytd-perf");
+        this._topicConclusionPerf = this._shadowRoot.getElementById("topic-conclusion-perf");
 
         this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
         this._miniBarAct = this._shadowRoot.getElementById("mini-bar-act");
@@ -757,7 +745,6 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        /* CONEXÕES DE DESVIO HORIZONTAIS FIXAS À ALTURA MÁXIMA DA BARRA (SEM TAGS FLUTUANTES) */
         this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
@@ -785,8 +772,6 @@
       };
 
       let maxBarHeight = 0; barElements.forEach(bar => { if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight; });
-      
-      /* ALINHAMENTO DO DESVIO: Fixado acima do teto físico do gráfico, eliminando dentes e flutuações */
       const fixedCeilingY = containerHeight - maxBarHeight - 16;
       
       pairsToConnect.forEach((pair) => {
@@ -795,17 +780,21 @@
         
         const val1 = visibleSeriesData[pair.from].value; const val2 = visibleSeriesData[pair.to].value;
         const diff = val2 - val1; let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
-        const isCostIncrease = val2 > val1;
         
-        if (isCostIncrease && variancePercent > 0) { variancePercent = -variancePercent; }
-        else if (!isCostIncrease && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
+        /* CORRECAO SEMANTICA ABSOLUTA: 
+           Como o cubo avalia CUSTOS/DESPESAS, gastar MENOS que o planejado (diff < 0) é um desvio POSITIVO (Economia = Verde).
+           Gastar MAIS que o planejado (diff > 0) é um desvio NEGATIVO (Estouro/Aumento de Custo = Vermelho). */
+        const isCostSaving = diff <= 0;
         
-        const directionalArrow = variancePercent >= 0 ? "▲ " : "▼ ";
+        if (!isCostSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
+        else if (isCostSaving && variancePercent > 0) { variancePercent = -variancePercent; }
+        
+        const directionalArrow = isCostSaving ? "▼ " : "▲ ";
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
         const markerId = "url(#arrow-neutral)";
-        const lineStrokeColor = "#718096";
+        const lineStrokeColor = "var(--color-border-axis)";
 
-        /* LINHAS SÓLIDAS EM AMBOS OS GRÁFICOS CONFORME DIRETRIZ VISUAL */
+        /* LINHA SOLIDA E SIMETRICA EM TODOS OS MODOS VISUAIS CRITICOS */
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); 
@@ -821,7 +810,7 @@
         const div = document.createElement("div"); div.style.display = "flex"; div.style.justifyContent = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
         const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
         
-        if (isCostIncrease) { span.classList.add("increase"); } else { span.classList.add("saving"); }
+        if (isCostSaving) { span.classList.add("saving"); } else { span.classList.add("increase"); }
         div.appendChild(span); foreignObj.appendChild(div); svg.appendChild(foreignObj);
       });
     }
@@ -837,16 +826,19 @@
       const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
       const consumptionMonthPercent = budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0;
       
+      const isMonthSaving = diffNominal <= 0;
+      
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
-      const formatPercent = (v) => (v >= 0 ? "▲ " : "▼ ") + Math.abs(v).toFixed(2) + "%";
+      const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
-      // 1. RE-HYDRATION ATÔMICA DO MÊS
+      // 1. RE-HYDRATION METRICAS DO MES (COMPORTAMENTO DE CUSTOS)
       this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
-      this._valPctRow.textContent = formatPercent(diffPercent);
-      this._valPctRow.className = "status-badge-finance " + (diffNominal > 0 ? "warning" : "success");
+      this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
+      this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
       this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
+      this._monthConsumptionBadge.className = "status-badge-finance " + (consumptionMonthPercent <= 100 ? "success" : "warning");
 
-      // 2. LOGICA ACUMULADA (YTD)
+      // 2. CALCULO ACUMULADO ANUAL (YTD)
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
@@ -868,13 +860,19 @@
       const diffYtdNominal = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
       const diffYtdPercent = totalBudgetYTDCompleto !== 0 ? (diffYtdNominal / totalBudgetYTDCompleto) * 100 : 0;
       const consumoBudgetPercent = (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100;
+      
+      const isYtdSaving = diffYtdNominal <= 0;
 
       this._ytdDiffRow.textContent = (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal);
-      this._ytdDiffPctBadge.textContent = formatPercent(diffYtdPercent);
-      this._ytdDiffPctBadge.className = "status-badge-finance " + (diffYtdNominal > 0 ? "warning" : "success");
+      this._ytdDiffPctBadge.textContent = formatPercent(diffYtdPercent, isYtdSaving);
+      this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
+      this._ytdConsumptionBadge.className = "status-badge-finance " + (consumoBudgetPercent <= 100 ? "success" : "warning");
 
-      // 3. RENDERIZACAO E CONEXÃO DO MINI-CHART DO YTD
+      // CORRECAO: ALINHAMENTO FIXO DO TITULO DO MINIGRAFICO YTD AO TOPO DA ESTEIRA
+      this._ytdChartHeaderTitle.textContent = `Evolução YTD Acumulada (${currentYear})`;
+
+      // 3. ATUALIZACAO E TRATAMENTO DE LINHAS DO CHART YTD (METODOLOGIA UNIFICADA)
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
@@ -895,11 +893,14 @@
       ];
       this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ytdBarElements, ytdSeriesMock, 1, "ytd");
 
-      // 4. GENERATION DE TEXTO DE INSIGHTS DINÂMICOS (HIGHLIGHTS)
-      const monthStatusText = diffNominal > 0 ? "acima do planejado" : "com economia gerada";
-      const ytdStatusText = diffYtdNominal > 0 ? "estouro orçamentário acumulado" : "eficiência financeira consolidada";
-      
-      this._highlightContentText.textContent = `Análise de Competência para ${monthLabel.toUpperCase()} ${currentYear}: O desvio do mês fechou ${monthStatusText} em R$ ${Math.abs(diffNominal / 1000000).toFixed(2)}M, representando um consumo total de ${consumptionMonthPercent.toFixed(1)}% do orçamento alocado. No consolidado anual (YTD), o comportamento indica ${ytdStatusText} no valor de R$ ${Math.abs(diffYtdNominal / 1000000).toFixed(2)}M frente à meta acumulada de R$ ${formatM(totalBudgetYTDCompleto)}.`;
+      // 4. CORREÇÃO DE HIGHLIGHTS: TOPICOS ESCANEAVEIS DE LEITURA AGIL PARA O C-LEVEL
+      const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
+      const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
+
+      // Injeção segura via textContent em tópicos atômicos
+      this._topicMonthPerf.textContent = `Performance Mensal (${monthLabel}): Fechamento com ${monthStatusLabel} de R$ ${Math.abs(diffNominal / 1000000).toFixed(2)}M frente ao budget planejado.`;
+      this._topicYtdPerf.textContent = `Consumo do Período: O volume utilizado do budget atingiu ${consumptionMonthPercent.toFixed(1)}% no mês corrente, mantendo o controle operacional.`;
+      this._topicConclusionPerf.textContent = `Posicionamento YTD: O acumulado anual consolidou um desvio ${ytdStatusLabel}, totalizando R$ ${formatM(totalRealizadoYTDAtual)} consumidos contra uma meta acumulada de R$ ${formatM(totalBudgetYTDCompleto)} (${consumoBudgetPercent.toFixed(1)}% de absorção).`;
 
       this._insightGrid.style.display = "grid";
     }
@@ -923,26 +924,11 @@
   const templateStyling = document.createElement("template");
   templateStyling.innerHTML = `
     <style>
-      #root {
-        padding: 14px;
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 11px;
-        color: #2c3e50;
-      }
+      #root { padding: 14px; font-family: system-ui, -apple-system, sans-serif; font-size: 11px; color: #2c3e50; }
       .control-group { margin-bottom: 12px; }
-      label {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      input[type="color"] {
-        display: block; width: 100%; height: 28px; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer; background: #ffffff;
-      }
-      input[type="number"] {
-        width: 100%; height: 26px; border: 1px solid #cbd5e0; border-radius: 4px; padding-left: 6px; box-sizing: border-box;
-      }
+      label { display: block; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+      input[type="color"] { display: block; width: 100%; height: 28px; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer; background: #ffffff; }
+      input[type="number"] { width: 100%; height: 26px; border: 1px solid #cbd5e0; border-radius: 4px; padding-left: 6px; box-sizing: border-box; }
     </style>
     <div id="root">
       <div class="control-group">
@@ -969,7 +955,6 @@
       super();
       this._shadowRoot = this.attachShadow({ mode: "open" });
       this._shadowRoot.appendChild(templateStyling.content.cloneNode(true));
-
       this._changeProperty = this._changeProperty.bind(this);
 
       this._shadowRoot.getElementById("cls-act").addEventListener("change", (e) => this._changeProperty("colorActualMonth", e.target.value));
