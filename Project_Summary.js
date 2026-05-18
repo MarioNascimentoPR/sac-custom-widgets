@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY (NOW-1 & MULTI-DIM)
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DIAGNOSTIC MULTI-DIMENSIONAL VERSION
    ========================================================================== */
 
 (function () {
@@ -186,6 +186,11 @@
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
       this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
 
+      // Identificadores globais estáveis para as dimensões do cubo
+      this._tempoDimId = null;
+      this._versaoDimId = null;
+      this._extraDimIds = [];
+
       this._boundWindowClick = (e) => {
         if (!this._isDropdownOpen) return;
         const path = e.composedPath();
@@ -261,14 +266,12 @@
       this._hlMonthLi = document.createElement("li");
       this._hlConsLi = document.createElement("li");
       this._hlYtdLi = document.createElement("li");
-      this._hlExtraLi1 = document.createElement("li"); // Linha atômica para Ofensores (Laranja/Vermelho)
-      this._hlExtraLi2 = document.createElement("li"); // Linha atômica para Economia/Alívio (Verde)
+      this._hlOffenderLi = document.createElement("li"); 
       
       ul.appendChild(this._hlMonthLi);
       ul.appendChild(this._hlConsLi);
       ul.appendChild(this._hlYtdLi);
-      ul.appendChild(this._hlExtraLi1);
-      ul.appendChild(this._hlExtraLi2);
+      ul.appendChild(this._hlOffenderLi);
       
       this._highlightContentText.textContent = "";
       this._highlightContentText.appendChild(ul);
@@ -347,7 +350,7 @@
 
         this._measId = measureKeys[0];
         
-        // CORREÇÃO GLOBAL: Passagem estrita das dimensões mapeadas para o escopo estável do objeto da classe
+        // CORREÇÃO CRÍTICA DE ESCOPO: Salvando as chaves dinâmicas diretamente no escopo global do objeto (this)
         this._tempoDimId = null;
         this._versaoDimId = null;
 
@@ -365,7 +368,6 @@
         if (!this._tempoDimId) this._tempoDimId = dimKeys[0];
         if (!this._versaoDimId) this._versaoDimId = dimKeys[1] || null;
 
-        // Isola dinamicamente as novas colunas injetadas (Item Financeiro e Conta Contábil)
         this._extraDimIds = dimKeys.filter(key => key !== this._tempoDimId && key !== this._versaoDimId);
 
         const timelineMap = {};
@@ -432,7 +434,7 @@
           return a.monthNum - b.monthNum;
         });
 
-        // Inicialização cronológica baseada na data real do sistema (Now - 1 mês = Abril 2026)
+        // Inicialização cronológica baseada na data do sistema (Now - 1 mês)
         const nowRuntime = new Date();
         let targetMonthNum = nowRuntime.getMonth(); 
         let targetYearNum = nowRuntime.getFullYear();
@@ -727,21 +729,29 @@
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
       // ==========================================================================
-      // ENGINE DE NARRATIVAS MULTIDIMENSIONAL COM CORREÇÃO DE ESCOPO
+      // ENGINE DE NARRATIVAS MULTIDIMENSIONAL (CORREÇÃO DE PONTEIROS DE ESCOPO)
       // ==========================================================================
       const breakdownMap = {};
       const financialData = this._currentData;
 
+      let scannedRowCount = 0;
+
       financialData.data.forEach(row => {
+        // Validação defensiva robusta baseada no ponteiro global estável da instância
+        if (!this._tempoDimId) return;
         const tempoObj = row[this._tempoDimId];
         if (!tempoObj || String(tempoObj.id) !== currentBarNode.id) return;
 
+        scannedRowCount++;
+
         let labelParts = [];
-        this._extraDimIds.forEach(dimId => {
-          if (row[dimId]) {
-            labelParts.push(row[dimId].label || row[dimId].description || row[dimId].id || "");
-          }
-        });
+        if (this._extraDimIds && this._extraDimIds.length > 0) {
+          this._extraDimIds.forEach(dimId => {
+            if (row[dimId]) {
+              labelParts.push(row[dimId].label || row[dimId].description || row[dimId].id || "");
+            }
+          });
+        }
         const key = labelParts.join(" ➔ ") || "Outros";
 
         if (!breakdownMap[key]) {
@@ -749,6 +759,7 @@
         }
 
         const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+        
         if (this._versaoDimId && row[this._versaoDimId]) {
           const vId = String(row[this._versaoDimId].id).toUpperCase();
           const vLabel = String(row[this._versaoDimId].label || row[this._versaoDimId].description || "").toUpperCase();
@@ -762,7 +773,7 @@
         }
       });
 
-      // Extração bidirecional do maior Ofensor e do maior Ponto de Eficiência
+      // Extração bidirecional baseada nas dimensões adicionais (Item / Conta Contábil)
       let topOffenderName = "";
       let topOffenderValue = 0;
       let topSaverName = "";
@@ -784,7 +795,7 @@
         }
       });
 
-      // População atômica e segura das linhas nativas (Garantia de imunização Anti-XSS)
+      // Alimentação atômica dos bullets base do card (Imunização XSS)
       this._hlMonthLi.textContent = "";
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); 
@@ -823,32 +834,53 @@
       this._hlYtdLi.appendChild(valueSpan3);
       this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
 
-      // Injeção dinâmica da análise enriquecida pelas novas dimensões no bloco final de Highlights
+      // ==========================================================================
+      // BULLET 4: BLOCO COGNITIVO DE VALIDAÇÃO E TELEMETRIA DIMENSIONAL (PASSO A PASSO)
+      // ==========================================================================
       this._hlOffenderLi.textContent = "";
-      if (topOffenderValue > 0) {
-        this._hlOffenderLi.style.display = "block";
+      this._hlOffenderLi.style.display = "block";
+
+      if (scannedRowCount === 0) {
+        // Alerta de Incompatibilidade de Filtro/Mês
+        const badSpan = document.createElement("span");
+        badSpan.textContent = "ALERTA DE TELEMETRIA OPERACIONAL";
+        badSpan.style.color = "#EF6C00";
+        badSpan.style.fontWeight = "700";
+        this._hlOffenderLi.appendChild(badSpan);
+        this._hlOffenderLi.appendChild(document.createTextNode(`: O cubo retornou dados, mas nenhuma linha corresponde à chave de tempo ativa (${currentBarNode.id}). Scan de chaves: Tempo=[${this._tempoDimId}], Versão=[${this._versaoDimId}], Extras=[${this._extraDimIds.join(', ')}]. Linhas totais no cubo: ${financialData.data.length}.`));
+      
+      } else if (Object.keys(breakdownMap).length <= 1 && Object.keys(breakdownMap)[0] === "Outros") {
+        // Alerta de Ausência de Vinculação de Dimensões Extras no Builder Panel
+        const badSpan = document.createElement("span");
+        badSpan.textContent = "AVISO DE ENRIQUECIMENTO SEGUIDO";
+        badSpan.style.color = "#EF6C00";
+        badSpan.style.fontWeight = "700";
+        this._hlOffenderLi.appendChild(badSpan);
+        this._hlOffenderLi.appendChild(document.createTextNode(`: Engine ativada para o mês ${monthLabel} (${scannedRowCount} tuplas), mas chaves extras não retornaram membros. Verifique se as dimensões de "Item Financeiro" e "Conta" foram soltas no container de dimensões do Builder Panel.`));
+      
+      } else if (topOffenderValue > 0) {
+        // Fluxo de Ofensor Crítico Mapeado
         const s4 = document.createElement("strong"); s4.textContent = "Detalhamento Crítico: ";
         const offenderSpan = document.createElement("span");
         offenderSpan.textContent = topOffenderName;
         offenderSpan.style.color = "#D32F2F"; 
         offenderSpan.style.fontWeight = "700";
         this._hlOffenderLi.appendChild(s4);
-        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta pressão acima da meta na linha de "));
+        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta desvio adverso na linha de "));
         this._hlOffenderLi.appendChild(offenderSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`, com desvio adverso de R$ ${formatM(topOffenderValue)}.`));
+        this._hlOffenderLi.appendChild(document.createTextNode(`, com estouro orçamentário de R$ ${formatM(topOffenderValue)}.`));
+      
       } else if (topSaverValue > 0) {
-        this._hlOffenderLi.style.display = "block";
+        // Fluxo de Eficiência Operacional Mapeado (Ex: Caso de Março com economia geral)
         const s4 = document.createElement("strong"); s4.textContent = "Detalhamento de Eficiência: ";
         const saverSpan = document.createElement("span");
         saverSpan.textContent = topSaverName;
         saverSpan.style.color = "#2E7D32"; 
         saverSpan.style.fontWeight = "700";
         this._hlOffenderLi.appendChild(s4);
-        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta excelente performance na linha de "));
+        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta excelente performance na combinação "));
         this._hlOffenderLi.appendChild(saverSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`, liderando a economia com menos R$ ${formatM(topSaverValue)} contra a meta.`));
-      } else {
-        this._hlOffenderLi.style.display = "none";
+        this._hlOffenderLi.appendChild(document.createTextNode(`, liderando a otimização com economia de R$ ${formatM(topSaverValue)} contra a meta.`));
       }
 
       this._insightGrid.style.display = "grid";
