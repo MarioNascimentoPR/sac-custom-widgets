@@ -78,7 +78,7 @@
 
       .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto; }
       
-      /* ÚNICA ALTERAÇÃO NESTE ARQUIVO: Aumentado height e padding-top para esticar a haste para cima */
+      /* Aumentado o topo para esticar as hastes para cima sem esmagar as colunas */
       .chart-container-block { position: relative; height: 195px; padding-top: 75px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
@@ -585,6 +585,9 @@
       }
     }
 
+    /* ==========================================================================
+       A SOLUÇÃO DO OVO DE COLOMBO: O SVG DESCE ATÉ O CHÃO E FICA ATRÁS DA BARRA
+       ========================================================================== */
     _drawUnifiedFlatConnections(svg, container, barElements, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
       const containerHeight = container.offsetHeight; 
@@ -599,11 +602,13 @@
         pairs.push({ from: 1, to: 2 });
       }
 
+      // Calcula apenas o eixo X (o centro da coluna)
       const getCenterX = (idx) => {
         const bar = barElements[idx]; if (!bar) return 0;
         return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
       };
 
+      // Teto fixo (passa folgado acima dos números). O Chão é o final da div do gráfico.
       const ceilingY = 16;
       const floorY = containerHeight; 
       
@@ -617,6 +622,7 @@
         const diff = val2 - val1; 
         let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
         
+        // Regra Contábil Correta: Gastar menos (<=0) é Verde (Saving)
         const isCostSaving = diff <= 0;
         
         if (!isCostSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
@@ -625,6 +631,7 @@
         const directionalArrow = isCostSaving ? "▼ " : "▲ ";
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
 
+        // A MÁGICA: A linha faz um quadrado que desce até o chão (onde é escondida pelas barras)
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
         path.setAttribute("stroke", "#cbd5e0"); 
@@ -632,6 +639,7 @@
         path.setAttribute("fill", "none"); 
         svg.appendChild(path);
         
+        // Tag isolada flutuando na parte horizontal do quadrado
         const midX = xFrom + (xTo - xFrom) / 2;
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
         foreignObj.setAttribute("x", (midX - 35).toString()); 
@@ -664,11 +672,13 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
+      // 1. DADOS DO MÊS ATUAL
       this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
       this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
       this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
       this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
 
+      // 2. LÓGICA DO YTD
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
@@ -697,6 +707,7 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
+      // 3. GRÁFICO E MOCK YTD
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
@@ -715,6 +726,7 @@
         { value: totalBudgetYTDCompleto }
       ];
 
+      // 4. TEXTO DINÂMICO
       const monthStatusText = isMonthSaving ? "economia de custos" : "aumento de despesas";
       const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
       
