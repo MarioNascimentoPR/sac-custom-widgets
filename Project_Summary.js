@@ -191,17 +191,21 @@
 
       .legend-color.hist { background-color: var(--color-historical); }
       .legend-color.act { background-color: var(--color-actual); }
+      
+      /* HACHURADO DISCRETO NA LEGENDA */
       .legend-color.bud { 
         background-color: transparent; 
-        border: 1.5px dashed var(--color-budget);
+        border: 1px solid var(--color-budget);
         box-sizing: border-box;
+        background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
+        background-size: 4px 4px;
       }
       
       .chart-container-block {
         position: relative;
-        height: 155px; 
-        padding-top: 25px; 
-        margin-bottom: 4px;
+        height: 165px; 
+        padding-top: 32px; 
+        margin-bottom: 0px; /* Zerado margem para alinhar perfeitamente com a linha de base */
         flex-shrink: 0;
         box-sizing: border-box;
       }
@@ -248,6 +252,8 @@
         position: relative;
         display: flex;
         justify-content: center;
+        margin-bottom: 0px; /* Força encostar na linha */
+        bottom: 0px;
       }
       
       .bar-element.historical { background-color: var(--color-historical); }
@@ -255,11 +261,17 @@
         background-color: var(--color-actual);
         box-shadow: 0 0 10px rgba(31, 119, 180, 0.35);
         border: 1px solid #15517b;
+        box-sizing: border-box;
       }
+      
+      /* HACHURADO DISCRETO NA BARRA E CORREÇÃO DO ALINHAMENTO BASE (Fim do gap de pixels) */
       .bar-element.budget {
         background-color: transparent;
-        border: 2px dashed var(--color-budget);
+        border: 1px dashed var(--color-budget);
+        border-bottom: 1px solid var(--color-budget); /* Garante fechamento na base */
         box-sizing: border-box;
+        background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
+        background-size: 6px 6px;
       }
       
       .kpi-label {
@@ -558,7 +570,6 @@
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
         
-        // Ponteiros para a nova linha comparativa mensal
         this._lblPrevMonthRow = this._shadowRoot.getElementById("lbl-prev-month-row");
         this._valPrevMonthRow = this._shadowRoot.getElementById("val-prev-month-row");
         this._valPrevMonthPctRow = this._shadowRoot.getElementById("val-prev-month-pct-row");
@@ -832,7 +843,6 @@
 
         this._clearDOM();
 
-        // REQUISITO CUMPRIDO: Modificado o startIndex para capturar e plotar os últimos 13 meses na tela
         let visibleSeriesData = [];
         const startIndex = Math.max(0, actualIndex - 12); 
         visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
@@ -873,34 +883,56 @@
     _drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex) {
       if (!document.contains(this) || !this._shadowRoot || visibleActualIndex === -1) return;
       const svg = this._svgOverlay; const containerHeight = this._chartArea.offsetHeight; if (containerHeight === 0) return;
+      
       const pairsToConnect = [];
-      if (visibleActualIndex > 0) pairsToConnect.push({ from: visibleActualIndex - 1, to: visibleActualIndex });
-      if (visibleActualIndex < barElements.length - 1) pairsToConnect.push({ from: visibleActualIndex, to: visibleActualIndex + 1 });
+      if (visibleActualIndex > 0) pairsToConnect.push({ from: visibleActualIndex - 1, to: visibleActualIndex, type: "monthly" });
+      if (visibleActualIndex < barElements.length - 1) pairsToConnect.push({ from: visibleActualIndex, to: visibleActualIndex + 1, type: "budget" });
+      
+      if (visibleActualIndex >= 12) {
+        pairsToConnect.push({ from: visibleActualIndex - 12, to: visibleActualIndex, type: "yoy" });
+      }
+
       const getBarCenterAndTop = (idx) => {
         const bar = barElements[idx]; if (!bar) return { x: 0, y: 0 };
         return { x: bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2), y: containerHeight - bar.offsetHeight };
       };
+
       let maxBarHeight = 0; barElements.forEach(bar => { if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight; });
       const globalCeilingY = containerHeight - maxBarHeight - 16;
+      
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from); const coordTo = getBarCenterAndTop(pair.to);
         if (coordFrom.x === 0 && coordTo.x === 0) return;
+        
         const val1 = visibleSeriesData[pair.from].value; const val2 = visibleSeriesData[pair.to].value;
         const diff = val2 - val1; let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
         const isCostIncrease = val2 > val1;
+        
         if (isCostIncrease && variancePercent > 0) { variancePercent = -variancePercent; }
         else if (!isCostIncrease && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
+        
         const varianceText = (variancePercent >= 0 ? "+" : "") + variancePercent.toFixed(2) + "%";
-        const lineStrokeColor = "#718096"; const markerId = "url(#arrow-neutral)";
+        const markerId = "url(#arrow-neutral)";
+        
+        const lineCeiling = pair.type === "yoy" ? globalCeilingY - 24 : globalCeilingY;
+        const lineStrokeColor = pair.type === "yoy" ? "#2b6cb0" : "#718096";
+
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${globalCeilingY} L ${coordTo.x} ${globalCeilingY} L ${coordTo.x} ${coordTo.y - 5}`);
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${lineCeiling} L ${coordTo.x} ${lineCeiling} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); path.setAttribute("marker-end", markerId);
+        if (pair.type === "yoy") {
+          path.setAttribute("stroke-dasharray", "3,3"); 
+        }
         svg.appendChild(path);
+        
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
+        
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (globalCeilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (lineCeiling - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        
         const div = document.createElement("div"); div.style.display = "flex"; div.style.justify = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
         const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
+        
         if (isCostIncrease) { span.classList.add("increase"); } else { span.classList.add("saving"); }
         div.appendChild(span); foreignObj.appendChild(div); svg.appendChild(foreignObj);
       });
@@ -919,16 +951,14 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 
-      // 1. Atualização dos campos do Mês Atual (Garante duas casas decimais fixas)
       this._titleColCurrent.textContent = `Mês Atual (${monthLabel.toUpperCase()})`;
       this._lblActRow.textContent = `Realizado Comercial`; 
       this._valActRow.textContent = formatM(actualVal);
       this._valBudRow.textContent = formatM(budgetVal);
-      this._valDiffRow.textContent = formatM(diffNominal);
-      this._valPctRow.textContent = formatPercent(diffPercent);
-      this._valPctRow.style.color = (diffNominal < 0) ? "#c5221f" : "#137333";
+      this._titleColCurrent.parentElement.querySelector("table tbody").rows[2].cells[1].textContent = formatM(diffNominal);
+      this._titleColCurrent.parentElement.querySelector("table tbody").rows[2].cells[2].textContent = formatPercent(diffPercent);
+      this._titleColCurrent.parentElement.querySelector("table tbody").rows[2].cells[2].style.color = (diffNominal < 0) ? "#137333" : "#c5221f";
 
-      // REQUISITO CUMPRIDO: Localiza e calcula a linha homologa YoY para o mesmo mês do ano anterior
       const prevYearMonthNode = fullSeriesData.find(d => d.yearValue === previousYear && d.monthNum === currentBarNode.monthNum);
       const prevYearMonthVal = prevYearMonthNode ? prevYearMonthNode.value : 0;
       
@@ -945,9 +975,8 @@
       this._lblPrevMonthRow.textContent = `Mesmo Mês Ano Ant. (${previousYear})`;
       this._valPrevMonthRow.textContent = formatM(prevYearMonthVal);
       this._valPrevMonthPctRow.textContent = formatPercent(pctMonthYoY) + " YoY";
-      this._valPrevMonthPctRow.style.color = isMonthYoYRetraction ? "#c5221f" : "#137333";
+      this._valPrevMonthPctRow.style.color = isMonthYoYRetraction ? "#137333" : "#c5221f";
 
-      // 2. Lógica Comparativa Cumulativa (YTD)
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
@@ -980,7 +1009,7 @@
       this._ytdPrevLbl.textContent = `Acumulado Ano Ant. (${previousYear})`; 
       this._ytdPrevAbsRow.textContent = formatM(totalRealizadoYTDAntigo);
       this._ytdPrevPctLbl.textContent = formatPercent(pctYoY) + " Desvio";
-      this._ytdPrevPctLbl.className = "status-badge-finance " + (isYoYRetraction ? "warning" : "success");
+      this._ytdPrevPctLbl.className = "status-badge-finance " + (isYoYRetraction ? "success" : "warning");
 
       this._insightGrid.style.display = "flex";
     }
