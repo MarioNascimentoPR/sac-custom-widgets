@@ -1,13 +1,13 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY UNIT
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HIGH PERFORMANCE RUNTIME
    ========================================================================== */
 
 (function () {
-  // CONFIGURAÇÃO CORPORATIVA: Altere para false para desligar 100% a Telemetria
+  // CHAVE DE DESATIVAÇÃO OPERACIONAL: Altere para false para desligar 100% a Telemetria
   const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
-     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E STRESS TEST (HEADLESS)
+     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E PROFILING CIENTÍFICO (HEADLESS)
      ========================================================================== */
   class EvoStreamProfiler {
     constructor() {
@@ -101,6 +101,15 @@
         display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
       .tree-dropdown-content.show { display: block; }
+      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
+      .tree-year-node:hover { background-color: #edf2f7; }
+      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
+      .tree-year-node.expanded::before { transform: rotate(90deg); }
+      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
+      .tree-months-container.show { display: flex; }
+      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
+      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
+      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       
       .telemetry-btn {
         font-size: 11px; font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
@@ -112,6 +121,7 @@
       .telemetry-modal.show { display: block; }
       .telemetry-title { font-size: 11.5px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
       .telemetry-close { background: none; border: none; font-size: 16px; cursor: pointer; color: #94a3b8; font-weight: 700; line-height: 1; }
+      .telemetry-close:hover { color: #64748b; }
       .telemetry-section-title { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 10px 0 4px 0; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
       .telemetry-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; align-items: center; }
       .telemetry-label { font-weight: 600; color: #64748b; }
@@ -142,7 +152,7 @@
       .html-bracket-track { position: absolute; border-top: 1.25px solid #cbd5e0; border-left: 1.25px solid #cbd5e0; border-right: 1.25px solid #cbd5e0; pointer-events: none; box-sizing: border-box; }
       .html-bracket-badge-anchor { position: absolute; width: 70px; height: 22px; display: flex; justify-content: center; align-items: center; pointer-events: none; transform: translate(-35px, -11px); }
 
-      /* NOVO MODELO DE COLUNA: Sincronia horizontal absoluta e imune a quebras */
+      /* CONTAINER INTEGRADO: Garante alinhamento imutável e pixel-perfect entre barra e eixo X */
       .bar-column { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 46px; height: 100%; position: relative; gap: 6px; }
       .bar-element { width: 100%; max-width: 46px; height: 0%; position: relative; border-radius: 3px 3px 0 0; transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1); flex-shrink: 0; }
       .bar-element.historical { background-color: var(--color-historical); }
@@ -191,7 +201,6 @@
         border-left: 4px solid #cbd5e0; border-radius: 8px; padding: 14px 16px; color: #333333;
       }
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
-      .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
     </style>
     <div id="widget-wrapper">
@@ -340,6 +349,7 @@
         isSaving: ytdDiff <= 0
       };
 
+      // VIRTUALIZAÇÃO COGNITIVA: Pre-sort à volumetria limite para estabilidade computacional
       const scannedRows = cubeData.map(row => {
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
         return { row, weight: Math.abs(rawValue) };
@@ -412,6 +422,7 @@
           }
         });
 
+        // TRAVA DE SEGURANÇA CONTRA VALORES NULOS
         let driverImpactValue = 0;
         if (driverContaName && item.contas[driverContaName]) {
           driverImpactValue = item.contas[driverContaName].realizado - item.contas[driverContaName].orcado;
@@ -631,6 +642,12 @@
       if (typeof val === 'number') return val;
       if (!val || val === "-") return 0;
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+    }
+
+    _clearSvgOverlay(svg) {
+      while (svg.lastElementChild) {
+        svg.removeChild(svg.lastElementChild);
+      }
     }
 
     renderChart() {
@@ -916,7 +933,7 @@
     }
 
     /* ==========================================================================
-       GRÁFICO BLINDADO POR COLUNAS: TRAVA O ALINHAMENTO DO EIXO X NATURALMENTE
+       CONSTRUÇÃO UNIFICADA DO GRÁFICO (EVITA COMPLETAMENTE DESALINHAMENTOS)
        ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
       this._chartArea.textContent = ""; 
@@ -929,7 +946,7 @@
         const bar = document.createElement("div");
         bar.className = `bar-element ${d.type}`;
         
-        // Atribuição via propriedade geométrica real controlada por loops reativos
+        // Renderização nativa estável via CSS percentual sem esticar fontes
         const heightRatio = (d.value / maxVal) * 100;
         bar.style.height = `${heightRatio}%`;
 
@@ -950,9 +967,6 @@
       this._chartArea.appendChild(fragment);
     }
 
-    /* ==========================================================================
-       VIRTUALIZAÇÃO COMPOSITING LAYER: CONECTORES REATIVOS EM DIVS ABSOLUTOS
-       ========================================================================== */
     _drawUnifiedFlatConnections(overlayContainer, chartArea, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
       
@@ -1010,7 +1024,7 @@
         trackDiv.style.left = `${leftX}px`;
         trackDiv.style.top = `${ceilingY}px`;
         trackDiv.style.width = `${trackWidth}px`;
-        trackDiv.style.height = `${containerHeight - ceilingY - 24}px`; // Margem de segurança de colisão do eixo X
+        trackDiv.style.height = `${containerHeight - ceilingY - 24}px`; 
         fragment.appendChild(trackDiv);
         
         const midX = leftX + (trackWidth / 2);
@@ -1074,7 +1088,7 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
-      // Remontagem dinâmica limpa das 3 mini-colunas YTD
+      // Reconstrução limpa do bloco YTD acumulado
       this._ytdChartArea.textContent = "";
       const ytdFragment = document.createDocumentFragment();
       const miniSeriesData = [
@@ -1110,6 +1124,10 @@
 
       this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
 
+      if (this._highlightCardArea) {
+        this._highlightCardArea.style.borderLeft = isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
+      }
+
       if (this._periodSummaryBanner) {
         this._periodSummaryBanner.style.display = "block";
         this._periodSummaryBanner.className = isYtdSaving ? "period-summary-banner summary-saving" : "period-summary-banner summary-desvio";
@@ -1130,6 +1148,8 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
+      
+      // HIGIENIZAÇÃO DE CORES SINTÁTICAS (Hexadecimais blindados em strings textuais legítimas)
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
@@ -1188,7 +1208,6 @@
         this._profiler.metrics.steps.highlights = performance.now() - tHLStart;
       }
 
-      // Blinda a renderização ativando a visibilidade de toda a malha inferior de KPIs e Destaques
       this._insightGrid.style.display = "grid";
     }
 
