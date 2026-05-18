@@ -223,7 +223,6 @@
         border-color: #feebc8;
       }
 
-      /* REESTRUTURAÇÃO COMPLETA: GRID DUPLO COMPLEMENTAR (Mês Atual vs YTD & Forecast) */
       .insight-grid {
         display: flex;
         gap: 24px;
@@ -296,11 +295,11 @@
         background: var(--color-actual);
       }
 
-      .kpi-table tr.forecast-row td {
-        color: #ef6c00;
+      .kpi-table tr.comparison-row td {
+        color: #2b6cb0;
       }
-      .kpi-table tr.forecast-row .row-title::before {
-        background: #ef6c00;
+      .kpi-table tr.comparison-row .row-title::before {
+        background: #2b6cb0;
       }
 
       .kpi-table .num-cell {
@@ -313,7 +312,6 @@
         color: #1a202c;
       }
 
-      /* TAGS DE STATUS DE GOVERNANÇA CORPORATIVA (Anexo 2) */
       .status-badge-finance {
         font-size: 10px;
         font-weight: 700;
@@ -385,23 +383,23 @@
         </div>
 
         <div class="grid-column-finance">
-          <div class="column-title-finance">Acumulado do Ano (YTD) & Forecast</div>
+          <div class="column-title-finance" id="title-col-ytd">Acumulado do Ano (YTD)</div>
           <table class="kpi-table">
             <tbody>
               <tr>
-                <td class="row-title">Acumulado do Ano (YTD)</td>
+                <td class="row-title" id="ytd-current-lbl">Acumulado Ano Atual (YTD)</td>
                 <td class="num-cell bold-val" id="ytd-abs-row">-</td>
                 <td class="num-cell"><span class="status-badge-finance success">No Prazo</span></td>
               </tr>
               <tr>
                 <td class="row-title">Consumo do Budget Anual</td>
                 <td class="num-cell" id="ytd-pct-row">-</td>
-                <td class="num-cell"><span class="status-badge-finance neutral" id="ytd-ceiling-lbl">Teto: 800M</span></td>
+                <td class="num-cell"><span class="status-badge-finance neutral" id="ytd-ceiling-lbl">-</span></td>
               </tr>
-              <tr class="forecast-row">
-                <td class="row-title" id="forecast-lbl-title">Projeção p/ Dez (Forecast)</td>
-                <td class="num-cell bold-val" id="forecast-abs-row">-</td>
-                <td class="num-cell bold-val"><span class="status-badge-finance warning" id="forecast-pct-lbl">-</span></td>
+              <tr class="comparison-row">
+                <td class="row-title" id="ytd-prev-lbl">Acumulado Ano Anterior</td>
+                <td class="num-cell bold-val" id="ytd-prev-abs-row">-</td>
+                <td class="num-cell bold-val"><span class="status-badge-finance" id="ytd-prev-pct-lbl">-</span></td>
               </tr>
             </tbody>
           </table>
@@ -430,7 +428,6 @@
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         
-        // Mapeamento atômico das duas colunas de fechamento
         this._titleColCurrent = this._shadowRoot.getElementById("title-col-current");
         this._lblActRow = this._shadowRoot.getElementById("lbl-act-row");
         this._valActRow = this._shadowRoot.getElementById("val-act-row");
@@ -438,12 +435,14 @@
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
         
+        this._titleColYtd = this._shadowRoot.getElementById("title-col-ytd");
+        this._ytdCurrentLbl = this._shadowRoot.getElementById("ytd-current-lbl");
         this._ytdAbsRow = this._shadowRoot.getElementById("ytd-abs-row");
         this._ytdPctRow = this._shadowRoot.getElementById("ytd-pct-row");
         this._ytdCeilingLbl = this._shadowRoot.getElementById("ytd-ceiling-lbl");
-        this._forecastLblTitle = this._shadowRoot.getElementById("forecast-lbl-title");
-        this._forecastAbsRow = this._shadowRoot.getElementById("forecast-abs-row");
-        this._forecastPctLbl = this._shadowRoot.getElementById("forecast-pct-lbl");
+        this._ytdPrevLbl = this._shadowRoot.getElementById("ytd-prev-lbl");
+        this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
+        this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
       }
 
       this._resizeObserver = new ResizeObserver(() => {
@@ -612,7 +611,7 @@
           const shortYearString = String(currentYearCounter).substring(2, 4);
           const alignedLabel = `${m.label} ${shortYearString}`;
 
-          seriesData.push({ label: alignedLabel, value: m.realizado, type, originalNode: m, yearValue: currentYearCounter });
+          seriesData.push({ label: alignedLabel, value: m.realizado, type, originalNode: m, yearValue: currentYearCounter, monthNum: targetMonthIndex });
         });
 
         if (actualIndex === -1 && seriesData.length > 0) {
@@ -628,7 +627,8 @@
           value: calculatedBudget,
           type: "budget",
           originalNode: targetBudgetSource,
-          yearValue: seriesData[actualIndex].yearValue
+          yearValue: seriesData[actualIndex].yearValue,
+          monthNum: seriesData[actualIndex].monthNum
         });
 
         this._clearDOM();
@@ -647,7 +647,6 @@
 
           const kpiLabel = document.createElement("span");
           kpiLabel.className = "kpi-label";
-          // PADRONIZAÇÃO EXECUTIVA DE 2 CASAS DECIMAIS NO GRÁFICO (Fim da Incoerência de Rótulos)
           kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
           barElement.appendChild(kpiLabel);
 
@@ -663,8 +662,6 @@
         });
 
         this._drawUnifiedFlatConnections(barElements, seriesData, actualIndex);
-        
-        // PROCESSAMENTO EM LOTE DO NOVO LAYOUT DUPLO CORPORATIVO
         this._renderDoubleFinancePanel(seriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
@@ -710,7 +707,6 @@
         const diff = val2 - val1;
         let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
         
-        // REGRA DE CUSTOS DO GRÁFICO (Casamento com o Erro de Sinal)
         const isCostIncrease = val2 > val1;
         if (isCostIncrease && variancePercent > 0) {
           variancePercent = -variancePercent; 
@@ -762,15 +758,13 @@
       });
     }
 
-    // ARQUITETURA DE MATRIZ FINANCEIRA DUPLA ESTENDIDA (YTD & FORECAST AUTOMATIZADO)
+    // CONCILIAÇÃO DE COMPARAÇÃO HISTÓRICA: ANO ATUAL VS ANO ANTERIOR (REMOÇÃO DO FORECAST)
     _renderDoubleFinancePanel(seriesData, actualIndex, budgetVal) {
       const currentBarNode = seriesData[actualIndex];
       const actualVal = currentBarNode.value;
-      const monthLabel = currentBarNode.label.split(' ')[0]; // Pega apenas a sigla limpa (Mar, Apr)
+      const monthLabel = currentBarNode.label.split(' ')[0]; 
 
       const diffNominal = actualVal - budgetVal;
-      
-      // LOGICA FINANCEIRA DE CUSTOS (Realizado > Budget = Desvio Negativo)
       const isOverBudget = actualVal > budgetVal;
       let diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
       if (isOverBudget && diffPercent > 0) {
@@ -782,7 +776,7 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 
-      // COLUNA 1: Atualização dos campos atômicos do Mês Vigente
+      // 1. Atualização dos campos do Mês Atual
       this._titleColCurrent.textContent = `Mês Atual (${monthLabel.toUpperCase()})`;
       this._lblActRow.textContent = `Realizado Comercial`;
       this._valActRow.textContent = formatM(actualVal);
@@ -790,50 +784,60 @@
       this._valDiffRow.textContent = formatM(diffNominal);
       this._valPctRow.textContent = formatPercent(diffPercent);
 
-      // COLUNA 2: Lógica Macrocumulativa Automatizada do Ano Fiscal (YTD / Forecast)
+      // 2. Lógica Comparativa Cumulativa (YTD Atual vs YTD Ano Anterior)
       const currentYear = currentBarNode.yearValue;
-      let totalRealizadoYTD = 0;
-      let totalBudgetAnualCompleto = 0;
-      let mesesHistoricosContados = 0;
+      const previousYear = currentYear - 1;
+      const cutoffMonthNum = currentBarNode.monthNum; // Mês limite de corte do YTD (Ex: Março = 3)
 
-      // Varre a esteira cronológica para estruturar a matemática acumulativa real
+      let totalRealizadoYTDAtual = 0;
+      let totalRealizadoYTDAntigo = 0;
+      let totalBudgetAnualCompleto = 0;
+
       seriesData.forEach(d => {
-        if (d.type !== "budget" && d.yearValue === currentYear) {
-          totalBudgetAnualCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value; 
-          
-          // Conta na linha do YTD apenas os meses até o período atual inclusive
-          if (seriesData.indexOf(d) <= actualIndex) {
-            totalRealizadoYTD += d.value;
-            mesesHistoricosContados++;
+        if (d.type !== "budget") {
+          // Consolidação do Ano Atual
+          if (d.yearValue === currentYear) {
+            totalBudgetAnualCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value; 
+            if (d.monthNum <= cutoffMonthNum) {
+              totalRealizadoYTDAtual += d.value;
+            }
+          }
+          // Consolidação do Ano Anterior (YTD Correlato)
+          if (d.yearValue === previousYear && d.monthNum <= cutoffMonthNum) {
+            totalRealizadoYTDAntigo += d.value;
           }
         }
       });
 
-      // Proteção matemática caso o banco de dados do orçamento anual retorne zerado
-      if (totalBudgetAnualCompleto === 0) totalBudgetAnualCompleto = 800000000; // Teto do Anexo
+      if (totalBudgetAnualCompleto === 0) totalBudgetAnualCompleto = 800000000; 
 
-      // Consumo Percentual do Budget Anual
-      const consumoBudgetPercent = (totalRealizadoYTD / totalBudgetAnualCompleto) * 100;
+      // Consumo Percentual do Orçamento Anual Corrente
+      const consumoBudgetPercent = (totalRealizadoYTDAtual / totalBudgetAnualCompleto) * 100;
 
-      // CÁLCULO DINÂMICO DE FORECAST (YTD Real + Tendência Média para os meses restantes)
-      const mediaMensalRealizada = totalRealizadoYTD / (mesesHistoricosContados || 1);
-      const mesesRestantesAno = 12 - mesesHistoricosContados;
-      const totalForecastProjetado = totalRealizadoYTD + (mediaMensalRealizada * mesesRestantesAno);
+      // Desvio de Crescimento Homólogo entre Períodos (YoY YTD)
+      const diffYoYNominal = totalRealizadoYTDAtual - totalRealizadoYTDAntigo;
+      let pctYoY = totalRealizadoYTDAntigo !== 0 ? (diffYoYNominal / totalRealizadoYTDAntigo) * 100 : 0;
+      
+      const isYoYCostIncrease = totalRealizadoYTDAtual > totalRealizadoYTDAntigo;
+      if (isYoYCostIncrease && pctYoY > 0) {
+        pctYoY = -pctYoY;
+      } else if (!isYoYCostIncrease && pctYoY < 0) {
+        pctYoY = Math.abs(pctYoY);
+      }
 
-      // Desvio do Forecast frente ao Teto Anual
-      const desvioForecastPercent = (totalForecastProjetado / totalBudgetAnualCompleto) * 100;
-
-      // Atualização dos ponteiros estruturados na tabela de Governança
-      this._ytdAbsRow.textContent = formatM(totalRealizadoYTD);
-      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(1) + "%";
+      // 3. Atualização dos campos da Coluna Direita (YTD Comparativo)
+      this._titleColYtd.textContent = `Acumulado do Ano (YTD) - YoY`;
+      this._ytdCurrentLbl.textContent = `Acumulado Ano Atual (${currentYear})`;
+      this._ytdAbsRow.textContent = formatM(totalRealizadoYTDAtual);
+      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
       this._ytdCeilingLbl.textContent = `Teto: ${formatM(totalBudgetAnualCompleto)}`;
       
-      this._forecastLblTitle.textContent = `Projeção p/ Dez (Forecast)`;
-      this._forecastAbsRow.textContent = formatM(totalForecastProjetado);
-      this._forecastPctLbl.textContent = desvioForecastPercent.toFixed(1) + "% Meta";
+      this._ytdPrevLbl.textContent = `Acumulado Ano Ant. (${previousYear})`;
+      this._ytdPrevAbsRow.textContent = formatM(totalRealizadoYTDAntigo);
+      this._ytdPrevPctLbl.textContent = formatPercent(pctYoY) + " Desvio";
 
-      // Ajuste de classes de alertas dinâmicos baseados no estouro do teto projetado
-      this._forecastPctLbl.className = "status-badge-finance " + (totalForecastProjetado > totalBudgetAnualCompleto ? "warning" : "success");
+      // Altera a cor do status com base no desvio de custos anualizado (Estouro = Laranja)
+      this._ytdPrevPctLbl.className = "status-badge-finance " + (isYoYCostIncrease ? "warning" : "success");
 
       this._insightGrid.style.display = "flex"; 
     }
