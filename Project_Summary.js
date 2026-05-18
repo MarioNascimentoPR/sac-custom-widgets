@@ -563,12 +563,18 @@
       this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
       
       this._updateQueued = false;
+      this._layoutUpdateQueued = false;
       this._analyticsEngine = new EvoNarrativeEngine();
       this._profiler = new EvoStreamProfiler();
 
       this._metadataSignature = "";
       this._metadataContext = null;
       this._seriesCache = null;
+      this._lastVisualState = null;
+      this._analysisCache = null;
+      this._dataSignature = "";
+      this._lastHighlightKey = "";
+      this._lastPeriodSummaryKey = "";
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -670,7 +676,7 @@
         if (!document.contains(this)) return;
         clearTimeout(this._resizeTimeout);
         this._resizeTimeout = setTimeout(() => {
-          this.requestUpdate();
+          this.requestLayoutUpdate();
         }, 40);
       });
       this._resizeObserver.observe(this._chartArea);
@@ -689,6 +695,41 @@
         this.renderChart();
         this._updateQueued = false;
       });
+    }
+
+    requestLayoutUpdate() {
+      if (this._layoutUpdateQueued || !this._lastVisualState) return;
+      this._layoutUpdateQueued = true;
+      requestAnimationFrame(() => {
+        const tSVGStart = performance.now();
+        this._redrawConnectorsOnly();
+        if (ENABLE_TELEMETRY) {
+          this._profiler.metrics.steps.svgDrawing = performance.now() - tSVGStart;
+          if (this._lblStepSVG) this._setText(this._lblStepSVG, `${this._profiler.metrics.steps.svgDrawing.toFixed(2)} ms`);
+        }
+        this._layoutUpdateQueued = false;
+      });
+    }
+
+    _redrawConnectorsOnly() {
+      if (!this._lastVisualState || !document.contains(this) || !this._shadowRoot) return;
+      this._reflowCount++;
+      this._drawUnifiedFlatConnections(this._monthlyConnectors, this._chartArea, ".bar-element", this._lastVisualState.visibleSeriesData, this._lastVisualState.visibleActualIndex, "monthly");
+      this._drawUnifiedFlatConnections(this._ytdConnectors, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
+    }
+
+    _setText(node, value) {
+      if (!node) return;
+      const text = String(value);
+      if (node.textContent !== text) node.textContent = text;
+    }
+
+    _setClass(node, value) {
+      if (node && node.className !== value) node.className = value;
+    }
+
+    _setStyle(node, prop, value) {
+      if (node && node.style[prop] !== value) node.style[prop] = value;
     }
 
     _initStaticHighlightsDOM() {
@@ -717,9 +758,14 @@
         }
 
         this._currentData = this.performanceCube;
+        this._dataSignature = this._profiler._lastDataSignature || this._profiler._buildDataSignature(this.performanceCube);
         this._selectedCutoffId = null;
         this._isTreeBuilt = false; 
         this._seriesCache = null;
+        this._lastVisualState = null;
+        this._analysisCache = null;
+        this._lastHighlightKey = "";
+        this._lastPeriodSummaryKey = "";
         if (this._shadowRoot) {
           this._treeDropdownContent.textContent = ""; 
           this.requestUpdate();
@@ -1045,14 +1091,13 @@
         }
 
         this._renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, calculatedBudget);
+        this._lastVisualState = { visibleSeriesData, visibleActualIndex };
 
         const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
-          this._reflowCount++;
           const tSVGStart = performance.now();
           
-          this._drawUnifiedFlatConnections(this._monthlyConnectors, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
-          this._drawUnifiedFlatConnections(this._ytdConnectors, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
+          this._redrawConnectorsOnly();
           
           if (ENABLE_TELEMETRY) {
             this._profiler.metrics.steps.svgDrawing = performance.now() - tSVGStart;
@@ -1125,13 +1170,13 @@
         const bar = updatedWrappers[idx].querySelector(".bar-element");
         const label = bar.querySelector(".kpi-label");
         
-        bar.className = `bar-element ${d.type}`;
-        bar.style.height = `${(d.value / maxVal) * 100}%`;
-        label.textContent = `${(d.value / 1000000).toFixed(2)}M`;
+        this._setClass(bar, `bar-element ${d.type}`);
+        this._setStyle(bar, "height", `${(d.value / maxVal) * 100}%`);
+        this._setText(label, `${(d.value / 1000000).toFixed(2)}M`);
 
         const axisLabel = updatedLabels[idx];
-        axisLabel.className = d.type === "actual" ? "axis-label actual-month" : "axis-label";
-        axisLabel.textContent = d.label;
+        this._setClass(axisLabel, d.type === "actual" ? "axis-label actual-month" : "axis-label");
+        this._setText(axisLabel, d.label);
       });
     }
 
@@ -1154,9 +1199,7 @@
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
 
-      overlayContainer.textContent = "";
-      const fragment = document.createDocumentFragment();
-
+      const drawablePairs = [];
       pairs.forEach((pair) => {
         const xFrom = barCenters[pair.from];
         const xTo = barCenters[pair.to];
@@ -1186,30 +1229,69 @@
         const leftX = Math.min(xFrom, xTo);
         const trackWidth = Math.abs(xTo - xFrom);
         const ceilingY = 24;
-        
-        const trackDiv = document.createElement("div");
-        trackDiv.className = "html-bracket-track";
-        trackDiv.style.left = `${leftX}px`;
-        trackDiv.style.top = `${ceilingY}px`;
-        trackDiv.style.width = `${trackWidth}px`;
-        trackDiv.style.height = `${containerHeight - ceilingY - 24}px`; 
-        fragment.appendChild(trackDiv);
-        
         const midX = leftX + (trackWidth / 2);
-        const badgeAnchor = document.createElement("div");
-        badgeAnchor.className = "html-bracket-badge-anchor";
-        badgeAnchor.style.left = `${midX}px`;
-        badgeAnchor.style.top = `${ceilingY}px`;
-        
-        const spanTag = document.createElement("span");
-        spanTag.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
-        spanTag.textContent = varianceText;
-        
-        badgeAnchor.appendChild(spanTag);
-        fragment.appendChild(badgeAnchor);
+
+        drawablePairs.push({
+          leftX,
+          midX,
+          trackWidth,
+          ceilingY,
+          height: containerHeight - ceilingY - 24,
+          tagClass: isCostSaving ? "variance-tag saving" : "variance-tag increase",
+          varianceText
+        });
       });
 
-      overlayContainer.appendChild(fragment);
+      let tracks = Array.from(overlayContainer.querySelectorAll(".html-bracket-track"));
+      let badges = Array.from(overlayContainer.querySelectorAll(".html-bracket-badge-anchor"));
+
+      while (tracks.length > drawablePairs.length) {
+        const node = tracks.pop();
+        if (node) node.remove();
+      }
+      while (badges.length > drawablePairs.length) {
+        const node = badges.pop();
+        if (node) node.remove();
+      }
+
+      const fragment = document.createDocumentFragment();
+      while (tracks.length < drawablePairs.length) {
+        const trackDiv = document.createElement("div");
+        trackDiv.className = "html-bracket-track";
+        tracks.push(trackDiv);
+        fragment.appendChild(trackDiv);
+      }
+      while (badges.length < drawablePairs.length) {
+        const badgeAnchor = document.createElement("div");
+        badgeAnchor.className = "html-bracket-badge-anchor";
+        const spanTag = document.createElement("span");
+        badgeAnchor.appendChild(spanTag);
+        badges.push(badgeAnchor);
+        fragment.appendChild(badgeAnchor);
+      }
+      if (fragment.childNodes.length > 0) {
+        overlayContainer.appendChild(fragment);
+      }
+
+      drawablePairs.forEach((item, idx) => {
+        const trackDiv = tracks[idx];
+        const badgeAnchor = badges[idx];
+        let spanTag = badgeAnchor.querySelector("span");
+        if (!spanTag) {
+          spanTag = document.createElement("span");
+          badgeAnchor.appendChild(spanTag);
+        }
+
+        this._setStyle(trackDiv, "left", `${item.leftX}px`);
+        this._setStyle(trackDiv, "top", `${item.ceilingY}px`);
+        this._setStyle(trackDiv, "width", `${item.trackWidth}px`);
+        this._setStyle(trackDiv, "height", `${item.height}px`);
+
+        this._setStyle(badgeAnchor, "left", `${item.midX}px`);
+        this._setStyle(badgeAnchor, "top", `${item.ceilingY}px`);
+        this._setClass(spanTag, item.tagClass);
+        this._setText(spanTag, item.varianceText);
+      });
     }
 
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
@@ -1225,10 +1307,10 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
-      this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
-      this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
-      this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
-      this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
+      this._setText(this._valDiffRow, (diffNominal >= 0 ? "+" : "") + formatM(diffNominal));
+      this._setText(this._valPctRow, formatPercent(diffPercent, isMonthSaving));
+      this._setClass(this._valPctRow, "status-badge-finance " + (isMonthSaving ? "success" : "warning"));
+      this._setText(this._valPctConsumptionRow, consumptionMonthPercent.toFixed(2) + "%");
 
       let totalRealizadoYTDAtual = 0; let totalRealizadoYTDAntigo = 0; let totalBudgetYTDCompleto = 0;
 
@@ -1251,48 +1333,78 @@
       const consumoBudgetPercent = (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100;
       const isYtdSaving = diffYtdNominal <= 0;
 
-      this._ytdDiffRow.textContent = (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal);
-      this._ytdDiffPctBadge.textContent = formatPercent(diffYtdPercent, isYtdSaving);
-      this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
-      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
+      this._setText(this._ytdDiffRow, (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal));
+      this._setText(this._ytdDiffPctBadge, formatPercent(diffYtdPercent, isYtdSaving));
+      this._setClass(this._ytdDiffPctBadge, "status-badge-finance " + (isYtdSaving ? "success" : "warning"));
+      this._setText(this._ytdPctRow, consumoBudgetPercent.toFixed(2) + "%");
 
       // 🛠️ ATUALIZAÇÃO DIRETA E BLINDADA: Mini barras atualizadas de forma segura e sem apagar o DOM
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
       
-      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
-      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
-      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
+      this._setStyle(this._miniBarPrev, "height", `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`);
+      this._setStyle(this._miniBarAct, "height", `${(totalRealizadoYTDAtual / maxYTD) * 100}%`);
+      this._setStyle(this._miniBarBud, "height", `${(totalBudgetYTDCompleto / maxYTD) * 100}%`);
 
-      this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
-      this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
-      this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
+      this._setText(this._miniLblPrev, formatM(totalRealizadoYTDAntigo));
+      this._setText(this._miniLblAct, formatM(totalRealizadoYTDAtual));
+      this._setText(this._miniLblBud, formatM(totalBudgetYTDCompleto));
 
-      this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
-      this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
+      this._setText(this._shadowRoot.getElementById("ytd-axis-lbl-prev"), `Ant. (${previousYear})`);
+      this._setText(this._shadowRoot.getElementById("ytd-axis-lbl-act"), `Atual (${currentYear})`);
 
       this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
 
       if (this._highlightCardArea) {
-        this._highlightCardArea.style.borderLeft = isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
+        this._setStyle(this._highlightCardArea, "borderLeft", isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F");
       }
 
       if (this._periodSummaryBanner) {
-        this._periodSummaryBanner.style.display = "block";
-        this._periodSummaryBanner.className = isYtdSaving ? "period-summary-banner summary-saving" : "period-summary-banner summary-desvio";
-        this._periodSummaryBanner.textContent = "";
+        const periodSummaryKey = [
+          isYtdSaving,
+          diffYtdNominal,
+          diffYtdPercent,
+          consumoBudgetPercent
+        ].join("|");
 
-        this._periodSummaryBanner.appendChild(document.createTextNode("No acumulado YTD, o projeto opera "));
-        const spanYtdStatus = document.createElement("strong");
-        spanYtdStatus.textContent = isYtdSaving ? "abaixo do teto orçamentário (eficiência) " : "acima da meta prevista (atenção) ";
-        this._periodSummaryBanner.appendChild(spanYtdStatus);
+        this._setStyle(this._periodSummaryBanner, "display", "block");
+        this._setClass(this._periodSummaryBanner, isYtdSaving ? "period-summary-banner summary-saving" : "period-summary-banner summary-desvio");
+        if (this._lastPeriodSummaryKey !== periodSummaryKey) {
+          this._lastPeriodSummaryKey = periodSummaryKey;
+          this._periodSummaryBanner.textContent = "";
 
-        this._periodSummaryBanner.appendChild(document.createTextNode("com variação de "));
-        const spanYtdDelta = document.createElement("strong");
-        spanYtdDelta.textContent = `R$ ${Math.abs(diffYtdNominal/1000000).toFixed(2)}M (${diffYtdNominal >= 0 ? "+" : ""}${diffYtdPercent.toFixed(1)}%)`;
-        this._periodSummaryBanner.appendChild(spanYtdDelta);
-        this._periodSummaryBanner.appendChild(document.createTextNode(`, absorvendo ${consumoBudgetPercent.toFixed(1)}% do orçamento total.`));
+          this._periodSummaryBanner.appendChild(document.createTextNode("No acumulado YTD, o projeto opera "));
+          const spanYtdStatus = document.createElement("strong");
+          spanYtdStatus.textContent = isYtdSaving ? "abaixo do teto orçamentário (eficiência) " : "acima da meta prevista (atenção) ";
+          this._periodSummaryBanner.appendChild(spanYtdStatus);
+
+          this._periodSummaryBanner.appendChild(document.createTextNode("com variação de "));
+          const spanYtdDelta = document.createElement("strong");
+          spanYtdDelta.textContent = `R$ ${Math.abs(diffYtdNominal/1000000).toFixed(2)}M (${diffYtdNominal >= 0 ? "+" : ""}${diffYtdPercent.toFixed(1)}%)`;
+          this._periodSummaryBanner.appendChild(spanYtdDelta);
+          this._periodSummaryBanner.appendChild(document.createTextNode(`, absorvendo ${consumoBudgetPercent.toFixed(1)}% do orçamento total.`));
+        }
       }
 
+      const highlightKey = [
+        this._dataSignature,
+        this._metadataSignature,
+        currentBarNode.id,
+        actualVal,
+        budgetVal,
+        totalRealizadoYTDAntigo,
+        totalRealizadoYTDAtual,
+        totalBudgetYTDCompleto
+      ].join("|");
+
+      if (this._lastHighlightKey === highlightKey && this._hlUl.childNodes.length > 0) {
+        if (ENABLE_TELEMETRY) {
+          this._profiler.metrics.steps.highlights = 0;
+        }
+        this._setStyle(this._insightGrid, "display", "grid");
+        return;
+      }
+
+      this._lastHighlightKey = highlightKey;
       this._hlUl.textContent = "";
 
       const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
@@ -1313,10 +1425,16 @@
       this._hlUl.appendChild(liCons);
 
       const tHLStart = performance.now();
-      const analysis = this._analyticsEngine.analyze(
-        this._currentData.data, currentBarNode, currentYear, previousYear,
-        this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData, this._profiler
-      );
+      let analysis;
+      if (this._analysisCache && this._analysisCache.key === highlightKey) {
+        analysis = this._analysisCache.analysis;
+      } else {
+        analysis = this._analyticsEngine.analyze(
+          this._currentData.data, currentBarNode, currentYear, previousYear,
+          this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData, this._profiler
+        );
+        this._analysisCache = { key: highlightKey, analysis };
+      }
 
       analysis.outlierTable.forEach(item => {
         const statusText = item.isSaving ? "economia operacional" : "desvio adverso";
@@ -1354,7 +1472,7 @@
         this._profiler.metrics.steps.highlights = performance.now() - tHLStart;
       }
 
-      this._insightGrid.style.display = "grid";
+      this._setStyle(this._insightGrid, "display", "grid");
     }
 
     getColorActualMonth() { return this._props.colorActualMonth; }
