@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DYNAMIC PER-ITEM HIGHLIGHTS
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DYNAMIC TITLE & OVERVIEW MODEL
    ========================================================================== */
 
 (function () {
@@ -19,8 +19,11 @@
       }
       .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex-shrink: 0; gap: 12px; }
       .header-left-block { display: flex; flex-direction: column; }
-      .widget-title { font-size: 13px; font-weight: 700; color: #2c3e50; }
+      
+      /* AJUSTE TIPOGRÁFICO: Aumento ligeiro do tamanho do texto do título */
+      .widget-title { font-size: 16px; font-weight: 700; color: #2c3e50; }
       .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
+      
       .filter-container-finance { position: relative; display: flex; align-items: center; gap: 6px; z-index: 100; }
       .filter-label-finance { font-size: 11px; font-weight: 600; color: #4a5568; }
       .tree-dropdown-trigger {
@@ -67,7 +70,12 @@
       .variance-tag { font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); white-space: nowrap; display: inline-block; position: relative; z-index: 4; }
       .variance-tag.saving { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
       .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
-      .insight-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-top: auto; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-shrink: 0; width: 100%; }
+      
+      .insight-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1.8fr; 
+        gap: 24px; margin-top: auto; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-shrink: 0; width: 100%; 
+      }
       .grid-column-finance { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
       .column-title-finance { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .panel-content-rows { display: flex; flex-direction: column; gap: 1px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; }
@@ -95,7 +103,7 @@
     <div id="widget-wrapper">
       <div class="widget-header">
         <div class="header-left-block">
-          <div class="widget-title">Performance Mensal</div>
+          <div class="widget-title" id="widgetTitle">Performance Mensal</div>
           <div class="scale-tag">Valores em Milhões (M)</div>
         </div>
         <div class="filter-container-finance">
@@ -206,6 +214,7 @@
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
         this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
+        this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
@@ -332,6 +341,13 @@
 
         this._measId = measureKeys[0];
         
+        // REIDRATAÇÃO DO TÍTULO OVERVIEW: Puxa o Indicador selecionado do Modelo do SAC dinamicamente
+        const measureInfo = mainStructureMembers[this._measId] || {};
+        const indicatorLabel = measureInfo.label || measureInfo.description || measureInfo.id || "Indicador";
+        if (this._widgetTitle) {
+          this._widgetTitle.textContent = `Overview - ${indicatorLabel}`;
+        }
+
         this._tempoDimId = null;
         this._versaoDimId = null;
         this._itemFinanceiroDimId = null;
@@ -648,9 +664,6 @@
       svg.appendChild(fragment);
     }
 
-    /* ==========================================================================
-       ENGINE DE HIGHLIGHTS DINÂMICA - DETALHAMENTO DE CADA ITEM FINANCEIRO
-       ========================================================================== */
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
@@ -719,10 +732,8 @@
       const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
-      // Limpeza atômica do contêiner de lista para remontagem dinâmica
       this._hlUl.textContent = "";
 
-      // Injeção segura das 3 linhas de telemetria corporativa global
       const liMonth = document.createElement("li");
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
@@ -742,7 +753,6 @@
       liYtd.appendChild(s3); liYtd.appendChild(document.createTextNode("Acumulado com desvio ")); liYtd.appendChild(statusSpan3); liYtd.appendChild(document.createTextNode(", consumindo ")); liYtd.appendChild(valueSpan3); liYtd.appendChild(document.createTextNode(" do ano."));
       this._hlUl.appendChild(liYtd);
 
-      // Agregação multidimensional limpa em memória (YTD acumulado)
       const itemFinanceiroMap = {};
       const financialData = this._currentData;
 
@@ -759,7 +769,6 @@
         const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
         const itemUpper = itemName.toUpperCase();
         
-        // HIGIENIZAÇÃO: Exclusão estrita de agregadores padrão, do item "Outros" e de rateios/liquidações
         if (
           itemUpper.includes("TOTAL") || 
           itemUpper.includes("ALL_MEMBERS") || 
@@ -807,9 +816,6 @@
         }
       });
 
-      // ==========================================================================
-      // MAPEAMENTO E RENDERIZAÇÃO SEQUENCIAL DE CADA ITEM FINANCEIRO VÁLIDO
-      // ==========================================================================
       Object.keys(itemFinanceiroMap).forEach(itemName => {
         const metrics = itemFinanceiroMap[itemName];
         const desvioItem = metrics.realizado - metrics.orcado;
@@ -820,7 +826,6 @@
         const semanticColor = isSaving ? "#2E7D32" : "#D32F2F";
         const directionalArrow = isSaving ? "▼ " : "▲ ";
 
-        // Localiza a subconta contábil de maior magnitude (Outlier driver interno do item)
         let keyContaName = "";
         let keyContaMaxAbs = -1;
         Object.keys(metrics.contas).forEach(cName => {
@@ -831,7 +836,6 @@
           }
         });
 
-        // Builder estrutural atômico por item financeiro (Blindagem XSS total)
         const liItem = document.createElement("li");
         const sLabel = document.createElement("strong");
         sLabel.textContent = `${itemName}: `;
@@ -847,7 +851,6 @@
 
         liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(desvioItem/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(pctVar).toFixed(2)}%), registrando Realizado de R$ ${(metrics.realizado/1000000).toFixed(2)}M contra orçamento de R$ ${(metrics.orcado/1000000).toFixed(2)}M.`));
 
-        // Incorpora a conta contábil mais relevante para enriquecer o contexto de negócio
         if (keyContaName && keyContaMaxAbs > 0) {
           const cDiffReal = metrics.contas[keyContaName].realizado - metrics.contas[keyContaName].orcado;
           const cSaving = cDiffReal <= 0;
