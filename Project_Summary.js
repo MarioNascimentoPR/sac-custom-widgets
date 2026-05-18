@@ -209,13 +209,15 @@
         box-sizing: border-box;
       }
 
+      /* COMPACTAÇÃO DE COLUNAS: Mudança para justify-content center e adição de gap fixo */
       .chart-area {
         width: 100%;
         height: 100%;
         display: flex;
         position: relative;
         align-items: flex-end;
-        justify-content: space-between;
+        justify-content: center;
+        gap: 12px; 
       }
       
       .svg-overlay {
@@ -228,16 +230,16 @@
         z-index: 2;
       }
       
+      /* Reduzido flex de crescimento para respeitar a largura máxima da coluna */
       .bar-wrapper {
         display: flex;
         flex-direction: column;
         align-items: center;
-        flex: 1;
+        width: 46px; 
         height: 100%;
         justify-content: flex-end;
         position: relative;
         z-index: 1;
-        padding: 0 4px;
       }
       
       .bar-wrapper:last-child {
@@ -298,20 +300,25 @@
         padding-top: 6px;
       }
 
+      /* Alinhamento do eixo sincronizado com o gap do gráfico superior */
       .axis-x {
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
+        gap: 12px; 
         height: 18px;
       }
       
       .axis-label {
-        flex: 1;
+        width: 46px; 
         text-align: center;
         font-size: calc(var(--font-size-labels) - 1px);
         font-weight: 600;
         color: #718096;
         white-space: nowrap;
-        padding: 0 1px;
+      }
+
+      .axis-label:last-child {
+        min-width: 85px;
       }
 
       .axis-label.actual-month {
@@ -841,7 +848,6 @@
 
         this._clearDOM();
 
-        // Janela móvel de 13 meses cravados
         let visibleSeriesData = [];
         const startIndex = Math.max(0, actualIndex - 12); 
         visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
@@ -879,7 +885,7 @@
       }
     }
 
-    // CORREÇÃO DOS ÍNDICES DE ALINHAMENTO DO SVG (Encontro perfeito de linhas)
+    // UNIFICAÇÃO DA LINHA DO TETO DO SVG (Encontro alinhado perfeito das pontes)
     _drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex) {
       if (!document.contains(this) || !this._shadowRoot || visibleActualIndex === -1) return;
       const svg = this._svgOverlay; const containerHeight = this._chartArea.offsetHeight; if (containerHeight === 0) return;
@@ -888,7 +894,8 @@
       if (visibleActualIndex > 0) pairsToConnect.push({ from: visibleActualIndex - 1, to: visibleActualIndex, type: "monthly" });
       if (visibleActualIndex < barElements.length - 1) pairsToConnect.push({ from: visibleActualIndex, to: visibleActualIndex + 1, type: "budget" });
       
-      // FIX CIRÚRGICO DO REQUISITO: O mês homologo do ano passado na esteira visível de 13 colunas fica SEMPRE na posição zero (0)
+      // SOLUÇÃO GEOMÉTRICA: Em uma esteira de 13 meses com gap centralizado, a barra homóloga fica SEMPRE no index zero (0)
+      // Conectamos a barra 0 à barra do mês ativo (índice 12)
       if (visibleSeriesData.length >= 14 && visibleActualIndex === 12) {
         pairsToConnect.push({ from: 0, to: 12, type: "yoy" });
       }
@@ -899,6 +906,8 @@
       };
 
       let maxBarHeight = 0; barElements.forEach(bar => { if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight; });
+      
+      // Baixamos levemente o teto global para comprimir o espaço aéreo e dar o encaixe milimétrico
       const globalCeilingY = containerHeight - maxBarHeight - 16;
       
       pairsToConnect.forEach((pair) => {
@@ -915,7 +924,7 @@
         const varianceText = (variancePercent >= 0 ? "+" : "") + variancePercent.toFixed(2) + "%";
         const markerId = "url(#arrow-neutral)";
         
-        // CORREÇÃO VISUAL: Estilo e cores unificadas para que as linhas se encontrem na mesma esteira globalCeilingY
+        // CORREÇÃO: Ambos usam a mesma linha de teto retilínea unificada para se encontrarem perfeitamente
         const lineCeiling = globalCeilingY;
         const lineStrokeColor = "#718096";
 
@@ -923,7 +932,7 @@
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${lineCeiling} L ${coordTo.x} ${lineCeiling} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); path.setAttribute("marker-end", markerId);
         
-        // Modificado o tracejado para seguir o mesmo estilo (monthly e yoy retos e contínuos, mantendo o padrão executivo)
+        // O padrão YoY e Budget ganham traço tracejado discreto para estarem sintonizados ao manual
         if (pair.type === "yoy" || pair.type === "budget") {
           path.setAttribute("stroke-dasharray", "3,3"); 
         }
@@ -932,9 +941,8 @@
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
         
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        // Ajuste no posicionamento vertical do card YoY para evitar encavalamento com as pontes de menor curso
-        const textOffset = pair.type === "yoy" ? lineCeiling - 13 : lineCeiling - 11;
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", textOffset.toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        // Centralização do card flutuante na junção superior das pontes
+        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (lineCeiling - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
         
         const div = document.createElement("div"); div.style.display = "flex"; div.style.justify = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
         const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
