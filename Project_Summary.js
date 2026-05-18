@@ -79,7 +79,7 @@
       .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto; }
       
       /* Aumentado o topo para esticar as hastes para cima sem esmagar as colunas */
-      .chart-container-block { position: relative; height: 195px; padding-top: 75px; box-sizing: border-box; width: 100%; }
+      .chart-container-block { position: relative; height: 250px; padding-top: 130px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
       /* SVG OVERLAY - Z-INDEX: 1 (Fica atrás de tudo) */
