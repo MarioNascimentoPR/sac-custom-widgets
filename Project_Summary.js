@@ -4,7 +4,7 @@
 
 (function () {
   // CHAVE DE DESATIVAÇÃO OPERACIONAL: Altere para false para desligar 100% a Telemetria
-  const ENABLE_TELEMETRY = true;
+  const ENABLE_TELEMETRY = false;
 
   /* ==========================================================================
      SUBSISTEMA ENCAPSULADO DE TELEMETRIA E PROFILING CIENTÍFICO (HEADLESS)
