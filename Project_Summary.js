@@ -36,6 +36,12 @@
         border-bottom: 1px solid #f0f0f0;
         padding-bottom: 6px;
         flex-shrink: 0;
+        gap: 12px;
+      }
+
+      .header-left-block {
+        display: flex;
+        flex-direction: column;
       }
 
       .widget-title {
@@ -44,14 +50,49 @@
         color: #2c3e50;
       }
 
+      /* CONTAINER DO FILTRO DE DATA EXECUTIVO (Valor Único Mês/Ano) */
+      .filter-container-finance {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .filter-label-finance {
+        font-size: 11px;
+        font-weight: 600;
+        color: #4a5568;
+      }
+
+      .filter-select-finance {
+        font-size: 11px;
+        font-weight: 700;
+        color: #2d3748;
+        background-color: #f8fafc;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        padding: 3px 24px 3px 8px;
+        cursor: pointer;
+        outline: none;
+        font-family: inherit;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 12px;
+        min-width: 105px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: border-color 0.2s ease;
+      }
+
+      .filter-select-finance:focus {
+        border-color: var(--color-actual);
+      }
+
       .scale-tag {
         font-size: 10px;
         font-weight: 600;
         color: #7f8c8d;
-        background: #f8f9fa;
-        padding: 1px 6px;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
+        margin-top: 2px;
       }
 
       .widget-legend {
@@ -137,16 +178,12 @@
         justify-content: center;
       }
       
-      .bar-element.historical {
-        background-color: var(--color-historical);
-      }
-      
+      .bar-element.historical { background-color: var(--color-historical); }
       .bar-element.actual {
         background-color: var(--color-actual);
         box-shadow: 0 0 10px rgba(31, 119, 180, 0.35);
         border: 1px solid #15517b;
       }
-      
       .bar-element.budget {
         background-color: transparent;
         border: 2px dashed var(--color-budget);
@@ -295,12 +332,8 @@
         background: var(--color-actual);
       }
 
-      .kpi-table tr.comparison-row td {
-        color: #2b6cb0;
-      }
-      .kpi-table tr.comparison-row .row-title::before {
-        background: #2b6cb0;
-      }
+      .kpi-table tr.comparison-row td { color: #2b6cb0; }
+      .kpi-table tr.comparison-row .row-title::before { background: #2b6cb0; }
 
       .kpi-table .num-cell {
         text-align: right;
@@ -332,8 +365,14 @@
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
-        <div class="widget-title">Performance Mensal</div>
-        <div class="scale-tag">Valores em Milhões (M)</div>
+        <div class="header-left-block">
+          <div class="widget-title">Performance Mensal</div>
+          <div class="scale-tag">Valores em Milhões (M)</div>
+        </div>
+        <div class="filter-container-finance">
+          <span class="filter-label-finance">Corte:</span>
+          <select class="filter-select-finance" id="dateCutoffSelect"></select>
+        </div>
       </div>
       
       <div class="widget-legend">
@@ -416,6 +455,7 @@
       this._animationFrameId = null;
       this._shadowRoot = null;
       this._resizeTimeout = null;
+      this._selectedCutoffId = null; // Armazena o valor único do filtro escolhido
     }
 
     connectedCallback() {
@@ -427,6 +467,7 @@
         this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
+        this._dateCutoffSelect = this._shadowRoot.getElementById("dateCutoffSelect");
         
         this._titleColCurrent = this._shadowRoot.getElementById("title-col-current");
         this._lblActRow = this._shadowRoot.getElementById("lbl-act-row");
@@ -443,6 +484,12 @@
         this._ytdPrevLbl = this._shadowRoot.getElementById("ytd-prev-lbl");
         this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
         this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
+
+        // Escuta a alteração do Filtro de Data e re-renderiza o painel
+        this._dateCutoffSelect.addEventListener("change", (e) => {
+          this._selectedCutoffId = e.target.value;
+          this.renderChart();
+        });
       }
 
       this._resizeObserver = new ResizeObserver(() => {
@@ -471,6 +518,7 @@
       this._updateStyles();
       if ("performanceCube" in changedProperties && this.performanceCube) {
         this._currentData = this.performanceCube;
+        this._selectedCutoffId = null; // Reseta o filtro ao trocar o set de dados geral
         if (this._shadowRoot) {
           cancelAnimationFrame(this._animationFrameId);
           this._animationFrameId = requestAnimationFrame(() => this.renderChart());
@@ -513,7 +561,7 @@
       const financialData = this._currentData;
       if (!financialData || !financialData.data || financialData.data.length === 0) {
         this._clearDOM();
-        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados no Builder...</div>";
+        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados...</div>";
         return;
       }
 
@@ -525,10 +573,7 @@
         const dimKeys = Object.keys(dimensions);
         const measureKeys = Object.keys(mainStructureMembers);
 
-        if (dimKeys.length < 1 || measureKeys.length < 1) {
-          this._clearDOM();
-          return;
-        }
+        if (dimKeys.length < 1 || measureKeys.length < 1) { this._clearDOM(); return; }
 
         const measId = measureKeys[0];
         let tempoDimId = dimKeys[0];
@@ -537,149 +582,126 @@
         if (dimKeys.length >= 2) {
           const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
           if (descFirst.includes("VERSÃO") || descFirst.includes("VERSION") || descFirst.includes("CENÁRIO")) {
-            tempoDimId = dimKeys[1];
-            versaoDimId = dimKeys[0];
+            tempoDimId = dimKeys[1]; versaoDimId = dimKeys[0];
           }
         }
 
         const timelineMap = {};
 
         financialData.data.forEach(row => {
-          const tempoObj = row[tempoDimId];
-          if (!tempoObj) return;
-
-          const tId = String(tempoObj.id);
-          const tLabel = tempoObj.label || tempoObj.description || tId;
-
+          const tempoObj = row[tempoDimId]; if (!tempoObj) return;
+          const tId = String(tempoObj.id); const tLabel = tempoObj.label || tempoObj.description || tId;
           if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
 
           if (!timelineMap[tId]) {
-            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false };
+            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false, rowContext: row };
           }
-
-          if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) {
-            timelineMap[tId].isCurrentMonth = true;
-          }
-          if (row.versionContext && row.versionContext.isActualMonth) {
-            timelineMap[tId].isCurrentMonth = true;
-          }
+          if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
+          if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
 
           const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
-
           if (versaoDimId) {
             const vObj = row[versaoDimId];
             if (vObj) {
-              const vId = String(vObj.id).toUpperCase();
-              const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
-              
-              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
-                timelineMap[tId].orcado += rawValue;
-              } else {
-                timelineMap[tId].realizado += rawValue;
-              }
+              const vId = String(vObj.id).toUpperCase(); const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
+              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { timelineMap[tId].orcado += rawValue; }
+              else { timelineMap[tId].realizado += rawValue; }
             }
-          } else {
-            timelineMap[tId].realizado += rawValue;
-          }
+          } else { timelineMap[tId].realizado += rawValue; }
         });
 
         const sortedMonths = Object.values(timelineMap);
-        if (sortedMonths.length === 0) {
-          this._clearDOM();
-          return;
-        }
+        if (sortedMonths.length === 0) { this._clearDOM(); return; }
 
         const monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
-        let currentYearCounter = new Date().getFullYear() - 1; 
-        let lastMonthIndex = 0;
+        let currentYearCounter = new Date().getFullYear() - 1; let lastMonthIndex = 0;
 
-        // ETAPA 1: Processamento da esteira histórica completa (Garante integridade do YTD)
         const fullSeriesData = [];
-        let fullActualIndex = -1;
+        let defaultActualIndex = -1;
 
         sortedMonths.forEach((m, idx) => {
-          const type = m.isCurrentMonth ? "actual" : "historical";
-          if (type === "actual") fullActualIndex = idx;
+          const type = m.isCurrentMonth ? "actual" : "historical"; 
+          if (type === "actual") defaultActualIndex = idx;
 
           const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
           const targetMonthIndex = monthOrderMap[cleanLabelUpper] || 1;
 
-          if (idx > 0 && targetMonthIndex <= lastMonthIndex) {
-            currentYearCounter++;
-          }
+          if (idx > 0 && targetMonthIndex <= lastMonthIndex) { currentYearCounter++; }
           lastMonthIndex = targetMonthIndex;
 
           const shortYearString = String(currentYearCounter).substring(2, 4);
           const alignedLabel = `${m.label} ${shortYearString}`;
 
-          fullSeriesData.push({ label: alignedLabel, value: m.realizado, type, originalNode: m, yearValue: currentYearCounter, monthNum: targetMonthIndex });
+          fullSeriesData.push({ id: m.id, label: alignedLabel, value: m.realizado, type, originalNode: m, yearValue: currentYearCounter, monthNum: targetMonthIndex, rawRow: m.rowContext });
         });
 
-        if (fullActualIndex === -1 && fullSeriesData.length > 0) {
-          fullActualIndex = fullSeriesData.length - 1;
-          fullSeriesData[fullActualIndex].type = "actual";
+        if (defaultActualIndex === -1 && fullSeriesData.length > 0) {
+          defaultActualIndex = fullSeriesData.length - 1;
         }
 
-        const targetBudgetSource = sortedMonths[fullActualIndex];
+        // ALIMENTAÇÃO DINÂMICA DO DROPDOWN FILTRO DE CORTE (Formato Mês/Ano)
+        if (this._dateCutoffSelect.children.length === 0) {
+          fullSeriesData.forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d.id;
+            opt.textContent = d.label;
+            this._dateCutoffSelect.appendChild(opt);
+          });
+          // Por padrão corporativo, inicializa apontando para a maior data do sistema (Mês Ativo)
+          this._selectedCutoffId = fullSeriesData[defaultActualIndex].id;
+          this._dateCutoffSelect.value = this._selectedCutoffId;
+        }
+
+        // CAPTURA DO INDEX DE CORTE SELECIONADO PELO FILTRO ÚNICO
+        let actualIndex = fullSeriesData.findIndex(d => d.id === this._selectedCutoffId);
+        if (actualIndex === -1) actualIndex = defaultActualIndex;
+
+        // Sobrescreve dinamicamente as classes para que o mês escolhido no filtro vire a barra "Mês Atual"
+        fullSeriesData.forEach((d, idx) => {
+          d.type = (idx === actualIndex) ? "actual" : "historical";
+        });
+
+        const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
         const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
 
         this._clearDOM();
 
-        // ETAPA 2: CORTE VISUAL ISOLADO - Filtra apenas os últimos 12 meses para plotar os componentes HTML do gráfico
-        let visibleSeriesData = [...fullSeriesData];
-        if (visibleSeriesData.length > 12) {
-          visibleSeriesData = visibleSeriesData.slice(-12);
-        }
+        // LIMITADOR INTELIGENTE (ÚLTIMOS 12 MESES CONFORME A DATA DE CORTE SELECIONADA)
+        let visibleSeriesData = [];
+        const startIndex = Math.max(0, actualIndex - 11);
+        visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
 
-        // Recalcula o índice relativo do mês ativo na janela visível de 12 meses
-        let visibleActualIndex = visibleSeriesData.findIndex(d => d.type === "actual");
-        if (visibleActualIndex === -1 && visibleSeriesData.length > 0) {
-          visibleActualIndex = visibleSeriesData.length - 1;
-        }
+        // Reposiciona o ponteiro de realce na nova esteira visível de 12 meses
+        let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
+        if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
 
-        // Adiciona a coluna de Budget acoplada na última posição da janela visível
+        // Injeção da coluna casada de orçamento do período de corte
         visibleSeriesData.push({
-          label: `budget - ${fullSeriesData[fullActualIndex].label}`,
+          label: `budget - ${fullSeriesData[actualIndex].label}`,
           value: calculatedBudget,
           type: "budget",
-          originalNode: targetBudgetSource,
-          yearValue: fullSeriesData[fullActualIndex].yearValue,
-          monthNum: fullSeriesData[fullActualIndex].monthNum
+          yearValue: fullSeriesData[actualIndex].yearValue,
+          monthNum: fullSeriesData[actualIndex].monthNum
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.25 || 1;
         const barElements = [];
 
         visibleSeriesData.forEach((d) => {
-          const barWrapper = document.createElement("div");
-          barWrapper.className = "bar-wrapper";
-
-          const barElement = document.createElement("div");
-          barElement.className = "bar-element";
-          barElement.style.height = `${(d.value / maxVal) * 100}%`;
-          barElement.classList.add(d.type);
-
-          const kpiLabel = document.createElement("span");
-          kpiLabel.className = "kpi-label";
-          kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
-          barElement.appendChild(kpiLabel);
-
-          barWrapper.appendChild(barElement);
-          this._chartArea.appendChild(barWrapper);
-          barElements.push(barElement);
-
-          const axisLabel = document.createElement("div");
-          axisLabel.className = "axis-label";
-          axisLabel.textContent = d.label;
+          const barWrapper = document.createElement("div"); barWrapper.className = "bar-wrapper";
+          const barElement = document.createElement("div"); barElement.className = "bar-element";
+          barElement.style.height = `${(d.value / maxVal) * 100}%`; barElement.classList.add(d.type);
+          const kpiLabel = document.createElement("span"); kpiLabel.className = "kpi-label"; kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
+          barElement.appendChild(kpiLabel); barWrapper.appendChild(barElement); this._chartArea.appendChild(barWrapper); barElements.push(barElement);
+          const axisLabel = document.createElement("div"); axisLabel.className = "axis-label"; axisLabel.textContent = d.label;
           if (d.type === "actual") axisLabel.classList.add("actual-month");
           this._axisX.appendChild(axisLabel);
         });
 
-        // Plota conectores horizontais retos restritos à janela visível
         this._drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex);
         
-        // Executa a consolidação das tabelas inferiores consumindo a esteira histórica COMPLETA
-        this._renderDoubleFinancePanel(fullSeriesData, fullActualIndex, calculatedBudget);
+        // CONSOLIDAÇÃO DO PAINEL DO YTD CONSUMINDO TODO O HISTÓRICO ATÉ A DATA DE CORTE
+        this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
@@ -688,95 +710,42 @@
 
     _drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex) {
       if (!document.contains(this) || !this._shadowRoot || visibleActualIndex === -1) return;
-
-      const svg = this._svgOverlay;
-      const containerHeight = this._chartArea.offsetHeight;
-      if (containerHeight === 0) return;
-
+      const svg = this._svgOverlay; const containerHeight = this._chartArea.offsetHeight; if (containerHeight === 0) return;
       const pairsToConnect = [];
       if (visibleActualIndex > 0) pairsToConnect.push({ from: visibleActualIndex - 1, to: visibleActualIndex });
       if (visibleActualIndex < barElements.length - 1) pairsToConnect.push({ from: visibleActualIndex, to: visibleActualIndex + 1 });
-
       const getBarCenterAndTop = (idx) => {
-        const bar = barElements[idx];
-        if (!bar) return { x: 0, y: 0 };
-        return {
-          x: bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2),
-          y: containerHeight - bar.offsetHeight
-        };
+        const bar = barElements[idx]; if (!bar) return { x: 0, y: 0 };
+        return { x: bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2), y: containerHeight - bar.offsetHeight };
       };
-
-      let maxBarHeight = 0;
-      barElements.forEach(bar => {
-        if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight;
-      });
-
+      let maxBarHeight = 0; barElements.forEach(bar => { if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight; });
       const globalCeilingY = containerHeight - maxBarHeight - 16;
-
       pairsToConnect.forEach((pair) => {
-        const coordFrom = getBarCenterAndTop(pair.from);
-        const coordTo = getBarCenterAndTop(pair.to);
+        const coordFrom = getBarCenterAndTop(pair.from); const coordTo = getBarCenterAndTop(pair.to);
         if (coordFrom.x === 0 && coordTo.x === 0) return;
-
-        const val1 = visibleSeriesData[pair.from].value;
-        const val2 = visibleSeriesData[pair.to].value;
-        
-        const diff = val2 - val1;
-        let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
-        
+        const val1 = visibleSeriesData[pair.from].value; const val2 = visibleSeriesData[pair.to].value;
+        const diff = val2 - val1; let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
         const isCostIncrease = val2 > val1;
-        if (isCostIncrease && variancePercent > 0) {
-          variancePercent = -variancePercent; 
-        } else if (!isCostIncrease && variancePercent < 0) {
-          variancePercent = Math.abs(variancePercent); 
-        }
-
+        if (isCostIncrease && variancePercent > 0) { variancePercent = -variancePercent; }
+        else if (!isCostIncrease && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
         const varianceText = (variancePercent >= 0 ? "+" : "") + variancePercent.toFixed(2) + "%";
-
-        const lineStrokeColor = "#718096";
-        const markerId = "url(#arrow-neutral)";
-
+        const lineStrokeColor = "#718096"; const markerId = "url(#arrow-neutral)";
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${globalCeilingY} L ${coordTo.x} ${globalCeilingY} L ${coordTo.x} ${coordTo.y - 5}`);
-        path.setAttribute("stroke", lineStrokeColor);
-        path.setAttribute("stroke-width", "1.25");
-        path.setAttribute("fill", "none");
-        path.setAttribute("marker-end", markerId);
+        path.setAttribute("stroke", lineStrokeColor); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); path.setAttribute("marker-end", markerId);
         svg.appendChild(path);
-
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
-
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString());
-        foreignObj.setAttribute("y", (globalCeilingY - 11).toString());
-        foreignObj.setAttribute("width", "70");
-        foreignObj.setAttribute("height", "22");
-
-        const div = document.createElement("div");
-        div.style.display = "flex";
-        div.style.justify = "center";
-        div.style.alignItems = "center";
-        div.style.width = "100%";
-        div.style.height = "100%";
-
-        const span = document.createElement("span");
-        span.className = "variance-tag";
-        span.textContent = varianceText;
-        
-        if (isCostIncrease) {
-          span.classList.add("increase");
-        } else {
-          span.classList.add("saving");
-        }
-
-        div.appendChild(span);
-        foreignObj.appendChild(div);
-        svg.appendChild(foreignObj);
+        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (globalCeilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        const div = document.createElement("div"); div.style.display = "flex"; div.style.justify = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
+        const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
+        if (isCostIncrease) { span.classList.add("increase"); } else { span.classList.add("saving"); }
+        div.appendChild(span); foreignObj.appendChild(div); svg.appendChild(foreignObj);
       });
     }
 
-    _renderDoubleFinancePanel(fullSeriesData, fullActualIndex, budgetVal) {
-      const currentBarNode = fullSeriesData[fullActualIndex]; 
+    _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
+      const currentBarNode = fullSeriesData[actualIndex]; 
       const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
       const currentYear = currentBarNode.yearValue; 
@@ -788,31 +757,29 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 
-      // COLUNA 1: Fechamento Líquido Comercial Mês Atual
       this._titleColCurrent.textContent = `Mês Atual (${monthLabel.toUpperCase()})`;
       this._lblActRow.textContent = `Realizado Comercial`; 
       this._valActRow.textContent = formatM(actualVal);
       this._valBudRow.textContent = formatM(budgetVal);
       this._valDiffRow.textContent = formatM(diffNominal);
       this._valPctRow.textContent = formatPercent(diffPercent);
-      this._valPctRow.style.color = (diffNominal < 0) ? "#c5221f" : "#137333";
+      this._valPctRow.style.color = (diffNominal < 0) ? "#cbd5e0" : ((actualVal > budgetVal) ? "#c5221f" : "#137333");
 
-      // COLUNA 2: Varre todo o histórico ocultado do gráfico para computar o YTD real
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
 
-      fullSeriesData.forEach(d => {
-        if (d.type !== "budget") {
-          // Garante que o acumulado do Ano Corrente some todos os meses anteriores ocultos até o atual
-          if (d.yearValue === currentYear && d.monthNum <= currentBarNode.monthNum) {
+      // Realiza a somatória do acumulado olhando retroativamente ATÉ o mês limite de corte (actualIndex)
+      fullSeriesData.forEach((d, idx) => {
+        if (idx <= actualIndex) {
+          if (d.yearValue === currentYear) {
             totalRealizadoYTDAtual += d.value;
             totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value;
           }
-          // Garante que o acumulado do Ano Anterior resgate todos os meses homólogos ocultos
-          if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
-            totalRealizadoYTDAntigo += d.value;
-          }
+        }
+        // Resgata o histórico homólogo completo do ano passado travado no mesmo mês
+        if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
+          totalRealizadoYTDAntigo += d.value;
         }
       });
 
