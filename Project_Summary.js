@@ -20,7 +20,7 @@
         flex-direction: column;
         width: 100%;
         height: 100%;
-        padding: 16px;
+        padding: 12px 16px;
         box-sizing: border-box;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         position: relative;
@@ -32,33 +32,33 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         border-bottom: 1px solid #f0f0f0;
-        padding-bottom: 8px;
+        padding-bottom: 6px;
         flex-shrink: 0;
       }
 
       .widget-title {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 700;
         color: #2c3e50;
       }
 
       .scale-tag {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
         color: #7f8c8d;
         background: #f8f9fa;
-        padding: 2px 8px;
-        border-radius: 12px;
+        padding: 1px 6px;
+        border-radius: 10px;
         border: 1px solid #e2e8f0;
       }
 
       .widget-legend {
         display: flex;
-        gap: 16px;
-        margin-bottom: 20px;
-        font-size: 11px;
+        gap: 14px;
+        margin-bottom: 12px;
+        font-size: 10.5px;
         font-weight: 600;
         color: #4a5568;
         flex-shrink: 0;
@@ -67,28 +67,31 @@
       .legend-item {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
       }
 
       .legend-color {
-        width: 12px;
-        height: 12px;
-        border-radius: 3px;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
       }
 
       .legend-color.hist { background-color: var(--color-historical); }
       .legend-color.act { background-color: var(--color-actual); }
       .legend-color.bud { 
         background-color: transparent; 
-        border: 2px dashed var(--color-budget);
+        border: 1.5px dashed var(--color-budget);
         box-sizing: border-box;
       }
       
+      /* PROTEÇÃO CONTRA CORTE DE RÓTULO: Margem superior para abrigar os cards de variação */
       .chart-container-block {
         position: relative;
-        height: 180px;
-        margin-bottom: 24px;
+        height: 155px; 
+        padding-top: 25px; 
+        margin-bottom: 4px;
         flex-shrink: 0;
+        box-sizing: border-box;
       }
 
       .chart-area {
@@ -119,13 +122,13 @@
         justify-content: flex-end;
         position: relative;
         z-index: 1;
-        padding: 0 6px;
+        padding: 0 4px;
       }
       
       .bar-element {
         width: 100%;
-        max-width: 50px;
-        border-radius: 4px 4px 0 0;
+        max-width: 46px;
+        border-radius: 3px 3px 0 0;
         position: relative;
         display: flex;
         justify-content: center;
@@ -137,7 +140,7 @@
       
       .bar-element.actual {
         background-color: var(--color-actual);
-        box-shadow: 0 0 12px rgba(31, 119, 180, 0.4);
+        box-shadow: 0 0 10px rgba(31, 119, 180, 0.35);
         border: 1px solid #15517b;
       }
       
@@ -149,8 +152,8 @@
       
       .kpi-label {
         position: absolute;
-        top: -22px;
-        font-size: var(--font-size-labels);
+        top: -20px;
+        font-size: calc(var(--font-size-labels) - 0.5px);
         font-weight: 700;
         color: #2d3748;
         white-space: nowrap;
@@ -161,29 +164,29 @@
         background: #edf2f7;
         padding: 1px 4px;
         border-radius: 4px;
-        top: -24px;
+        top: -22px;
       }
       
       .axis-x {
         display: flex;
         justify-content: space-between;
         border-top: 1px solid #cbd5e0;
-        padding-top: 8px;
-        height: 24px;
+        padding-top: 6px;
+        height: 20px;
         flex-shrink: 0;
-        margin-bottom: 24px;
+        margin-bottom: 14px;
       }
       
       .axis-label {
         flex: 1;
         text-align: center;
-        font-size: var(--font-size-labels);
+        font-size: calc(var(--font-size-labels) - 0.5px);
         font-weight: 600;
         color: #718096;
         text-overflow: ellipsis;
         white-space: nowrap;
         overflow: hidden;
-        padding: 0 2px;
+        padding: 0 1px;
       }
 
       .axis-label.actual-month {
@@ -194,9 +197,9 @@
       .variance-tag {
         font-size: calc(var(--font-size-labels) - 2px);
         font-weight: 700;
-        padding: 2px 6px;
-        border-radius: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        padding: 1px 5px;
+        border-radius: 3px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         white-space: nowrap;
         border: 1px solid transparent;
         display: inline-block;
@@ -214,21 +217,21 @@
         border-color: #feebc8;
       }
 
-      /* SEÇÃO INFERIOR ESTRUTURADA DE FORMA ESTÁTICA NO DOM (Prevenção de Timeout) */
+      /* SEÇÃO INFERIOR COMPACTA */
       .insight-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 16px;
         margin-top: auto;
-        padding-top: 16px;
+        padding-top: 12px;
         border-top: 1px solid #f0f0f0;
         flex-shrink: 0;
       }
 
-      @media (max-width: 580px) {
+      @media (max-width: 620px) {
         .insight-grid {
           grid-template-columns: 1fr;
-          gap: 16px;
+          gap: 12px;
         }
       }
 
@@ -239,19 +242,19 @@
       .kpi-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: var(--font-size-labels);
+        font-size: calc(var(--font-size-labels) - 0.5px);
         text-align: left;
       }
 
       .kpi-table th {
         color: #718096;
         font-weight: 600;
-        padding-bottom: 8px;
+        padding-bottom: 6px;
         border-bottom: 2px solid #edf2f7;
       }
 
       .kpi-table td {
-        padding: 10px 0;
+        padding: 6px 0;
         border-bottom: 1px solid #edf2f7;
         color: #2d3748;
         font-weight: 500;
@@ -266,13 +269,13 @@
         color: #4a5568;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
       }
 
       .kpi-table .row-title::before {
         content: '';
-        width: 4px;
-        height: 12px;
+        width: 3.5px;
+        height: 11px;
         background: #cbd5e0;
         border-radius: 2px;
         display: inline-block;
@@ -297,8 +300,8 @@
         flex-direction: column;
         justify-content: center;
         background-color: #f8fafc;
-        border-radius: 6px;
-        padding: 12px 14px;
+        border-radius: 5px;
+        padding: 10px 12px;
         border-left: 3px solid #cbd5e0;
       }
 
@@ -307,15 +310,15 @@
 
       .insight-paragraph {
         margin: 0;
-        font-size: calc(var(--font-size-labels) + 0.5px);
-        line-height: 1.5;
+        font-size: var(--font-size-labels);
+        line-height: 1.45;
         color: #4a5568;
       }
 
       .inline-highlight {
         font-weight: 700;
-        padding: 1px 4px;
-        border-radius: 3px;
+        padding: 0px 3px;
+        border-radius: 2px;
       }
 
       .inline-highlight.saving {
@@ -329,9 +332,9 @@
       }
       
       .placeholder-text {
-        padding: 10px;
+        padding: 8px;
         color: #718096;
-        font-size: 13px;
+        font-size: 12px;
       }
     </style>
     <div id="widget-wrapper">
@@ -399,7 +402,6 @@
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
-      // O construtor permanece com escopo limpo de acordo com as Diretrizes Técnicas (Fim do Timeout)
       this._props = {};
       this._currentData = null;
       this._animationFrameId = null;
@@ -417,7 +419,6 @@
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         
-        // Ponteiros atômicos do Shadow DOM estático
         this._lblActRow = this._shadowRoot.getElementById("lbl-act-row");
         this._valActRow = this._shadowRoot.getElementById("val-act-row");
         this._valBudRow = this._shadowRoot.getElementById("val-bud-row");
@@ -433,7 +434,7 @@
           this._resizeTimeout = setTimeout(() => {
             cancelAnimationFrame(this._animationFrameId);
             this._animationFrameId = requestAnimationFrame(() => this.renderChart());
-          }, 60);
+          }, 40);
         }
       });
       this._resizeObserver.observe(this._chartArea);
@@ -600,7 +601,7 @@
 
         this._clearDOM();
 
-        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.35 || 1;
+        const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.25 || 1;
         const barElements = [];
 
         seriesData.forEach((d) => {
@@ -629,8 +630,6 @@
         });
 
         this._drawUnifiedFlatConnections(barElements, seriesData, actualIndex);
-        
-        // Chamada atômica de reidratação de texto (Diretriz de Performance Primária)
         this._renderInsightPanel(targetBudgetSource.label, targetBudgetSource.realizado, calculatedBudget);
 
       } catch (error) {
@@ -663,8 +662,8 @@
         if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight;
       });
 
-      // UNIFICAÇÃO HORIZONTAL PERFEITA: Sem quebras horizontais no teto
-      const globalCeilingY = containerHeight - maxBarHeight - 45;
+      // ALINHAMENTO DO TETO COM RECUO DE SEGURANÇA CONTRA CORTES
+      const globalCeilingY = containerHeight - maxBarHeight - 16;
 
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from);
@@ -684,7 +683,7 @@
         const markerId = "url(#arrow-neutral)";
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${globalCeilingY} L ${coordTo.x} ${globalCeilingY} L ${coordTo.x} ${coordTo.y - 6}`);
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${globalCeilingY} L ${coordTo.x} ${globalCeilingY} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor);
         path.setAttribute("stroke-width", "1.25");
         path.setAttribute("fill", "none");
@@ -694,10 +693,11 @@
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
 
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        // Centralização milimétrica do card flutuante acima da linha horizontal reta
         foreignObj.setAttribute("x", (midX - 35).toString());
-        foreignObj.setAttribute("y", (globalCeilingY - 12).toString());
+        foreignObj.setAttribute("y", (globalCeilingY - 11).toString());
         foreignObj.setAttribute("width", "70");
-        foreignObj.setAttribute("height", "24");
+        foreignObj.setAttribute("height", "22");
 
         const div = document.createElement("div");
         div.style.display = "flex";
@@ -722,7 +722,6 @@
       });
     }
 
-    // ATUALIZAÇÃO ATÔMICA DA TABELA E HIGHLIGHTS (Bypass do innerHTML síncrono recorrente)
     _renderInsightPanel(monthLabel, actualVal, budgetVal) {
       const diffNominal = actualVal - budgetVal;
       const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
@@ -731,14 +730,12 @@
       const formatNominal = (v) => (v >= 0 ? "+" : "") + (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
 
-      // 1. Reidratação atômica direta via textContent (Diretriz de Performance)
       this._lblActRow.textContent = `Realizado (${monthLabel})`;
       this._valActRow.textContent = formatM(actualVal);
       this._valBudRow.textContent = formatM(budgetVal);
       this._valDiffRow.textContent = formatM(diffNominal);
       this._valPctRow.textContent = formatPercent(diffPercent);
 
-      // 2. Manipulação de classes e injeção do sumário descritivo (Inspirado em image_5fec14.png)
       this._textInsightBox.className = "text-insight-holder";
       
       let semClass = "saving";
@@ -748,17 +745,18 @@
       if (diffNominal > 0) {
         semClass = "increase";
         statusText = "aumento de custos";
-        relatoFim = "acima do teto projetado para o período comercial.";
+        relatoFim = "acima do teto projetado para o período.";
       }
 
       this._textInsightBox.classList.add(semClass);
 
+      // POLIMENTO DO TEXTO: Tom analítico de alta governança sem redundâncias
       this._insightTextDesc.innerHTML = `
-        A performance consolidada de <span class="bold-val">${monthLabel}</span> fechou em 
-        <span class="bold-val">${formatM(actualVal)}</span>. Comparado ao orçamento (Budget) estipulado, 
-        o desvio nominal foi registrado em <span class="inline-highlight ${semClass}">${formatNominal(diffNominal)}</span>, 
-        o que representa uma variação de <span class="inline-highlight ${semClass}">${formatPercent(diffPercent)}</span>. 
-        Este comportamento indica um quadro de <span class="bold-val">${statusText}</span> vindo diretamente 
+        A performance consolidada de <span class="bold-val">${monthLabel}</span> atingiu 
+        <span class="bold-val">${formatM(actualVal)}</span>. Em relação ao orçamento planejado (Budget), 
+        o desvio nominal foi de <span class="inline-highlight ${semClass}">${formatNominal(diffNominal)}</span>, 
+        configurando uma variação de <span class="inline-highlight ${semClass}">${formatPercent(diffPercent)}</span>. 
+        Este resultado aponta para um cenário de <span class="bold-val">${statusText}</span>, situando-se 
         ${relatoFim}
       `;
 
