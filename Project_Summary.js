@@ -193,17 +193,20 @@
       .variance-tag.saving { background-color: #e6f4ea; color: #137333; border-color: #ceead6; }
       .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border-color: #fad2cf; }
 
+      /* ==========================================================================
+         GRID EXECUTIVO REFATORADO (CORREÇÃO DE SINISTROS VISUAIS)
+         ========================================================================== */
       .insight-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 32px;
+        gap: 24px;
         margin-top: auto;
         padding-top: 16px;
         border-top: 1px solid #e2e8f0;
         flex-shrink: 0;
         width: 100%;
       }
-      @media (max-width: 768px) { .insight-grid { grid-template-columns: 1fr; gap: 20px; } }
+      @media (max-width: 768px) { .insight-grid { grid-template-columns: 1fr; gap: 16px; } }
 
       .grid-column-finance {
         display: flex;
@@ -223,9 +226,6 @@
         margin-bottom: 12px;
         padding-bottom: 6px;
         border-bottom: 2px solid #cbd5e0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
       }
 
       .panel-content-rows {
@@ -239,12 +239,13 @@
 
       .data-row-item {
         display: grid;
-        grid-template-columns: 2.2fr 1.2fr 1.1fr;
+        grid-template-columns: 1.8fr 1fr 1.1fr; /* Sincronização e calibração de eixos horizontais */
         align-items: center;
         background: #ffffff;
         padding: 8px 12px;
         font-size: calc(var(--font-size-labels) - 0.5px);
         color: #2d3748;
+        gap: 8px;
       }
 
       .data-row-item.row-main-highlight {
@@ -280,14 +281,15 @@
       .cell-value {
         text-align: right;
         font-variant-numeric: tabular-nums;
-        font-weight: 600;
+        font-weight: 700;
         color: #1e293b;
+        white-space: nowrap;
       }
-      .row-main-highlight .cell-value { color: #0f172a; font-weight: 700; }
+      .row-main-highlight .cell-value { color: #0f172a; }
 
       .cell-status-wrapper {
         display: flex;
-        justify-content: flex-end;
+        justify-content: flex-end; /* Garante alinhamento à extrema direita do badge */
         align-items: center;
       }
 
@@ -298,8 +300,10 @@
         border-radius: 4px;
         text-align: center;
         white-space: nowrap;
-        display: inline-block;
-        min-width: 65px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 75px; /* Tamanho unificado dos badges para evitar dentes visuais */
         box-sizing: border-box;
       }
       .status-badge-finance.success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
@@ -329,7 +333,7 @@
       </div>
 
       <div class="main-visualization-layout">
-        <div class="visualization-column monthly-col">
+        <div class="monthly-col visualization-column">
           <div class="chart-container-block">
             <div class="chart-area" id="chartArea">
               <svg class="svg-overlay" id="svgOverlay">
@@ -408,7 +412,7 @@
             <div class="data-row-item row-summary-conclusion">
               <div class="cell-label">Consumo do Budget Período</div>
               <div class="cell-value" id="ytd-pct-row">-</div>
-              <div class="cell-status-wrapper"><span class="status-badge-finance neutral" id="ytd-consumption-badge">YTD</span></div>
+              <div class="cell-status-wrapper"><span class="status-badge-finance neutral">YTD</span></div>
             </div>
             <div class="data-row-item row-summary-conclusion row-comparison-style">
               <div class="cell-label" id="ytd-prev-lbl">Acumulado Ano Anterior</div>
@@ -1018,7 +1022,7 @@
         this._shadowRoot.getElementById("cls-bud").value = changedProperties.colorBudget;
       }
       if (changedProperties.fontSizeLabels !== undefined) {
-        this._shadowRoot.getElementById("font-weight-lbl").value = changedProperties.fontSizeLabels;
+        this._shadowRoot.getElementById("font-size-lbl").value = changedProperties.fontSizeLabels;
       }
     }
   }
