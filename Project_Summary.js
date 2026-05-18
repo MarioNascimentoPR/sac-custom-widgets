@@ -308,11 +308,11 @@
       .bar-tooltip-list { display: flex; flex-direction: column; gap: 6px; }
       .bar-tooltip-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; font-size: var(--ui-font-size); }
       .bar-tooltip-name { color: #334155; min-width: 0; word-break: break-word; }
-      .bar-tooltip-value-wrap { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
-      .bar-tooltip-value { color: #0f172a; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .bar-tooltip-value-wrap { display: inline-flex; align-items: center; gap: 5px; justify-content: flex-end; min-width: 136px; }
+      .bar-tooltip-value { color: #0f172a; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
       .bar-tooltip-delta-tag {
-        display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 999px;
-        font-size: calc(var(--small-font-size) - 0.5px); font-weight: 700; white-space: nowrap; border: 1px solid transparent;
+        display: inline-flex; align-items: center; justify-content: center; padding: 1px 5px; border-radius: 999px;
+        font-size: calc(var(--small-font-size) - 1px); font-weight: 700; white-space: nowrap; border: 1px solid transparent; min-width: 56px; box-sizing: border-box; text-align: center;
       }
       .bar-tooltip-delta-tag.up { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
       .bar-tooltip-delta-tag.down { background: #e6f4ea; color: #137333; border-color: #ceead6; }
@@ -1027,7 +1027,7 @@
       if (!this._barTooltip || !payload) return;
       const rows = payload.items.map(item => {
         const delta = this._getTooltipDelta(item);
-        return `<div class="bar-tooltip-row"><span class="bar-tooltip-name">${this._escapeHtml(item.name)}</span><span class="bar-tooltip-value-wrap"><span class="bar-tooltip-delta-tag ${this._escapeHtml(delta.className)}">${this._escapeHtml(delta.label)}</span><span class="bar-tooltip-value">${this._escapeHtml(this._formatTooltipValue(item.value))}</span></span></div>`;
+        return `<div class="bar-tooltip-row"><span class="bar-tooltip-name">${this._escapeHtml(item.name)}</span><span class="bar-tooltip-value-wrap"><span class="bar-tooltip-value">${this._escapeHtml(this._formatTooltipValue(item.value))}</span><span class="bar-tooltip-delta-tag ${this._escapeHtml(delta.className)}">${this._escapeHtml(delta.label)}</span></span></div>`;
       }).join("");
 
       this._barTooltip.innerHTML = `
