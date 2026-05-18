@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DYNAMIC TITLE & OVERVIEW MODEL
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - CONTEXTUAL PERIOD SUMMARY BANNER
    ========================================================================== */
 
 (function () {
@@ -19,8 +19,6 @@
       }
       .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex-shrink: 0; gap: 12px; }
       .header-left-block { display: flex; flex-direction: column; }
-      
-      /* AJUSTE TIPOGRÁFICO: Aumento ligeiro do tamanho do texto do título */
       .widget-title { font-size: 16px; font-weight: 700; color: #2c3e50; }
       .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
       
@@ -78,6 +76,15 @@
       }
       .grid-column-finance { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
       .column-title-finance { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      
+      /* ESTILIZAÇÃO DO NOVO BANNER DE RESUMO DO PERÍODO DO MODELO DO WIDGET */
+      .period-summary-banner {
+        font-size: 11.5px; line-height: 1.5; color: #444444; margin: 0 0 12px 0; padding: 8px 12px;
+        border-radius: 4px; border-left: 4px solid #cbd5e0; font-family: system-ui, -apple-system, sans-serif;
+      }
+      .period-summary-banner.summary-saving { background-color: #e8f5e9; color: #1b5e20; border-left-color: #2E7D32; }
+      .period-summary-banner.summary-desvio { background-color: #ffebee; color: #b71c1c; border-left-color: #D32F2F; }
+
       .panel-content-rows { display: flex; flex-direction: column; gap: 1px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; }
       .data-row-item { display: grid; grid-template-columns: 1.8fr 1fr 1fr; align-items: center; background: #ffffff; padding: 8px 12px; font-size: calc(var(--font-size-labels) - 0.5px); color: #2d3748; gap: 8px; }
       .cell-label { font-weight: 600; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
@@ -103,7 +110,7 @@
     <div id="widget-wrapper">
       <div class="widget-header">
         <div class="header-left-block">
-          <div class="widget-title" id="widgetTitle">Performance Mensal</div>
+          <div class="widget-title" id="widgetTitle">Performance Summary</div>
           <div class="scale-tag">Valores em Milhões (M)</div>
         </div>
         <div class="filter-container-finance">
@@ -143,6 +150,7 @@
       <div class="insight-grid" id="insightGrid" style="display: none;">
         <div class="grid-column-finance">
           <div class="column-title-finance">Acompanhamento de Metas Orçamentárias</div>
+          <div id="periodSummaryBanner" class="period-summary-banner" style="display: none;"></div>
           <div class="panel-content-rows">
             <div class="data-row-item row-m-style">
               <div class="cell-label">Desvio Mês (Real x Orçado)</div><div class="cell-value" id="val-diff-row">-</div>
@@ -215,6 +223,7 @@
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
         this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
+        this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
@@ -341,7 +350,6 @@
 
         this._measId = measureKeys[0];
         
-        // REIDRATAÇÃO DO TÍTULO OVERVIEW: Puxa o Indicador selecionado do Modelo do SAC dinamicamente
         const measureInfo = mainStructureMembers[this._measId] || {};
         const indicatorLabel = measureInfo.label || measureInfo.description || measureInfo.id || "Indicador";
         if (this._widgetTitle) {
@@ -514,7 +522,7 @@
         }
 
         const dropdownItems = this._treeDropdownContent.querySelectorAll(".tree-month-item");
-        dropdownItems.forEach(item => {
+        dropdownItems.querySelectorAll(".tree-month-item").forEach(item => {
           item.classList.toggle("selected", item.getAttribute("data-id") === this._selectedCutoffId);
         });
 
@@ -706,7 +714,7 @@
       this._ytdDiffRow.textContent = (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal);
       this._ytdDiffPctBadge.textContent = formatPercent(diffYtdPercent, isYtdSaving);
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
-      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
+      this._ytdDiffPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
@@ -726,13 +734,32 @@
         this._highlightCardArea.style.borderLeft = isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
       }
 
-      const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
-      const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
-      const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
-      const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
-      const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
+      // ==========================================================================
+      // REFORMA DE LAYOUT: INJEÇÃO COMPACTA DO NARRATIVO YTD NO PAINEL ESQUERDO
+      // ==========================================================================
+      if (this._periodSummaryBanner) {
+        this._periodSummaryBanner.style.display = "block";
+        this._periodSummaryBanner.className = isYtdSaving ? "period-summary-banner summary-saving" : "period-summary-banner summary-desvio";
+        this._periodSummaryBanner.textContent = "";
 
+        this._periodSummaryBanner.appendChild(document.createTextNode("No acumulado YTD, o projeto opera "));
+        const spanYtdStatus = document.createElement("strong");
+        spanYtdStatus.textContent = isYtdSaving ? "abaixo do teto orçamentário (eficiência) " : "acima da meta prevista (atenção) ";
+        this._periodSummaryBanner.appendChild(spanYtdStatus);
+
+        this._periodSummaryBanner.appendChild(document.createTextNode("com variação de "));
+        const spanYtdDelta = document.createElement("strong");
+        spanYtdDelta.textContent = `R$ ${Math.abs(diffYtdNominal/1000000).toFixed(2)}M (${diffYtdNominal >= 0 ? "+" : ""}${diffYtdPercent.toFixed(1)}%)`;
+        this._periodSummaryBanner.appendChild(spanYtdDelta);
+        this._periodSummaryBanner.appendChild(document.createTextNode(`, absorvendo ${consumoBudgetPercent.toFixed(1)}% do orçamento total.`));
+      }
+
+      // Limpeza completa do bloco direito (Highlights focará 100% no operacional mensal e por item)
       this._hlUl.textContent = "";
+
+      const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
+      const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
+      const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
       const liMonth = document.createElement("li");
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
@@ -745,13 +772,6 @@
       const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
       this._hlUl.appendChild(liCons);
-
-      const liYtd = document.createElement("li");
-      const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD: ";
-      const statusSpan3 = document.createElement("span"); statusSpan3.textContent = ytdStatusText; statusSpan3.style.color = semanticColorYTD; statusSpan3.style.fontWeight = "700";
-      const valueSpan3 = document.createElement("span"); valueSpan3.textContent = `${consumoBudgetPercent.toFixed(1)}%`; valueSpan3.style.fontWeight = "700";
-      liYtd.appendChild(s3); liYtd.appendChild(document.createTextNode("Acumulado com desvio ")); liYtd.appendChild(statusSpan3); liYtd.appendChild(document.createTextNode(", consumindo ")); liYtd.appendChild(valueSpan3); liYtd.appendChild(document.createTextNode(" do ano."));
-      this._hlUl.appendChild(liYtd);
 
       const itemFinanceiroMap = {};
       const financialData = this._currentData;
