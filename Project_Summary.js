@@ -124,6 +124,11 @@
         padding: 0 4px;
       }
       
+      /* Expansão do limite do budget para evitar truncamento no texto */
+      .bar-wrapper:last-child {
+        min-width: 85px; 
+      }
+      
       .bar-element {
         width: 100%;
         max-width: 46px;
@@ -184,12 +189,10 @@
       .axis-label {
         flex: 1;
         text-align: center;
-        font-size: calc(var(--font-size-labels) - 0.5px);
+        font-size: calc(var(--font-size-labels) - 1px); /* Redução milimétrica preventiva */
         font-weight: 600;
         color: #718096;
-        text-overflow: ellipsis;
         white-space: nowrap;
-        overflow: hidden;
         padding: 0 1px;
       }
 
@@ -221,25 +224,39 @@
         border-color: #feebc8;
       }
 
+      /* SIMETRIA DE GRID ALINHADA (Solução para Quebra do Grid) */
       .insight-grid {
-        display: grid;
-        grid-template-columns: 1.1fr 0.9fr;
+        display: flex;
         gap: 16px;
         margin-top: auto;
         padding-top: 12px;
         border-top: 1px solid #f0f0f0;
         flex-shrink: 0;
+        width: 100%;
+      }
+
+      .data-table-holder {
+        flex: 1.1; 
+        min-width: 0;
+      }
+
+      .text-insight-holder {
+        flex: 0.9; 
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        background-color: #f8fafc;
+        border-radius: 5px;
+        padding: 10px 12px;
+        border-left: 3px solid #cbd5e0;
+        box-sizing: border-box;
       }
 
       @media (max-width: 620px) {
         .insight-grid {
-          grid-template-columns: 1fr;
+          flex-direction: column;
           gap: 12px;
         }
-      }
-
-      .data-table-holder {
-        width: 100%;
       }
 
       .kpi-table {
@@ -298,20 +315,9 @@
         color: #1a202c;
       }
 
-      .text-insight-holder {
-        display: flex;
-        flex-direction: column;
-        background-color: #f8fafc;
-        border-radius: 5px;
-        padding: 10px 12px;
-        border-left: 3px solid #cbd5e0;
-        box-sizing: border-box;
-      }
-
       .text-insight-holder.saving { border-left-color: #34a853; }
       .text-insight-holder.increase { border-left-color: #f9ab00; }
 
-      /* CORREÇÃO DO CABEÇALHO DA CAIXA: Renomeado para Highlights (Anexo 2) */
       .insight-box-header {
         display: flex;
         align-items: center;
@@ -604,6 +610,10 @@
           return;
         }
 
+        const monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
+        let currentYearCounter = new Date().getFullYear() - 1; 
+        let lastMonthIndex = 0;
+
         const seriesData = [];
         let actualIndex = -1;
 
@@ -611,17 +621,18 @@
           const type = m.isCurrentMonth ? "actual" : "historical";
           if (type === "actual") actualIndex = idx;
 
-          // IDENTIFICAÇÃO DE ANO NO EIXO (Anexo 1): Extrai o ano do ID ou String (Formato Jan 25, Mar 25)
-          let finalLabel = m.label;
-          let foundYear = "";
-          const matches = m.id.match(/\\d{4}/);
-          if (matches) foundYear = matches[0].substring(2, 4);
-          
-          if (foundYear && !finalLabel.includes(foundYear)) {
-            finalLabel = `${finalLabel} ${foundYear}`;
-          }
+          const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
+          const targetMonthIndex = monthOrderMap[cleanLabelUpper] || 1;
 
-          seriesData.push({ label: finalLabel, value: m.realizado, type });
+          if (idx > 0 && targetMonthIndex <= lastMonthIndex) {
+            currentYearCounter++;
+          }
+          lastMonthIndex = targetMonthIndex;
+
+          const shortYearString = String(currentYearCounter).substring(2, 4);
+          const alignedLabel = `${m.label} ${shortYearString}`;
+
+          seriesData.push({ label: alignedLabel, value: m.realizado, type });
         });
 
         if (actualIndex === -1 && seriesData.length > 0) {
@@ -654,7 +665,8 @@
 
           const kpiLabel = document.createElement("span");
           kpiLabel.className = "kpi-label";
-          kpiLabel.textContent = (d.value / 1000000).toFixed(1) + "M";
+          // PADRONIZAÇÃO EXECUTIVA DE CASAS DECIMAIS: Exibe rigorosamente 2 casas em todos os rótulos (Ex: 63.94M)
+          kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
           barElement.appendChild(kpiLabel);
 
           barWrapper.appendChild(barElement);
@@ -711,11 +723,19 @@
         const val1 = seriesData[pair.from].value;
         const val2 = seriesData[pair.to].value;
         
-        let varianceText = "0%";
-        if (val1 !== 0) {
-          const variance = ((val2 - val1) / val1) * 100;
-          varianceText = (variance >= 0 ? "+" : "") + variance.toFixed(1) + "%";
+        // CÁLCULO DA CAIXINHA AÉREA SINCRONIZADA COM A REGRA DE CUSTOS (Fim da Matemática Invertida)
+        const diff = val2 - val1;
+        let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
+        
+        // Se a barra destino for maior que a origem, para CUSTOS isso é desfavorável (Sinal Negativo na Visão de Meta)
+        const isCostIncrease = val2 > val1;
+        if (isCostIncrease && variancePercent > 0) {
+          variancePercent = -variancePercent; 
+        } else if (!isCostIncrease && variancePercent < 0) {
+          variancePercent = Math.abs(variancePercent); 
         }
+
+        const varianceText = (variancePercent >= 0 ? "+" : "") + variancePercent.toFixed(2) + "%";
 
         const lineStrokeColor = "#718096";
         const markerId = "url(#arrow-neutral)";
@@ -747,10 +767,10 @@
         span.className = "variance-tag";
         span.textContent = varianceText;
         
-        if (val2 > val1) {
-          span.classList.add("increase");
+        if (isCostIncrease) {
+          span.classList.add("increase"); // Laranja: Estouro desfavorável
         } else {
-          span.classList.add("saving");
+          span.classList.add("saving");   // Verde: Economia favorável
         }
 
         div.appendChild(span);
@@ -765,54 +785,70 @@
       const monthLabel = seriesData[actualIndex].label;
 
       const diffNominal = actualVal - budgetVal;
-      const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
+      
+      // REGRA DE SINAL FINANCEIRO CORRETA: Realizado > Budget = Desvio Negativo/Desfavorável para a Meta
+      const isOverBudget = actualVal > budgetVal;
+      let diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
+      if (isOverBudget && diffPercent > 0) {
+        diffPercent = -diffPercent; 
+      } else if (!isOverBudget && diffPercent < 0) {
+        diffPercent = Math.abs(diffPercent);
+      }
       
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
-      const formatNominal = (v) => (v >= 0 ? "+" : "") + (v / 1000000).toFixed(2) + "M";
-      const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+      // Exibição amigável sem assustar com duplos sinais, mantendo consistência centavo por centavo
+      const formatNominalDisplay = (v) => (v >= 0 ? "+" : "") + (v / 1000000).toFixed(2) + "M";
+      const formatPercentDisplay = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 
       this._lblActRow.textContent = `Realizado (${monthLabel})`;
       this._valActRow.textContent = formatM(actualVal);
       this._valBudRow.textContent = formatM(budgetVal);
       this._valDiffRow.textContent = formatM(diffNominal);
-      this._valPctRow.textContent = formatPercent(diffPercent);
+      this._valPctRow.textContent = formatPercentDisplay(diffPercent);
 
       this._textInsightBox.className = "text-insight-holder";
       
-      let semClassBudget = diffNominal > 0 ? "increase" : "saving";
-      let statusTextBudget = diffNominal > 0 ? "aumento de custos" : "eficiência operacional";
-      let relatoFimBudget = diffNominal > 0 ? "acima do teto projetado." : "abaixo da meta orçada.";
+      let semClassBudget = isOverBudget ? "increase" : "saving";
+      let statusTextBudget = isOverBudget ? "aumento de custos" : "eficiência operacional";
+      let relatoFimBudget = isOverBudget ? "acima do teto orçado para o período." : "abaixo da meta corporativa.";
 
       this._textInsightBox.classList.add(semClassBudget);
 
       let dynamicNarration = `
         A performance consolidada de <span class="bold-val">${monthLabel}</span> atingiu 
         <span class="bold-val">${formatM(actualVal)}</span>. Em relação ao orçamento planejado (Budget), 
-        o desvim nominal foi de <span class="inline-highlight ${semClassBudget}">${formatNominal(diffNominal)}</span> 
-        (<span class="inline-highlight ${semClassBudget}">${formatPercent(diffPercent)}</span>), configurando 
-        um quadro de <span class="bold-val">${statusTextBudget}</span> ${relatoFimBudget}
+        o desvio nominal foi registrado em <span class="inline-highlight ${semClassBudget}">${formatNominalDisplay(diffNominal)}</span> 
+        (<span class="inline-highlight ${semClassBudget}">${formatPercentDisplay(diffPercent)}</span>), configurando 
+        um quadro de <span class="bold-val">${statusTextBudget}</span> vindo ${relatoFimBudget}
       `;
 
-      // ADIÇÃO DE INTELIGÊNCIA COMPARTIMENTADA: Análise Temporal em relação ao mês anterior (Anexo 2)
       if (actualIndex > 0) {
         const prevMonthVal = sortedMonths[actualIndex - 1].realizado;
         const prevMonthLabel = seriesData[actualIndex - 1].label;
         const diffPrev = actualVal - prevMonthVal;
-        const diffPrevPct = prevMonthVal !== 0 ? (diffPrev / prevMonthVal) * 100 : 0;
+        
+        const isPrevIncrease = actualVal > prevMonthVal;
+        let diffPrevPct = prevMonthVal !== 0 ? (diffPrev / prevMonthVal) * 100 : 0;
+        if (isPrevIncrease && diffPrevPct > 0) {
+          diffPrevPct = -diffPrevPct;
+        } else if (!isPrevIncrease && diffPrevPct < 0) {
+          diffPrevPct = Math.abs(diffPrevPct);
+        }
 
-        let semClassPrev = diffPrev > 0 ? "increase" : "saving";
-        let statusTextPrev = diffPrev > 0 ? "um avanço sequencial de despesas" : "uma contração estável de custos";
+        let semClassPrev = isPrevIncrease ? "increase" : "saving";
+        let statusTextPrev = isPrevIncrease ? "um avanço sequencial de despesas" : "uma contração estável de custos";
 
         dynamicNarration += `
           <br><br><b>Comparado ao mês anterior (${prevMonthLabel}):</b> A oscilação nominal fechou em 
-          <span class="inline-highlight ${semClassPrev}">${formatNominal(diffPrev)}</span> 
-          (<span class="inline-highlight ${semClassPrev}">${formatPercent(diffPrevPct)}</span>), registrando 
+          <span class="inline-highlight ${semClassPrev}">${formatNominalDisplay(diffPrev)}</span> 
+          (<span class="inline-highlight ${semClassPrev}">${formatPercentDisplay(diffPrevPct)}</span>), registrando 
           <span class="bold-val">${statusTextPrev}</span> na performance evolutiva dos períodos.
         `;
       }
 
       this._insightTextDesc.innerHTML = dynamicNarration;
-      this._insightGrid.style.display = "grid";
+      this._insightGrid.style.color = "#2d3748";
+      this._insightGrid.style.display = "flex"; // Força o Grid simétrico baseado em Flexbox estável
     }
 
     getColorActualMonth() { return this._props.colorActualMonth; }
