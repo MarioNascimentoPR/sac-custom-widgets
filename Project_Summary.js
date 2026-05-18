@@ -186,7 +186,6 @@
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
       this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
 
-      // Escopo estável global de dimensões
       this._tempoDimId = null;
       this._versaoDimId = null;
       this._itemFinanceiroDimId = null;
@@ -268,8 +267,8 @@
       this._hlMonthLi = document.createElement("li");
       this._hlConsLi = document.createElement("li");
       this._hlYtdLi = document.createElement("li");
-      this._hlExtraLi1 = document.createElement("li"); // Bullet dinâmico do Item Financeiro (Ofensor)
-      this._hlExtraLi2 = document.createElement("li"); // Bullet dinâmico do Item Financeiro (Eficiência)
+      this._hlExtraLi1 = document.createElement("li"); 
+      this._hlExtraLi2 = document.createElement("li"); 
       
       ul.appendChild(this._hlMonthLi);
       ul.appendChild(this._hlConsLi);
@@ -354,7 +353,6 @@
 
         this._measId = measureKeys[0];
         
-        // CORREÇÃO E FIXAÇÃO DE ESCOPO: Vinculando as chaves dinamicamente à instância (this) de forma perene
         this._tempoDimId = null;
         this._versaoDimId = null;
         this._itemFinanceiroDimId = null;
@@ -446,7 +444,6 @@
           return a.monthNum - b.monthNum;
         });
 
-        // Inicialização cronológica baseada na data do sistema (Now - 1 mês)
         const nowRuntime = new Date();
         let targetMonthNum = nowRuntime.getMonth(); 
         let targetYearNum = nowRuntime.getFullYear();
@@ -672,9 +669,6 @@
       svg.appendChild(fragment);
     }
 
-    /* ==========================================================================
-       ENGINE DE HIGHLIGHTS MULTIDIMENSIONAL PERMANENTE & COGNITIVA
-       ========================================================================== */
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
@@ -743,7 +737,6 @@
       const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
-      // População estática e segura dos três primeiros eixos
       this._hlMonthLi.textContent = "";
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
@@ -760,7 +753,9 @@
       const valueSpan3 = document.createElement("span"); valueSpan3.textContent = `${consumoBudgetPercent.toFixed(1)}%`; valueSpan3.style.fontWeight = "700";
       this._hlYtdLi.appendChild(s3); this._hlYtdLi.appendChild(document.createTextNode("Acumulado com desvio ")); this._hlYtdLi.appendChild(statusSpan3); this._hlYtdLi.appendChild(document.createTextNode(", consumindo ")); this._hlYtdLi.appendChild(valueSpan3); this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
 
-      // MÓDULO DE DESTAQUES ENRIQUECIDOS POR ITEM FINANCEIRO E CONTA CONTÁBIL (YTD PERÍODO ACUMULADO)
+      // ==========================================================================
+      // ENGINE DE HIGHLIGHTS COM REGRA DE EXCLUSÃO DO ITEM "OUTROS"
+      // ==========================================================================
       const itemFinanceiroMap = {};
       const financialData = this._currentData;
 
@@ -770,16 +765,16 @@
         const tempoObj = row[this._tempoDimId];
         if (!tempoObj) return;
         
-        // Isola e agrupa estritamente as linhas pertencentes ao período YTD acumulado do ano selecionado
         const rowMonthNode = fullSeriesData.find(d => d.id === String(tempoObj.id));
         if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > currentBarNode.monthNum) return;
 
         const itemObj = row[this._itemFinanceiroDimId];
         const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
 
-        // Filtro defensivo contra nós agregadores inflados nativos do SAC (all_members)
         const itemUpper = itemName.toUpperCase();
-        if (itemUpper.includes("TOTAL") || itemUpper.includes("ALL_MEMBERS") || itemUpper.includes("(ALL)")) return;
+        
+        // CORREÇÃO: Cláusula de barreira para descartar e mitigar o item "Outros" ou agregadores padrão
+        if (itemUpper.includes("TOTAL") || itemUpper.includes("ALL_MEMBERS") || itemUpper.includes("(ALL)") || itemUpper === "OUTROS") return;
 
         if (!itemFinanceiroMap[itemName]) {
           itemFinanceiroMap[itemName] = { realizado: 0, orcado: 0, contas: {} };
@@ -802,7 +797,6 @@
           itemFinanceiroMap[itemName].realizado += rawValue;
         }
 
-        // Mapeia e segmenta a Conta Contábil correlacionada interna daquele Item Financeiro
         if (this._contaContabilDimId && row[this._contaContabilDimId]) {
           const contaName = row[this._contaContabilDimId].label || row[this._contaContabilDimId].description || row[this._contaContabilDimId].id || "Geral";
           if (!itemFinanceiroMap[itemName].contas[contaName]) {
@@ -816,7 +810,6 @@
         }
       });
 
-      // Algoritmo de Extração de Outliers Operacionais (Ofensor Absoluto e Eficiência Máxima)
       let maxOutlierOffender = ""; let maxOffenderVal = 0; let maxOffenderConta = "";
       let maxOutlierSaver = ""; let maxSaverVal = 0; let maxSaverConta = "";
 
@@ -841,8 +834,7 @@
         }
       });
 
-      // REIDRATAÇÃO VISUAL SELETIVA DO DOM (DESIGN POR EXCEÇÃO)
-      // Bullet 4: Maior Outlier de Estouro do Período
+      // Renderização condicional no painel lateral
       this._hlExtraLi1.textContent = "";
       if (maxOutlierOffender) {
         this._hlExtraLi1.style.display = "block";
@@ -857,7 +849,6 @@
         this._hlExtraLi1.appendChild(document.createTextNode("."));
       } else { this._hlExtraLi1.style.display = "none"; }
 
-      // Bullet 5: Maior Outlier de Economia/Saving do Período
       this._hlExtraLi2.textContent = "";
       if (maxOutlierSaver) {
         this._hlExtraLi2.style.display = "block";
