@@ -1,3 +1,7 @@
+/* ==========================================================================
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY
+   ========================================================================== */
+
 (function () {
   const template = document.createElement("template");
   template.innerHTML = `
@@ -305,6 +309,10 @@
     renderChart() {
       if (!document.contains(this) || !this._shadowRoot) return;
 
+      // CORREÇÃO CRÍTICA: Elimina o placeholder dinâmico antigo antes de calcular o layout das colunas
+      const residualPlaceholder = this._axisX.querySelector(".placeholder-text");
+      if (residualPlaceholder) residualPlaceholder.remove();
+
       const financialData = this._currentData;
       if (!financialData || !financialData.data || financialData.data.length === 0) {
         this._axisX.textContent = "";
@@ -472,7 +480,7 @@
         const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
         const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
 
-        const startIndex = Math.max(0, actualIndex - 12); 
+        const startIndex = Math.max(0, actualIndex - 11); // Modificado para garantir amostragem de 12 meses + 1 meta
         const visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
 
         let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
@@ -579,14 +587,15 @@
         let variancePercent = 0;
         let directionalArrow = "";
 
-        // Correção Analítica de Custos (OPEX): Realizado vs Orçado
+        // REVISÃO DE CÁLCULO: Se a barra de destino for do tipo orçamento (Budget Meta), inverte a lógica temporal pura
         if (itemTo.type === "budget") {
-          const diff = val1 - val2; // Se Realizado (val1) > Orçado (val2) -> Estouro/Aumento
+          // Cenário OPEX: Economia real de despesa ocorre quando o Realizado (val1) é MENOR ou IGUAL ao Orçado (val2)
+          const diff = val1 - val2; 
           isCostSaving = diff <= 0;
           variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         } else {
-          // Tendência Temporal Pura (Mês Atual vs Mês Anterior ou Atual vs Antigo)
+          // Progressão temporal pura (Mês Atual x Mês Anterior ou Realizado 2026 x Realizado 2025)
           const diff = val2 - val1; 
           isCostSaving = diff <= 0;
           variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
@@ -637,7 +646,6 @@
         if (idx <= actualIndex) {
           if (d.yearValue === currentYear) {
             totalRealizadoYTDAtual += d.value;
-            // Remoção da contaminação do orçamento: Acumulação limpa das metas reais
             totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
           }
         }
@@ -670,7 +678,6 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      // População tipada para a esteira geométrica YTD
       this._ytdSeriesMock = [
         { value: totalRealizadoYTDAntigo, type: "historical" }, 
         { value: totalRealizadoYTDAtual, type: "actual" }, 
