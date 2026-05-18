@@ -297,6 +297,19 @@
       .highlight-toggle-btn { border: 1px solid #cbd5e0; background: #ffffff; color: #2d3748; border-radius: 4px; padding: 4px 9px; font-size: var(--small-font-size); font-weight: 700; cursor: pointer; white-space: nowrap; }
       .highlight-toggle-btn:hover { background: #edf2f7; }
       .ul-highlight { margin: 0; padding-left: 18px; font-size: var(--ui-font-size); color: #333333; line-height: 1.55; display: flex; flex-direction: column; gap: 9px; }
+      .bar-tooltip {
+        position: absolute; display: none; min-width: 220px; max-width: 320px; max-height: 300px; overflow: hidden auto;
+        background: rgba(255, 255, 255, 0.98); border: 1px solid #d7dee8; border-radius: 8px; box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
+        padding: 10px 12px; z-index: 20; pointer-events: none; color: #243443;
+      }
+      .bar-tooltip.show { display: block; }
+      .bar-tooltip-title { font-size: var(--small-font-size); font-weight: 700; color: #1e293b; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
+      .bar-tooltip-subtitle { font-size: var(--small-font-size); font-weight: 600; color: #64748b; margin-left: 4px; }
+      .bar-tooltip-list { display: flex; flex-direction: column; gap: 6px; }
+      .bar-tooltip-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; font-size: var(--ui-font-size); }
+      .bar-tooltip-name { color: #334155; min-width: 0; word-break: break-word; }
+      .bar-tooltip-value { color: #0f172a; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .bar-tooltip-empty { font-size: var(--ui-font-size); color: #64748b; }
       :host([data-layout="stacked"]) .widget-header { align-items: flex-start; flex-direction: column; }
       :host([data-layout="stacked"]) .filter-container-finance { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
       :host([data-layout="stacked"]) .main-visualization-layout { flex-direction: column; }
@@ -415,6 +428,7 @@
           <div class="highlight-content-text" id="highlightContentText"></div>
         </div>
       </div>
+      <div class="bar-tooltip" id="barTooltip" aria-hidden="true"></div>
     </div>
   `;
 
@@ -736,6 +750,7 @@
       this._lastPeriodSummaryKey = "";
       this._isHighlightDetailOpen = false;
       this._responsiveSignature = "";
+      this._activeTooltipPayload = null;
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -754,6 +769,9 @@
           this._telemetryModal.classList.remove("show");
         }
       };
+      this._boundBarEnter = (e) => this._handleBarHover(e);
+      this._boundBarMove = (e) => this._handleBarHover(e);
+      this._boundBarLeave = () => this._hideBarTooltip();
     }
 
     connectedCallback() {
@@ -761,6 +779,7 @@
         this._shadowRoot = this.attachShadow({ mode: "open" });
         this._shadowRoot.appendChild(template.content.cloneNode(true));
         
+        this._widgetWrapper = this._shadowRoot.getElementById("widget-wrapper");
         this._chartArea = this._shadowRoot.getElementById("chartArea");
         this._ytdChartArea = this._shadowRoot.getElementById("ytdChartArea");
         this._monthlyConnectors = this._shadowRoot.getElementById("monthlyConnectors");
@@ -801,6 +820,7 @@
         this._ytdPctRow = this._shadowRoot.getElementById("ytd-pct-row");
         this._highlightContentText = this._shadowRoot.getElementById("highlightContentText");
         this._highlightCardArea = this._shadowRoot.getElementById("highlightCardArea");
+        this._barTooltip = this._shadowRoot.getElementById("barTooltip");
 
         // 🛠️ MAPEAMENTO SEGURO DAS MINI BARRAS ESTÁTICAS DE ACORDO COM O TEMPLATE
         this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
@@ -853,6 +873,7 @@
       if (this._resizeObserver) this._resizeObserver.disconnect();
       window.removeEventListener("click", this._boundWindowClick);
       clearTimeout(this._resizeTimeout);
+      this._hideBarTooltip();
     }
 
     requestUpdate() {
@@ -919,6 +940,114 @@
 
     _setStyle(node, prop, value) {
       if (node && node.style[prop] !== value) node.style[prop] = value;
+    }
+
+    _shouldIgnoreCompositionMember(name) {
+      const upper = String(name || "").toUpperCase();
+      return (
+        !upper ||
+        upper.includes("TOTAL") ||
+        upper.includes("ALL_MEMBERS") ||
+        upper.includes("(ALL)") ||
+        upper === "OUTROS" ||
+        upper.includes("RATEIO") ||
+        upper.includes("LIQUIDA")
+      );
+    }
+
+    _aggregateCompositionValue(map, name, value) {
+      if (!map || !name) return;
+      map[name] = (map[name] || 0) + value;
+    }
+
+    _buildTooltipItems(compositionMap) {
+      return Object.entries(compositionMap || {})
+        .map(([name, value]) => ({ name, value }))
+        .filter(item => Math.abs(item.value) > 0)
+        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+    }
+
+    _formatTooltipValue(value) {
+      const sign = value >= 0 ? "" : "-";
+      return `${sign}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
+    }
+
+    _getTooltipPayload(seriesData) {
+      if (!seriesData) return null;
+      const compositionMap = seriesData.type === "budget"
+        ? seriesData.compositionBudget
+        : seriesData.compositionRealizado;
+      const items = this._buildTooltipItems(compositionMap);
+      if (items.length === 0) return null;
+
+      const scopeLabel = seriesData.type === "budget" ? "Orçado" : "Realizado";
+      return {
+        title: seriesData.label || "Composição",
+        subtitle: scopeLabel,
+        items
+      };
+    }
+
+    _renderBarTooltip(payload) {
+      if (!this._barTooltip || !payload) return;
+      const rows = payload.items.map(item => (
+        `<div class="bar-tooltip-row"><span class="bar-tooltip-name">${this._escapeHtml(item.name)}</span><span class="bar-tooltip-value">${this._escapeHtml(this._formatTooltipValue(item.value))}</span></div>`
+      )).join("");
+
+      this._barTooltip.innerHTML = `
+        <div class="bar-tooltip-title">${this._escapeHtml(payload.title)}<span class="bar-tooltip-subtitle">${this._escapeHtml(payload.subtitle)}</span></div>
+        <div class="bar-tooltip-list">${rows || '<div class="bar-tooltip-empty">Sem composição disponível.</div>'}</div>
+      `;
+      this._barTooltip.classList.add("show");
+      this._barTooltip.setAttribute("aria-hidden", "false");
+    }
+
+    _positionBarTooltip(clientX, clientY) {
+      if (!this._barTooltip || !this._widgetWrapper) return;
+      const wrapperRect = this._widgetWrapper.getBoundingClientRect();
+      const tooltipRect = this._barTooltip.getBoundingClientRect();
+      const maxLeft = Math.max(8, wrapperRect.width - tooltipRect.width - 8);
+      const maxTop = Math.max(8, wrapperRect.height - tooltipRect.height - 8);
+      const desiredLeft = clientX - wrapperRect.left + 14;
+      const desiredTop = clientY - wrapperRect.top - tooltipRect.height - 12;
+      const fallbackTop = clientY - wrapperRect.top + 16;
+      const topCandidate = desiredTop < 8 ? fallbackTop : desiredTop;
+      const left = Math.min(Math.max(8, desiredLeft), maxLeft);
+      const top = Math.min(Math.max(8, topCandidate), maxTop);
+      this._setStyle(this._barTooltip, "left", `${left}px`);
+      this._setStyle(this._barTooltip, "top", `${top}px`);
+    }
+
+    _handleBarHover(event) {
+      const bar = event.currentTarget;
+      const payload = this._getTooltipPayload(bar ? bar._seriesData : null);
+      if (!payload) {
+        this._hideBarTooltip();
+        return;
+      }
+
+      const payloadKey = `${payload.title}|${payload.subtitle}|${payload.items.length}`;
+      if (!this._activeTooltipPayload || this._activeTooltipPayload !== payloadKey) {
+        this._renderBarTooltip(payload);
+        this._activeTooltipPayload = payloadKey;
+      }
+      this._positionBarTooltip(event.clientX, event.clientY);
+    }
+
+    _hideBarTooltip() {
+      if (!this._barTooltip) return;
+      this._barTooltip.classList.remove("show");
+      this._barTooltip.setAttribute("aria-hidden", "true");
+      this._activeTooltipPayload = null;
+    }
+
+    _escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     }
 
     _initStaticHighlightsDOM() {
@@ -1169,24 +1298,43 @@
             if (tLabel.toLowerCase().includes("(all)")) return;
 
             if (!timelineMap[tId]) {
-              timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false, rowContext: row };
+              timelineMap[tId] = {
+                id: tId,
+                label: tLabel,
+                realizado: 0,
+                orcado: 0,
+                isCurrentMonth: false,
+                rowContext: row,
+                realizadoItems: {},
+                orcadoItems: {}
+              };
             }
             if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
             if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
 
             const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+            let itemName = null;
+            if (this._itemFinanceiroDimId && row[this._itemFinanceiroDimId]) {
+              itemName = row[this._itemFinanceiroDimId].label || row[this._itemFinanceiroDimId].description || row[this._itemFinanceiroDimId].id || null;
+              if (this._shouldIgnoreCompositionMember(itemName)) itemName = null;
+            }
             if (this._versaoDimId) {
               const vObj = row[this._versaoDimId];
               if (vObj) {
                 const vId = String(vObj.id).toUpperCase(); 
                 const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
                 if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { 
-                  timelineMap[tId].orcado += rawValue; 
+                  timelineMap[tId].orcado += rawValue;
+                  if (itemName) this._aggregateCompositionValue(timelineMap[tId].orcadoItems, itemName, rawValue);
                 } else { 
-                  timelineMap[tId].realizado += rawValue; 
+                  timelineMap[tId].realizado += rawValue;
+                  if (itemName) this._aggregateCompositionValue(timelineMap[tId].realizadoItems, itemName, rawValue);
                 }
               }
-            } else { timelineMap[tId].realizado += rawValue; }
+            } else {
+              timelineMap[tId].realizado += rawValue;
+              if (itemName) this._aggregateCompositionValue(timelineMap[tId].realizadoItems, itemName, rawValue);
+            }
           });
 
           const sortedMonths = Object.values(timelineMap);
@@ -1211,7 +1359,7 @@
             const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
 
             fullSeriesData.push({ 
-              id: m.id, label: alignedLabel, value: m.realizado, type: m.isCurrentMonth ? "actual" : "historical", originalNode: m, yearValue: parsedYear, monthNum: targetMonthIndex, rawRow: m.rowContext 
+              id: m.id, label: alignedLabel, value: m.realizado, type: m.isCurrentMonth ? "actual" : "historical", originalNode: m, yearValue: parsedYear, monthNum: targetMonthIndex, rawRow: m.rowContext, compositionRealizado: m.realizadoItems, compositionBudget: m.orcadoItems
             });
           });
 
@@ -1315,7 +1463,7 @@
         if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
 
         visibleSeriesData.push({
-          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum
+          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum, compositionBudget: targetBudgetSource.orcadoItems || {}
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
@@ -1380,6 +1528,7 @@
        RECONCILIAÇÃO DO POOL DO DOM MENSAL (BLINDADO)
        ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
+      this._hideBarTooltip();
       const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
       const existingLabels = this._axisX.querySelectorAll(".axis-label");
       const targetLength = visibleSeriesData.length;
@@ -1389,6 +1538,9 @@
           const wrapper = document.createElement("div"); wrapper.className = "bar-wrapper";
           const bar = document.createElement("div"); bar.className = "bar-element";
           const label = document.createElement("span"); label.className = "kpi-label";
+          bar.addEventListener("mouseenter", this._boundBarEnter);
+          bar.addEventListener("mousemove", this._boundBarMove);
+          bar.addEventListener("mouseleave", this._boundBarLeave);
           bar.appendChild(label); wrapper.appendChild(bar); this._chartArea.appendChild(wrapper);
         }
       } else if (existingWrappers.length > targetLength) {
@@ -1414,6 +1566,7 @@
         this._setClass(bar, `bar-element ${d.type}`);
         this._setStyle(bar, "height", `${(d.value / maxVal) * 100}%`);
         this._setText(label, `${(d.value / 1000000).toFixed(2)}M`);
+        bar._seriesData = d;
 
         const axisLabel = updatedLabels[idx];
         this._setClass(axisLabel, d.type === "actual" ? "axis-label actual-month" : "axis-label");
