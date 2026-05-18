@@ -13,7 +13,7 @@
         --color-increase: #c5221f;
         --color-increase-bg: #fce8e6;
         --color-increase-border: #fad2cf;
-        --color-border-axis: #718096;
+        --color-border-axis: #cbd5e0;
         
         display: block;
         width: 100%;
@@ -124,11 +124,20 @@
       .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 24px; flex-shrink: 0; align-items: stretch; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
       .visualization-column.monthly-col { flex: 3; }
-      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
+      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; position: relative; }
 
-      .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; }
+      /* CORREÇÃO DO TÍTULO YTD: Clean, elegante e discreto */
+      .ytd-chart-header-title { 
+        font-size: 11px; 
+        font-weight: 700; 
+        color: #4a5568; 
+        text-transform: uppercase; 
+        letter-spacing: 0.75px; 
+        margin-bottom: auto;
+        padding-bottom: 4px;
+      }
       
-      .chart-container-block { position: relative; height: 145px; padding-top: 32px; box-sizing: border-box; width: 100%; }
+      .chart-container-block { position: relative; height: 145px; padding-top: 36px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
       
@@ -150,14 +159,15 @@
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
       .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
       
+      /* TAGS DE VARIAÇÃO: Ajustadas para evitar sobreposição */
       .variance-tag {
-        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); white-space: nowrap; border: 1px solid transparent; display: inline-block;
+        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block;
       }
       .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
       .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
 
       /* ==========================================================================
-         GRID EXECUTIVO UNIFICADO COM METRICAS E HIGHLIGHTS ESTRUTURADOS
+         GRID INTERMEDIÁRIO DE METRICAS E HIGHLIGHTS EM TÓPICOS
          ========================================================================== */
       .insight-grid {
         display: grid;
@@ -247,7 +257,7 @@
       .status-badge-finance.warning { background-color: var(--color-increase-bg); color: var(--color-increase); border: 1px solid var(--color-increase-border); }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; border: 1px solid #e8eaed; }
 
-      /* QUADRANTE DE HIGHLIGHTS EM TOPICOS ESCANEAVEIS */
+      /* QUADRANTE DE HIGHLIGHTS EM TÓPICOS ESCANEÁVEIS */
       .highlight-card-area {
         display: flex;
         flex-direction: column;
@@ -289,7 +299,7 @@
         font-weight: 500;
       }
       .topic-bullet {
-        margin-top: 3px;
+        margin-top: 5px;
         width: 5px; height: 5px; background-color: #4a5568; border-radius: 50%; flex-shrink: 0;
       }
       .topic-text strong { color: #0f172a; }
@@ -781,9 +791,7 @@
         const val1 = visibleSeriesData[pair.from].value; const val2 = visibleSeriesData[pair.to].value;
         const diff = val2 - val1; let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
         
-        /* CORRECAO SEMANTICA ABSOLUTA: 
-           Como o cubo avalia CUSTOS/DESPESAS, gastar MENOS que o planejado (diff < 0) é um desvio POSITIVO (Economia = Verde).
-           Gastar MAIS que o planejado (diff > 0) é um desvio NEGATIVO (Estouro/Aumento de Custo = Vermelho). */
+        /* LOGICA DE CUSTOS CORRIGIDA: Gastar menos que o orçado (diff <= 0) é um desvio POSITIVO (Verde). */
         const isCostSaving = diff <= 0;
         
         if (!isCostSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
@@ -794,7 +802,7 @@
         const markerId = "url(#arrow-neutral)";
         const lineStrokeColor = "var(--color-border-axis)";
 
-        /* LINHA SOLIDA E SIMETRICA EM TODOS OS MODOS VISUAIS CRITICOS */
+        /* FIX: Conector linear minimalista e limpo, sem sobrepor os rótulos de dados */
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); 
@@ -831,14 +839,15 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
-      // 1. RE-HYDRATION METRICAS DO MES (COMPORTAMENTO DE CUSTOS)
+      // 1. ATUALIZAÇÃO SÉRIA DOS DADOS DO MÊS ATUAL
       this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
       this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
       this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
       this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
       this._monthConsumptionBadge.className = "status-badge-finance " + (consumptionMonthPercent <= 100 ? "success" : "warning");
+      this._monthConsumptionBadge.textContent = consumptionMonthPercent <= 100 ? "No Prazo" : "Estourado";
 
-      // 2. CALCULO ACUMULADO ANUAL (YTD)
+      // 2. CÁLCULO E PARSE SEMÂNTICO DO ACUMULADO (YTD)
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
@@ -868,11 +877,12 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
       this._ytdConsumptionBadge.className = "status-badge-finance " + (consumoBudgetPercent <= 100 ? "success" : "warning");
+      this._ytdConsumptionBadge.textContent = consumoBudgetPercent <= 100 ? "No Prazo" : "Estourado";
 
-      // CORRECAO: ALINHAMENTO FIXO DO TITULO DO MINIGRAFICO YTD AO TOPO DA ESTEIRA
+      // FIX: Título do gráfico secundário corrigido de tamanho e alinhamento
       this._ytdChartHeaderTitle.textContent = `Evolução YTD Acumulada (${currentYear})`;
 
-      // 3. ATUALIZACAO E TRATAMENTO DE LINHAS DO CHART YTD (METODOLOGIA UNIFICADA)
+      // 3. RENDERIZAÇÃO COERENTE DO MINIGRAFICO YTD COM CONECTORES DISCRETOS
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
@@ -893,14 +903,14 @@
       ];
       this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ytdBarElements, ytdSeriesMock, 1, "ytd");
 
-      // 4. CORREÇÃO DE HIGHLIGHTS: TOPICOS ESCANEAVEIS DE LEITURA AGIL PARA O C-LEVEL
-      const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
-      const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
+      // 4. ESTRUTURAÇÃO DO INSIGHT EM MARCADORES ESCANEÁVEIS (HIGHLIGHTS)
+      const monthStatusText = isMonthSaving ? "economia de gastos" : "incremento de despesas";
+      const ytdStatusText = isYtdSaving ? "abaixo do planejado" : "acima da meta estipulada";
 
-      // Injeção segura via textContent em tópicos atômicos
-      this._topicMonthPerf.textContent = `Performance Mensal (${monthLabel}): Fechamento com ${monthStatusLabel} de R$ ${Math.abs(diffNominal / 1000000).toFixed(2)}M frente ao budget planejado.`;
-      this._topicYtdPerf.textContent = `Consumo do Período: O volume utilizado do budget atingiu ${consumptionMonthPercent.toFixed(1)}% no mês corrente, mantendo o controle operacional.`;
-      this._topicConclusionPerf.textContent = `Posicionamento YTD: O acumulado anual consolidou um desvio ${ytdStatusLabel}, totalizando R$ ${formatM(totalRealizadoYTDAtual)} consumidos contra uma meta acumulada de R$ ${formatM(totalBudgetYTDCompleto)} (${consumoBudgetPercent.toFixed(1)}% de absorção).`;
+      // Limpeza completa de strings longas. Uso de micro-tópicos ágeis.
+      this._topicMonthPerf.innerHTML = `Mês Corrente (<strong>${monthLabel}</strong>): O desvio real fechou com <strong>${monthStatusText}</strong> de R$ ${Math.abs(diffNominal / 1000000).toFixed(2)}M frente ao budget.`;
+      this._topicYtdPerf.innerHTML = `Consumo Mensal: A absorção real da competência atingiu o percentual de <strong>${consumptionMonthPercent.toFixed(1)}%</strong> da meta programada.`;
+      this._topicConclusionPerf.innerHTML = `Performance YTD: O acumulado anual consolidou uma desviação <strong>${ytdStatusText}</strong>, absorvendo <strong>${consumoBudgetPercent.toFixed(1)}%</strong> da meta consolidada anual.`;
 
       this._insightGrid.style.display = "grid";
     }
