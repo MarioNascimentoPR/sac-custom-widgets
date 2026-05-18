@@ -497,8 +497,7 @@
             ytd: { realizado: 0, orcado: 0 },
             month: { realizado: 0, orcado: 0 },
             previousMonth: { realizado: 0, orcado: 0 },
-            previousYtd: { realizado: 0, orcado: 0 },
-            contas: {}
+            previousYtd: { realizado: 0, orcado: 0 }
           });
         }
         return itemFinanceiroMap.get(itemName);
@@ -534,8 +533,6 @@
 
         if (isCurrentYTD) {
           addValue(item.ytd, rawValue, isBudget);
-          if (!item.contas[contaName]) item.contas[contaName] = { realizado: 0, orcado: 0 };
-          addValue(item.contas[contaName], rawValue, isBudget);
         }
         if (isTargetMonth) addValue(item.month, rawValue, isBudget);
         if (isPreviousMonth) addValue(item.previousMonth, rawValue, isBudget);
@@ -558,19 +555,6 @@
         const yoyDiff = item.ytd.realizado - item.previousYtd.realizado;
         const yoyPct = item.previousYtd.realizado !== 0 ? (yoyDiff / item.previousYtd.realizado) * 100 : 0;
 
-        let driverContaName = ""; let maxContaImpact = -1;
-        Object.keys(item.contas).forEach(cName => {
-          const cImpact = item.contas[cName].realizado - item.contas[cName].orcado;
-          if (Math.abs(cImpact) > maxContaImpact) {
-            maxContaImpact = Math.abs(cImpact);
-            driverContaName = cName;
-          }
-        });
-
-        const driverImpactValue = driverContaName && item.contas[driverContaName]
-          ? item.contas[driverContaName].realizado - item.contas[driverContaName].orcado
-          : 0;
-        const driverShare = desvioNominal !== 0 ? (Math.abs(driverImpactValue) / Math.abs(desvioNominal)) * 100 : 0;
         const classification = this._classifyFeature(desvioNominal, variancePct, contributionPct, budgetShare, monthDiffValue, acceleration, adaptiveFloor);
         const score = this._scoreFeature(desvioNominal, variancePct, contributionPct, monthDiffValue, acceleration, classification);
 
@@ -584,9 +568,9 @@
           contributionPct,
           budgetShare,
           isSaving: desvioNominal <= 0,
-          driverConta: driverContaName,
-          driverImpact: driverImpactValue,
-          driverShare,
+          driverConta: "",
+          driverImpact: 0,
+          driverShare: 0,
           monthDiff: monthDiffValue,
           monthPctVar,
           previousMonthDiff,
@@ -611,6 +595,7 @@
 
       outlierTable.sort((a, b) => b.score - a.score);
       const selectedInsights = this._selectNarrativeRows(outlierTable, varianceTable.ytd.isSaving);
+      this._attachDriverAccounts(selectedInsights, cubeData, currentYear, targetMonthNum, tempoDimId, versaoDimId, itemFinanceiroDimId, contaContabilDimId, measId, fullSeriesById);
       const summary = this._buildSummary(selectedInsights);
 
       if (ENABLE_TELEMETRY && profiler) {
@@ -711,6 +696,61 @@
       };
     }
 
+    _attachDriverAccounts(selectedInsights, cubeData, currentYear, targetMonthNum, tempoDimId, versaoDimId, itemFinanceiroDimId, contaContabilDimId, measId, fullSeriesById) {
+      if (!selectedInsights.length || !contaContabilDimId) return;
+
+      const selectedNames = new Set(selectedInsights.map(item => item.itemName));
+      const accountMaps = new Map();
+      const ensureAccountMap = (itemName) => {
+        if (!accountMaps.has(itemName)) accountMaps.set(itemName, new Map());
+        return accountMaps.get(itemName);
+      };
+
+      cubeData.forEach(row => {
+        if (!tempoDimId || !itemFinanceiroDimId) return;
+        const tObj = row[tempoDimId];
+        if (!tObj) return;
+
+        const rowMonthNode = fullSeriesById.get(String(tObj.id));
+        if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > targetMonthNum) return;
+
+        const itemName = this._getMemberLabel(row, itemFinanceiroDimId, "Outros");
+        if (!selectedNames.has(itemName) || this._isIgnoredMember(itemName)) return;
+
+        const contaName = this._getMemberLabel(row, contaContabilDimId, "Geral");
+        if (this._isIgnoredMember(contaName, true)) return;
+
+        const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
+        const isBudget = this._isBudgetRow(row, versaoDimId);
+        const itemAccounts = ensureAccountMap(itemName);
+        if (!itemAccounts.has(contaName)) itemAccounts.set(contaName, { realizado: 0, orcado: 0 });
+        const bucket = itemAccounts.get(contaName);
+        if (isBudget) bucket.orcado += rawValue;
+        else bucket.realizado += rawValue;
+      });
+
+      selectedInsights.forEach(item => {
+        const itemAccounts = accountMaps.get(item.itemName);
+        if (!itemAccounts) return;
+
+        let bestName = "";
+        let bestImpact = 0;
+        let maxImpact = -1;
+        itemAccounts.forEach((bucket, accountName) => {
+          const impact = bucket.realizado - bucket.orcado;
+          if (Math.abs(impact) > maxImpact) {
+            maxImpact = Math.abs(impact);
+            bestName = accountName;
+            bestImpact = impact;
+          }
+        });
+
+        item.driverConta = bestName;
+        item.driverImpact = bestImpact;
+        item.driverShare = item.desvio !== 0 ? (Math.abs(bestImpact) / Math.abs(item.desvio)) * 100 : 0;
+      });
+    }
+
     _parseRawValue(val) {
       if (typeof val === 'number') return val;
       if (!val || val === "-") return 0;
@@ -755,6 +795,9 @@
       this._activeTooltipPayload = null;
       this._pendingTooltipPosition = null;
       this._tooltipMoveQueued = false;
+      this._tooltipCompositionCache = new Map();
+      this._tooltipPayloadCache = new Map();
+      this._tooltipCacheLimit = 6;
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -964,6 +1007,53 @@
       map[name] = (map[name] || 0) + value;
     }
 
+    _rememberTooltipCache(cache, key, value) {
+      if (cache.has(key)) cache.delete(key);
+      cache.set(key, value);
+      while (cache.size > this._tooltipCacheLimit) {
+        const oldestKey = cache.keys().next().value;
+        cache.delete(oldestKey);
+      }
+      return value;
+    }
+
+    _isBudgetVersionObject(versionNode) {
+      if (!versionNode) return false;
+      const vId = String(versionNode.id || "").toUpperCase();
+      const vLabel = String(versionNode.label || versionNode.description || "").toUpperCase();
+      return vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET");
+    }
+
+    _getTooltipComposition(seriesData, scope) {
+      if (!seriesData || !seriesData.id || !this._currentData || !Array.isArray(this._currentData.data)) return {};
+      const cacheKey = `${scope}|${seriesData.id}`;
+      if (this._tooltipCompositionCache.has(cacheKey)) {
+        const cached = this._tooltipCompositionCache.get(cacheKey);
+        return this._rememberTooltipCache(this._tooltipCompositionCache, cacheKey, cached);
+      }
+
+      const composition = {};
+      const targetId = String(seriesData.id);
+      this._currentData.data.forEach(row => {
+        const tempoObj = this._tempoDimId ? row[this._tempoDimId] : null;
+        if (!tempoObj || String(tempoObj.id) !== targetId) return;
+
+        const versionNode = this._versaoDimId ? row[this._versaoDimId] : null;
+        if (this._versaoDimId && !versionNode) return;
+        const isBudget = this._versaoDimId ? this._isBudgetVersionObject(versionNode) : false;
+        if ((scope === "budget") !== isBudget) return;
+
+        const itemNode = this._itemFinanceiroDimId ? row[this._itemFinanceiroDimId] : null;
+        const itemName = itemNode ? (itemNode.label || itemNode.description || itemNode.id || null) : null;
+        if (!itemName || this._shouldIgnoreCompositionMember(itemName)) return;
+
+        const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+        this._aggregateCompositionValue(composition, itemName, rawValue);
+      });
+
+      return this._rememberTooltipCache(this._tooltipCompositionCache, cacheKey, composition);
+    }
+
     _buildTooltipItems(compositionMap, previousCompositionMap) {
       return Object.entries(compositionMap || {})
         .map(([name, value]) => {
@@ -1001,14 +1091,17 @@
 
     _getTooltipPayload(seriesData) {
       if (!seriesData) return null;
-      if (seriesData._tooltipPayload) return seriesData._tooltipPayload;
+      const scope = seriesData.type === "budget" ? "budget" : "actual";
+      const payloadCacheKey = `${scope}|${seriesData.id || seriesData.label}`;
+      if (this._tooltipPayloadCache.has(payloadCacheKey)) {
+        const cached = this._tooltipPayloadCache.get(payloadCacheKey);
+        return this._rememberTooltipCache(this._tooltipPayloadCache, payloadCacheKey, cached);
+      }
 
-      const compositionMap = seriesData.type === "budget"
-        ? seriesData.compositionBudget
-        : seriesData.compositionRealizado;
-      const previousCompositionMap = seriesData.type === "budget"
-        ? (seriesData.previousSeriesData ? seriesData.previousSeriesData.compositionBudget : null)
-        : (seriesData.previousSeriesData ? seriesData.previousSeriesData.compositionRealizado : null);
+      const compositionMap = this._getTooltipComposition(seriesData, scope);
+      const previousCompositionMap = seriesData.previousSeriesData
+        ? this._getTooltipComposition(seriesData.previousSeriesData, scope)
+        : null;
       const items = this._buildTooltipItems(compositionMap, previousCompositionMap);
       if (items.length === 0) return null;
 
@@ -1017,10 +1110,9 @@
         title: seriesData.label || "Composição",
         subtitle: scopeLabel,
         items,
-        key: `${seriesData.type}|${seriesData.id || seriesData.label}|${items.map(item => `${item.name}:${item.value}:${item.previousValue}`).join("|")}`
+        key: payloadCacheKey
       };
-      seriesData._tooltipPayload = payload;
-      return payload;
+      return this._rememberTooltipCache(this._tooltipPayloadCache, payloadCacheKey, payload);
     }
 
     _renderBarTooltip(payload) {
@@ -1247,6 +1339,8 @@
         this._lastPeriodSummaryKey = "";
         this._pendingHighlightDetailItems = [];
         this._highlightDetailRendered = false;
+        this._tooltipCompositionCache.clear();
+        this._tooltipPayloadCache.clear();
         if (this._shadowRoot) {
           this._treeDropdownContent.textContent = ""; 
           this.requestUpdate();
@@ -1415,36 +1509,24 @@
                 label: tLabel,
                 realizado: 0,
                 orcado: 0,
-                isCurrentMonth: false,
-                realizadoItems: {},
-                orcadoItems: {}
+                isCurrentMonth: false
               };
             }
             if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
             if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
 
             const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
-            let itemName = null;
-            if (this._itemFinanceiroDimId && row[this._itemFinanceiroDimId]) {
-              itemName = row[this._itemFinanceiroDimId].label || row[this._itemFinanceiroDimId].description || row[this._itemFinanceiroDimId].id || null;
-              if (this._shouldIgnoreCompositionMember(itemName)) itemName = null;
-            }
             if (this._versaoDimId) {
               const vObj = row[this._versaoDimId];
               if (vObj) {
-                const vId = String(vObj.id).toUpperCase(); 
-                const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
-                if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { 
+                if (this._isBudgetVersionObject(vObj)) { 
                   timelineMap[tId].orcado += rawValue;
-                  if (itemName) this._aggregateCompositionValue(timelineMap[tId].orcadoItems, itemName, rawValue);
                 } else { 
                   timelineMap[tId].realizado += rawValue;
-                  if (itemName) this._aggregateCompositionValue(timelineMap[tId].realizadoItems, itemName, rawValue);
                 }
               }
             } else {
               timelineMap[tId].realizado += rawValue;
-              if (itemName) this._aggregateCompositionValue(timelineMap[tId].realizadoItems, itemName, rawValue);
             }
           });
 
@@ -1470,7 +1552,7 @@
             const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
 
             fullSeriesData.push({ 
-              id: m.id, label: alignedLabel, value: m.realizado, budgetValue: m.orcado, type: m.isCurrentMonth ? "actual" : "historical", yearValue: parsedYear, monthNum: targetMonthIndex, compositionRealizado: m.realizadoItems, compositionBudget: m.orcadoItems
+              id: m.id, label: alignedLabel, value: m.realizado, budgetValue: m.orcado, type: m.isCurrentMonth ? "actual" : "historical", yearValue: parsedYear, monthNum: targetMonthIndex
             });
           });
 
@@ -1582,7 +1664,7 @@
         if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
 
         visibleSeriesData.push({
-          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum, compositionBudget: targetBudgetSource.compositionBudget || {}, previousSeriesData: fullSeriesData[actualIndex].previousSeriesData || null
+          id: fullSeriesData[actualIndex].id, label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum, previousSeriesData: fullSeriesData[actualIndex].previousSeriesData || null
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
