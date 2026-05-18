@@ -1,6 +1,6 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY
-   ========================================================================= */
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - MULTI-DIMENSIONAL NARRATIVE
+   ========================================================================== */
 
 (function () {
   const template = document.createElement("template");
@@ -92,7 +92,6 @@
       .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; border: 1px solid #e8eaed; }
       
-      /* Ajuste estrutural alinhado com a neutralidade cromática solicitada */
       .highlight-card-area { 
         display: flex; flex-direction: column; background: #F8F9FA; border: 1px solid #e2e8f0; 
         border-left: 4px solid #cbd5e0; border-radius: 8px; padding: 14px 16px; color: #333333;
@@ -262,9 +261,13 @@
       this._hlMonthLi = document.createElement("li");
       this._hlConsLi = document.createElement("li");
       this._hlYtdLi = document.createElement("li");
+      this._hlOffenderLi = document.createElement("li"); // Novo nó atômico para o maior ofensor das novas dimensões
+      
       ul.appendChild(this._hlMonthLi);
       ul.appendChild(this._hlConsLi);
       ul.appendChild(this._hlYtdLi);
+      ul.appendChild(this._hlOffenderLi);
+      
       this._highlightContentText.textContent = "";
       this._highlightContentText.appendChild(ul);
     }
@@ -340,22 +343,33 @@
 
         if (dimKeys.length < 1 || measureKeys.length < 1) return;
 
-        const measId = measureKeys[0];
-        let tempoDimId = dimKeys[0];
-        let versaoDimId = dimKeys[1] || null;
+        this._measId = measureKeys[0];
+        
+        this._tempoDimId = null;
+        this._versaoDimId = null;
 
-        if (dimKeys.length >= 2) {
-          const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
-          if (descFirst.includes("VERSÃO") || descFirst.includes("VERSION") || descFirst.includes("CENÁRIO")) {
-            tempoDimId = dimKeys[1]; versaoDimId = dimKeys[0];
+        dimKeys.forEach(key => {
+          const desc = String(dimensions[key].description || "").toUpperCase();
+          const id = String(dimensions[key].id || "").toUpperCase();
+          
+          if (desc.includes("VERSÃO") || desc.includes("VERSION") || desc.includes("CENÁRIO") || id.includes("VERSION") || id.includes("CATEGORY")) {
+            this._versaoDimId = key;
+          } else if (desc.includes("TEMPO") || desc.includes("MÊS") || desc.includes("MES") || desc.includes("ANO") || desc.includes("DATE") || id.includes("TIME") || id.includes("CALENDAR")) {
+            this._tempoDimId = key;
           }
-        }
+        });
+
+        if (!this._tempoDimId) this._tempoDimId = dimKeys[0];
+        if (!this._versaoDimId) this._versaoDimId = dimKeys[1] || null;
+
+        // Caching das chaves extras (Ex: Item Financeiro e Conta Contábil) para a engine de Highlights
+        this._extraDimIds = dimKeys.filter(key => key !== this._tempoDimId && key !== this._versaoDimId);
 
         const timelineMap = {};
         const currentYearRuntime = new Date().getFullYear();
 
         financialData.data.forEach(row => {
-          const tempoObj = row[tempoDimId]; if (!tempoObj) return;
+          const tempoObj = row[this._tempoDimId]; if (!tempoObj) return;
           const tId = String(tempoObj.id); 
           if (tId.toLowerCase().includes("(all)")) return;
           
@@ -368,9 +382,9 @@
           if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
           if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
 
-          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
-          if (versaoDimId) {
-            const vObj = row[versaoDimId];
+          const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+          if (this._versaoDimId) {
+            const vObj = row[this._versaoDimId];
             if (vObj) {
               const vId = String(vObj.id).toUpperCase(); 
               const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
@@ -626,9 +640,6 @@
       svg.appendChild(fragment);
     }
 
-    /* ==========================================================================
-       REFATORAÇÃO EXCLUSIVA: ENGINE DE NARRATIVAS (HIGHLIGHTS FEATURE)
-       ========================================================================== */
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
@@ -687,7 +698,6 @@
 
       this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
 
-      // 1. COMPORTAMENTO GEOMÉTRICO E DESIGN POR EXCEÇÃO (MUTAÇÃO ATÔMICA DO BLOCO DE TEXTO NARRATIVO)
       if (this._highlightCardArea) {
         this._highlightCardArea.style.borderLeft = isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
       }
@@ -698,8 +708,57 @@
       const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
-      // 2. INJEÇÃO ATÔMICA DOS TEMPLATES DE NARRATIVA PREVENINDO VULNERABILIDADES XSS (SEM USO DE INNERHTML)
-      // Linha 1: Mês Corrente
+      // ==========================================================================
+      // ENGINE DE HIGHLIGHTS MULTIDIMENSIONAL (MÉS SELECIONADO)
+      // ==========================================================================
+      const breakdownMap = {};
+      const financialData = this._currentData;
+
+      financialData.data.forEach(row => {
+        const tempoObj = row[this._tempoDimId];
+        if (!tempoObj || String(tempoObj.id) !== currentBarNode.id) return;
+
+        // Recupera de forma dinâmica os valores mapeados de "Item Financeiro" e "Conta Contábil" [cite: 184, 185]
+        let labelParts = [];
+        this._extraDimIds.forEach(dimId => {
+          if (row[dimId]) {
+            labelParts.push(row[dimId].label || row[dimId].description || row[dimId].id || "");
+          }
+        });
+        const key = labelParts.join(" ➔ ") || "Outros";
+
+        if (!breakdownMap[key]) {
+          breakdownMap[key] = { realizado: 0, orcado: 0 };
+        }
+
+        const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+        if (this._versaoDimId && row[this._versaoDimId]) {
+          const vId = String(row[this._versaoDimId].id).toUpperCase();
+          const vLabel = String(row[this._versaoDimId].label || row[this._versaoDimId].description || "").toUpperCase();
+          if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
+            breakdownMap[key].orcado += rawValue;
+          } else {
+            breakdownMap[key].realizado += rawValue;
+          }
+        } else {
+          breakdownMap[key].realizado += rawValue;
+        }
+      });
+
+      // Algoritmo de identificação do maior Alergeno/Ofensor orçamentário do mês [cite: 343]
+      let topOffenderName = "";
+      let topOffenderValue = 0;
+
+      Object.keys(breakdownMap).forEach(key => {
+        const d = breakdownMap[key];
+        const desvio = d.realizado - d.orcado; // OPEX: Realizado > Orçado = Estouro/Ofensor [cite: 335]
+        if (desvio > topOffenderValue) {
+          topOffenderValue = desvio;
+          topOffenderName = key;
+        }
+      });
+
+      // Injeção de nós textuais imunes a ataques de injeção XSS 
       this._hlMonthLi.textContent = "";
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); 
@@ -711,7 +770,6 @@
       this._hlMonthLi.appendChild(statusSpan1);
       this._hlMonthLi.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
 
-      // Linha 2: Consumo Operacional
       this._hlConsLi.textContent = "";
       const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
       const statusSpan2 = document.createElement("span");
@@ -723,7 +781,6 @@
       this._hlConsLi.appendChild(statusSpan2);
       this._hlConsLi.appendChild(document.createTextNode(" do orçamento da competência."));
 
-      // Linha 3: Posicionamento YTD
       this._hlYtdLi.textContent = "";
       const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD: ";
       const statusSpan3 = document.createElement("span");
@@ -739,6 +796,23 @@
       this._hlYtdLi.appendChild(document.createTextNode(", consumindo "));
       this._hlYtdLi.appendChild(valueSpan3);
       this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
+
+      // Reidratação da nova linha de Highlights baseada na análise de Item/Conta Contábil
+      this._hlOffenderLi.textContent = "";
+      if (topOffenderValue > 0) {
+        this._hlOffenderLi.style.display = "block";
+        const s4 = document.createElement("strong"); s4.textContent = "Detalhamento Crítico: ";
+        const offenderSpan = document.createElement("span");
+        offenderSpan.textContent = topOffenderName;
+        offenderSpan.style.color = "#D32F2F"; // Design por exceção ativo para o maior ofensor 
+        offenderSpan.style.fontWeight = "700";
+        this._hlOffenderLi.appendChild(s4);
+        this._hlOffenderLi.appendChild(document.createTextNode("O maior detrator do orçamento no mês foi a linha de "));
+        this._hlOffenderLi.appendChild(offenderSpan);
+        this._hlOffenderLi.appendChild(document.createTextNode(`, gerando um estouro de R$ ${formatM(topOffenderValue)}.`));
+      } else {
+        this._hlOffenderLi.style.display = "none";
+      }
 
       this._insightGrid.style.display = "grid";
     }
