@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY RUNTIME
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HIGH PERFORMANCE RUNTIME (PIXEL PERFECT)
    ========================================================================== */
 
 (function () {
@@ -140,10 +140,12 @@
         background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
         background-size: 4px 4px;
       }
-      .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch; position: relative; }
+      .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
-      .visualization-column.monthly-col { flex: 3; position: relative; }
-      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; position: relative; }
+      .visualization-column.monthly-col { flex: 3; }
+      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
+      
+      /* PRESERVAÇÃO: Camada absolute contida dentro do bloco canvas para não achatar o eixo X */
       .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
@@ -153,18 +155,29 @@
 
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
       
-      .bar-element { 
-        width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; 
-        height: 100%; transform: scaleY(0); transform-origin: bottom; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+      /* OTIMIZAÇÃO: Aceleração por Hardware via scaleY mantendo a integridade tipográfica das fontes */
+      .bar-element { width: 100%; max-width: 46px; height: 100%; position: relative; display: flex; justify-content: center; align-items: flex-end; }
+      .bar-fill { 
+        width: 100%; height: 100%; border-radius: 3px 3px 0 0; transform-origin: bottom; transform: scaleY(0);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
       }
-      .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual { background-color: var(--color-actual); box-sizing: border-box; }
-      .bar-element.budget {
+      .bar-fill.historical { background-color: var(--color-historical); }
+      .bar-fill.actual { background-color: var(--color-actual); }
+      .bar-fill.budget {
         background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
       }
       .kpi-label { position: absolute; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3; }
+      .bar-wrapper.actual-month-wrapper .kpi-label { color: #1a202c; background: #edf2f7; }
+      
+      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
+      .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
+      .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
+      .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
+      .variance-tag { font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: none; white-space: nowrap; display: inline-block; position: relative; z-index: 4; }
+      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
       
       .insight-grid { 
         display: grid; 
@@ -200,7 +213,6 @@
       }
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
-      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -267,9 +279,9 @@
           <div class="html-connectors-overlay" id="ytdConnectors"></div>
           <div class="chart-container-block">
             <div class="chart-area" id="ytdChartArea">
-              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"></div></div>
-              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"></div></div>
-              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"></div></div>
+              <div class="bar-wrapper"><div class="bar-element" id="w-prev"><div class="bar-fill historical" id="mini-bar-prev"></div><span class="kpi-label">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element" id="w-act"><div class="bar-fill actual" id="mini-bar-act"></div><span class="kpi-label">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element" id="w-bud"><div class="bar-fill budget" id="mini-bar-bud"></div><span class="kpi-label">-</span></div></div>
             </div>
           </div>
           <div class="axis-x-block">
@@ -313,7 +325,7 @@
   `;
 
   /* ==========================================================================
-     ENGINE ANALÍTICA PURA JS COM VIRTUALIZAÇÃO COGNITIVA (TOP 200 IMPACTS)
+     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA SANEADA (PURE HEADLESS)
      ========================================================================== */
   class EvoNarrativeEngine {
     constructor() {
@@ -358,6 +370,7 @@
         isSaving: ytdDiff <= 0
       };
 
+      // VIRTUALIZAÇÃO COGNITIVA: Pre-sort à volumetria limite para estabilidade computacional
       const scannedRows = cubeData.map(row => {
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
         return { row, weight: Math.abs(rawValue) };
@@ -464,7 +477,7 @@
   }
 
   /* ==========================================================================
-     UI LAYER CONTROLLER WIDGET
+     UI LAYER CONTROLLER WIDGET LAYER
      ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
@@ -670,7 +683,7 @@
       }
 
       try {
-        this._reflowCount++;
+        const tParsingStart = performance.now();
         const metadata = financialData.metadata;
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
@@ -932,6 +945,9 @@
       const tEndJS = performance.now();
     }
 
+    /* ==========================================================================
+       BATCHED LAYOUT WRITES: RECONCILIAÇÃO E RENDERIZAÇÃO SEM DEFORMAÇÃO
+       ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
       const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
       const existingLabels = this._axisX.querySelectorAll(".axis-label");
@@ -941,8 +957,9 @@
         for (let i = existingWrappers.length; i < targetLength; i++) {
           const wrapper = document.createElement("div"); wrapper.className = "bar-wrapper";
           const bar = document.createElement("div"); bar.className = "bar-element";
+          const fill = document.createElement("div"); fill.className = "bar-fill";
           const label = document.createElement("span"); label.className = "kpi-label";
-          bar.appendChild(label); wrapper.appendChild(bar); this._chartArea.appendChild(wrapper);
+          bar.appendChild(fill); bar.appendChild(label); wrapper.appendChild(bar); this._chartArea.appendChild(wrapper);
         }
       } else if (existingWrappers.length > targetLength) {
         for (let i = existingWrappers.length - 1; i >= targetLength; i--) {
@@ -965,15 +982,21 @@
       const updatedLabels = this._axisX.querySelectorAll(".axis-label");
 
       visibleSeriesData.forEach((d, idx) => {
-        const bar = updatedWrappers[idx].querySelector(".bar-element");
+        const wrapper = updatedWrappers[idx];
+        const bar = wrapper.querySelector(".bar-element");
+        const fill = bar.querySelector(".bar-fill");
         const label = bar.querySelector(".kpi-label");
         
-        const scaleRatio = d.value / maxVal;
-        bar.className = `bar-element ${d.type}`;
-        bar.style.transform = `scaleY(${scaleRatio})`;
+        wrapper.className = d.type === "actual" ? "bar-wrapper actual-month-wrapper" : "bar-wrapper";
         
+        // CORREÇÃO: Escalonamento na GPU aplicado UNICAMENTE ao bloco de preenchimento cromático
+        const scaleRatio = d.value / maxVal;
+        fill.className = `bar-fill ${d.type}`;
+        fill.style.transform = `scaleY(${scaleRatio})`;
+        
+        // CORREÇÃO: O rótulo textual flutua de forma absoluta sem sofrer distorções ou esmagamento
         label.textContent = `${(d.value / 1000000).toFixed(2)}M`;
-        label.style.top = `calc(${(1 - scaleRatio) * 100}% - 22px)`;
+        label.style.bottom = `calc(${scaleRatio * 100}% + 4px)`;
 
         const axisLabel = updatedLabels[idx];
         axisLabel.className = d.type === "actual" ? "axis-label actual-month" : "axis-label";
@@ -981,14 +1004,14 @@
       });
     }
 
+    /* ==========================================================================
+       VIRTUALIZAÇÃO COMPOSITING LAYER: CONNECTORS EM HTML/CSS PURO RELATIVO
+       ========================================================================== */
     _drawUnifiedFlatConnections(overlayContainer, chartArea, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
       
-      const containerHeight = chartArea.offsetHeight;
-      if (containerHeight === 0) return;
-      
-      const barElements = chartArea.querySelectorAll(barSelector);
-      if (!barElements || barElements.length === 0) return;
+      const containerHeight = chartArea.offsetHeight; if (containerHeight === 0) return;
+      const barElements = chartArea.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
       
       const barCenters = Array.from(barElements).map(bar => {
         if (!bar) return 0;
@@ -1105,25 +1128,26 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
+      // Reconciliação geométrica das mini barras YTD usando scaleY
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
-      this._miniBarPrev.style.transform = `scaleY(${totalRealizadoYTDAntigo / maxYTD})`;
-      this._miniBarAct.style.transform = `scaleY(${totalRealizadoYTDAtual / maxYTD})`;
-      this._miniBarBud.style.transform = `scaleY(${totalBudgetYTDCompleto / maxYTD})`;
+      
+      const rPrev = totalRealizadoYTDAntigo / maxYTD;
+      this._miniBarPrev.style.transform = `scaleY(${rPrev})`;
+      const lblPrev = this._miniBarPrev.parentElement.querySelector(".kpi-label");
+      lblPrev.textContent = formatM(totalRealizadoYTDAntigo);
+      lblPrev.style.bottom = `calc(${rPrev * 100}% + 4px)`;
 
-      this._miniLblPrev = this._miniBarPrev.parentElement.querySelector(".kpi-label") || document.createElement("span");
-      this._miniLblPrev.className = "kpi-label"; this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
-      this._miniBarPrev.appendChild(this._miniLblPrev);
-      this._miniLblPrev.style.top = `calc(${(1 - (totalRealizadoYTDAntigo / maxYTD)) * 100}% - 22px)`;
+      const rAct = totalRealizadoYTDAtual / maxYTD;
+      this._miniBarAct.style.transform = `scaleY(${rAct})`;
+      const lblAct = this._miniBarAct.parentElement.querySelector(".kpi-label");
+      lblAct.textContent = formatM(totalRealizadoYTDAtual);
+      lblAct.style.bottom = `calc(${rAct * 100}% + 4px)`;
 
-      this._miniLblAct = this._miniBarAct.parentElement.querySelector(".kpi-label") || document.createElement("span");
-      this._miniLblAct.className = "kpi-label"; this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
-      this._miniBarAct.appendChild(this._miniLblAct);
-      this._miniLblAct.style.top = `calc(${(1 - (totalRealizadoYTDAtual / maxYTD)) * 100}% - 22px)`;
-
-      this._miniLblBud = this._miniBarBud.parentElement.querySelector(".kpi-label") || document.createElement("span");
-      this._miniLblBud.className = "kpi-label"; this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
-      this._miniBarBud.appendChild(this._miniLblBud);
-      this._miniLblBud.style.top = `calc(${(1 - (totalBudgetYTDCompleto / maxYTD)) * 100}% - 22px)`;
+      const rBud = totalBudgetYTDCompleto / maxYTD;
+      this._miniBarBud.style.transform = `scaleY(${rBud})`;
+      const lblBud = this._miniBarBud.parentElement.querySelector(".kpi-label");
+      lblBud.textContent = formatM(totalBudgetYTDCompleto);
+      lblBud.style.bottom = `calc(${rBud * 100}% + 4px)`;
 
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
@@ -1154,8 +1178,6 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
-      
-      // FIX CRÍTICO: Injeção correta de aspas literais nas strings hexadecimais para evitar falhas em lote
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
@@ -1172,7 +1194,7 @@
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
       this._hlUl.appendChild(liCons);
 
-      const tHLStart = performance.now();
+      const tFileHighlightStart = performance.now();
       const analysis = this._analyticsEngine.analyze(
         this._currentData.data, currentBarNode, currentYear, previousYear,
         this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData, this._profiler
@@ -1211,7 +1233,7 @@
       });
 
       if (ENABLE_TELEMETRY) {
-        this._profiler.metrics.steps.highlights = performance.now() - tHLStart;
+        this._profiler.metrics.steps.highlights = performance.now() - tFileHighlightStart;
       }
 
       this._insightGrid.style.display = "grid";
