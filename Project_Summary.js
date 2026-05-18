@@ -55,7 +55,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        z-index: 10;
+        z-index: 100; /* Força prioridade máxima sobre o SVG do gráfico */
       }
 
       .filter-label-finance {
@@ -105,7 +105,7 @@
       .tree-year-node {
         font-weight: 700;
         color: #2d3748;
-        padding: 4px 10px;
+        padding: 6px 10px;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -528,8 +528,11 @@
       this._animationFrameId = null;
       this._shadowRoot = null;
       this._resizeTimeout = null;
+      
+      // BLINDAGEM DE ESTADO DE CORES E CICLO VIVO
       this._selectedCutoffId = null;
-      this._isTreeBuilt = false; // Trava de controle de reidratação única (Fim do travamento)
+      this._isTreeBuilt = false; 
+      this._isDropdownOpen = false; // Controle booleano nativo (Bypass de quebra de listeners)
     }
 
     connectedCallback() {
@@ -560,15 +563,16 @@
         this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
         this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
 
-        // PROTEÇÃO ATÔMICA DO CLIP: Controle de clique isolado e persistente
+        // SOLUÇÃO DO TRAVAMENTO: O ouvinte do Trigger manipula estritamente a variável booleana de estado persistente
         this._treeDropdownTrigger.addEventListener("click", (e) => {
           e.stopPropagation();
-          this._treeDropdownContent.classList.toggle("show");
+          this._isDropdownOpen = !this._isDropdownOpen;
+          this._toggleDropdownDOM();
         });
 
-        // Fecha o menu de árvore ao clicar fora, sem destruir os nós
         window.addEventListener("click", () => {
-          if (this._treeDropdownContent) this._treeDropdownContent.classList.remove("show");
+          this._isDropdownOpen = false;
+          this._toggleDropdownDOM();
         });
       }
 
@@ -590,6 +594,15 @@
       clearTimeout(this._resizeTimeout);
     }
 
+    _toggleDropdownDOM() {
+      if (!this._treeDropdownContent) return;
+      if (this._isDropdownOpen) {
+        this._treeDropdownContent.classList.add("show");
+      } else {
+        this._treeDropdownContent.classList.remove("show");
+      }
+    }
+
     onCustomWidgetBeforeUpdate(changedProperties) {
       this._props = { ...this._props, ...changedProperties };
     }
@@ -599,7 +612,7 @@
       if ("performanceCube" in changedProperties && this.performanceCube) {
         this._currentData = this.performanceCube;
         this._selectedCutoffId = null;
-        this._isTreeBuilt = false; // Reseta a trava apenas se uma nova carga total do Builder for injetada
+        this._isTreeBuilt = false; 
         if (this._shadowRoot) {
           this._treeDropdownContent.innerHTML = ""; 
           cancelAnimationFrame(this._animationFrameId);
@@ -623,6 +636,7 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
+    // ISOLAMENTO DE DESTRUIÇÃO: Limpa apenas os vetores e as barras, deixando a árvore viva e operando
     _clearDOM() {
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach(el => el.remove());
@@ -696,7 +710,6 @@
         if (sortedMonths.length === 0) { this._clearDOM(); return; }
 
         const monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
-        
         const fullSeriesData = [];
         let defaultActualIndex = -1;
 
@@ -741,7 +754,7 @@
           defaultActualIndex = fullSeriesData.length - 1;
         }
 
-        // MONTAGEM ÚNICA DA ÁRVORE HIERÁRQUICA (Evita Loops e Travamentos no segundo clique)
+        // MONTAGEM DO FILTRO EM ÁRVORE IMPERMEÁVEL DE SUCESSO (Não sofre innerHTML wipe)
         if (!this._isTreeBuilt && fullSeriesData.length > 0) {
           this._treeDropdownContent.innerHTML = ""; 
           const yearsMap = {};
@@ -774,7 +787,8 @@
             monthItem.addEventListener("click", (e) => {
               e.stopPropagation();
               this._selectedCutoffId = d.id;
-              this._treeDropdownContent.classList.remove("show"); // Apenas fecha via CSS, mantendo o DOM vivo
+              this._isDropdownOpen = false; // Fecha suavemente via booleano nativo
+              this._toggleDropdownDOM();
               this.renderChart();
             });
 
@@ -784,7 +798,7 @@
           if (!this._selectedCutoffId && fullSeriesData[defaultActualIndex]) {
             this._selectedCutoffId = fullSeriesData[defaultActualIndex].id;
           }
-          this._isTreeBuilt = true; // Ativa a trava de segurança
+          this._isTreeBuilt = true; 
         }
 
         let actualIndex = fullSeriesData.findIndex(d => d.id === this._selectedCutoffId);
@@ -794,7 +808,6 @@
           this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
         }
 
-        // Reidratação de marcação visual síncrona nos itens da árvore interna
         const allItems = this._treeDropdownContent.querySelectorAll(".tree-month-item");
         allItems.forEach(item => {
           if (item.getAttribute("data-id") === this._selectedCutoffId) {
