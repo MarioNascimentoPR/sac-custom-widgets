@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HIGH PERFORMANCE RUNTIME
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - CORE RUNTIME (PRODUCTION READY)
    ========================================================================== */
 
 (function () {
@@ -145,28 +145,32 @@
       .visualization-column.monthly-col { flex: 3; }
       .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
       
-      .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; border-bottom: 1px solid #cbd5e0; }
+      .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
       .html-connectors-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
       .html-bracket-track { position: absolute; border-top: 1.25px solid #cbd5e0; border-left: 1.25px solid #cbd5e0; border-right: 1.25px solid #cbd5e0; pointer-events: none; box-sizing: border-box; }
       .html-bracket-badge-anchor { position: absolute; width: 70px; height: 22px; display: flex; justify-content: center; align-items: center; pointer-events: none; transform: translate(-35px, -11px); }
 
-      /* CONTAINER INTEGRADO: Garante alinhamento imutável e pixel-perfect entre barra e eixo X */
-      .bar-column { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 46px; height: 100%; position: relative; gap: 6px; }
-      .bar-element { width: 100%; max-width: 46px; height: 0%; position: relative; border-radius: 3px 3px 0 0; transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1); flex-shrink: 0; }
+      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
+      .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; height: 0%; transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
       .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual { background-color: var(--color-actual); }
+      .bar-element.actual { background-color: var(--color-actual); box-shadow: none; box-sizing: border-box; }
       .bar-element.budget {
         background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
       }
+      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3; }
+      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; top: -24px; }
       
-      .kpi-label { position: absolute; top: -22px; width: 100%; text-align: center; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; z-index: 3; }
-      .bar-column.actual-month-col .kpi-label { color: #1a202c; font-weight: 800; }
-      .axis-label { width: 100%; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; margin-top: 2px; }
-      .bar-column.actual-month-col .axis-label { color: var(--color-actual); font-weight: 700; }
+      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
+      .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
+      .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
+      .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
+      .variance-tag { font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: none; white-space: nowrap; display: inline-block; position: relative; z-index: 4; }
+      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
       
       .insight-grid { 
         display: grid; 
@@ -264,11 +268,23 @@
             <div class="html-connectors-overlay" id="monthlyConnectors"></div>
             <div class="chart-area" id="chartArea"></div>
           </div>
+          <div class="axis-x-block"><div class="axis-x" id="axisX"></div></div>
         </div>
         <div class="visualization-column ytd-col">
           <div class="chart-container-block">
             <div class="html-connectors-overlay" id="ytdConnectors"></div>
-            <div class="chart-area" id="ytdChartArea"></div>
+            <div class="chart-area" id="ytdChartArea">
+              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
+            </div>
+          </div>
+          <div class="axis-x-block">
+            <div class="axis-x" id="ytdAxisX">
+              <div class="axis-label" id="ytd-axis-lbl-prev">Ano Ant.</div>
+              <div class="axis-label" id="ytd-axis-lbl-act">Ano Atual</div>
+              <div class="axis-label">Meta YTD</div>
+            </div>
           </div>
         </div>
       </div>
@@ -349,7 +365,6 @@
         isSaving: ytdDiff <= 0
       };
 
-      // VIRTUALIZAÇÃO COGNITIVA: Pre-sort à volumetria limite para estabilidade computacional
       const scannedRows = cubeData.map(row => {
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
         return { row, weight: Math.abs(rawValue) };
@@ -422,7 +437,6 @@
           }
         });
 
-        // TRAVA DE SEGURANÇA CONTRA VALORES NULOS
         let driverImpactValue = 0;
         if (driverContaName && item.contas[driverContaName]) {
           driverImpactValue = item.contas[driverContaName].realizado - item.contas[driverContaName].orcado;
@@ -542,9 +556,13 @@
         this._highlightContentText = this._shadowRoot.getElementById("highlightContentText");
         this._highlightCardArea = this._shadowRoot.getElementById("highlightCardArea");
 
+        // 🛠️ MAPEAMENTO SEGURO DAS MINI BARRAS ESTÁTICAS DE ACORDO COM O TEMPLATE
         this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
         this._miniBarAct = this._shadowRoot.getElementById("mini-bar-act");
         this._miniBarBud = this._shadowRoot.getElementById("mini-bar-bud");
+        this._miniLblPrev = this._shadowRoot.getElementById("mini-lbl-prev");
+        this._miniLblAct = this._shadowRoot.getElementById("mini-lbl-act");
+        this._miniLblBud = this._shadowRoot.getElementById("mini-lbl-bud");
 
         if (ENABLE_TELEMETRY) {
           this._telemetryBtn.style.display = "flex";
@@ -642,12 +660,6 @@
       if (typeof val === 'number') return val;
       if (!val || val === "-") return 0;
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
-    }
-
-    _clearSvgOverlay(svg) {
-      while (svg.lastElementChild) {
-        svg.removeChild(svg.lastElementChild);
-      }
     }
 
     renderChart() {
@@ -880,6 +892,7 @@
           this._profiler.metrics.steps.parsing = performance.now() - tParsingStart;
         }
 
+        // RECONCILIAÇÃO DO DOM DE ALTA PERFORMANCE (SEM LIMPEZA DESTRUTIVA)
         const tDOMStart = performance.now();
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
         if (ENABLE_TELEMETRY) {
@@ -933,55 +946,65 @@
     }
 
     /* ==========================================================================
-       CONSTRUÇÃO UNIFICADA DO GRÁFICO (EVITA COMPLETAMENTE DESALINHAMENTOS)
+       RECONCILIAÇÃO DO POOL DO DOM MENSAL (BLINDADO)
        ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
-      this._chartArea.textContent = ""; 
-      const fragment = document.createDocumentFragment();
+      const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
+      const existingLabels = this._axisX.querySelectorAll(".axis-label");
+      const targetLength = visibleSeriesData.length;
 
-      visibleSeriesData.forEach((d) => {
-        const column = document.createElement("div");
-        column.className = d.type === "actual" ? "bar-column actual-month-col" : "bar-column";
+      if (existingWrappers.length < targetLength) {
+        for (let i = existingWrappers.length; i < targetLength; i++) {
+          const wrapper = document.createElement("div"); wrapper.className = "bar-wrapper";
+          const bar = document.createElement("div"); bar.className = "bar-element";
+          const label = document.createElement("span"); label.className = "kpi-label";
+          bar.appendChild(label); wrapper.appendChild(bar); this._chartArea.appendChild(wrapper);
+        }
+      } else if (existingWrappers.length > targetLength) {
+        for (let i = existingWrappers.length - 1; i >= targetLength; i--) { existingWrappers[i].remove(); }
+      }
 
-        const bar = document.createElement("div");
-        bar.className = `bar-element ${d.type}`;
+      if (existingLabels.length < targetLength) {
+        for (let i = existingLabels.length; i < targetLength; i++) {
+          const axisLabel = document.createElement("div"); axisLabel.className = "axis-label";
+          this._axisX.appendChild(axisLabel);
+        }
+      } else if (existingLabels.length > targetLength) {
+        for (let i = existingLabels.length - 1; i >= targetLength; i--) { existingLabels[i].remove(); }
+      }
+
+      const updatedWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
+      const updatedLabels = this._axisX.querySelectorAll(".axis-label");
+
+      visibleSeriesData.forEach((d, idx) => {
+        const bar = updatedWrappers[idx].querySelector(".bar-element");
+        const label = bar.querySelector(".kpi-label");
         
-        // Renderização nativa estável via CSS percentual sem esticar fontes
-        const heightRatio = (d.value / maxVal) * 100;
-        bar.style.height = `${heightRatio}%`;
+        bar.className = `bar-element ${d.type}`;
+        bar.style.height = `${(d.value / maxVal) * 100}%`;
+        label.textContent = `${(d.value / 1000000).toFixed(2)}M`;
 
-        const kpi = document.createElement("span");
-        kpi.className = "kpi-label";
-        kpi.textContent = `${(d.value / 1000000).toFixed(2)}M`;
-
-        const axisLabel = document.createElement("div");
-        axisLabel.className = "axis-label";
+        const axisLabel = updatedLabels[idx];
+        axisLabel.className = d.type === "actual" ? "axis-label actual-month" : "axis-label";
         axisLabel.textContent = d.label;
-
-        bar.appendChild(kpi);
-        column.appendChild(bar);
-        column.appendChild(axisLabel);
-        fragment.appendChild(column);
       });
-
-      this._chartArea.appendChild(fragment);
     }
 
     _drawUnifiedFlatConnections(overlayContainer, chartArea, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
       
       const containerHeight = chartArea.offsetHeight; if (containerHeight === 0) return;
-      const barColumns = chartArea.querySelectorAll(".bar-column"); if (!barColumns || barColumns.length === 0) return;
+      const barElements = chartArea.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
       
-      const barCenters = Array.from(barColumns).map(col => {
-        if (!col) return 0;
-        return col.offsetLeft + (col.offsetWidth / 2);
+      const barCenters = Array.from(barElements).map(bar => {
+        if (!bar) return 0;
+        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
       });
       
       const pairs = [];
       if (mode === "monthly") {
         if (actualIndex > 0) pairs.push({ from: actualIndex - 1, to: actualIndex });
-        if (actualIndex < barColumns.length - 1) pairs.push({ from: actualIndex, to: actualIndex + 1 });
+        if (actualIndex < barElements.length - 1) pairs.push({ from: actualIndex, to: actualIndex + 1 });
       } else if (mode === "ytd") {
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
@@ -1088,39 +1111,19 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
-      // Reconstrução limpa do bloco YTD acumulado
-      this._ytdChartArea.textContent = "";
-      const ytdFragment = document.createDocumentFragment();
-      const miniSeriesData = [
-        { label: `Ant. (${previousYear})`, value: totalRealizadoYTDAntigo, type: "historical" },
-        { label: `Atual (${currentYear})`, value: totalRealizadoYTDAtual, type: "actual" },
-        { label: "Meta YTD", value: totalBudgetYTDCompleto, type: "budget" }
-      ];
-
+      // 🛠️ ATUALIZAÇÃO DIRETA E BLINDADA: Mini barras atualizadas de forma segura e sem apagar o DOM
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
+      
+      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
+      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
+      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
-      miniSeriesData.forEach(m => {
-        const column = document.createElement("div");
-        column.className = m.type === "actual" ? "bar-column actual-month-col" : "bar-column";
+      this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
+      this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
+      this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
 
-        const bar = document.createElement("div");
-        bar.className = `bar-element ${m.type}`;
-        bar.style.height = `${(m.value / maxYTD) * 100}%`;
-
-        const kpi = document.createElement("span");
-        kpi.className = "kpi-label";
-        kpi.textContent = formatM(m.value);
-
-        const axisLabel = document.createElement("div");
-        axisLabel.className = "axis-label";
-        axisLabel.textContent = m.label;
-
-        bar.appendChild(kpi);
-        column.appendChild(bar);
-        column.appendChild(axisLabel);
-        ytdFragment.appendChild(column);
-      });
-      this._ytdChartArea.appendChild(ytdFragment);
+      this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
+      this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
       this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
 
@@ -1148,8 +1151,6 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
-      
-      // HIGIENIZAÇÃO DE CORES SINTÁTICAS (Hexadecimais blindados em strings textuais legítimas)
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
