@@ -1,8 +1,35 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - ARCHITECTURAL INTEGRATION PHASE 1
    ========================================================================== */
 
 (function () {
+  
+  // ==========================================================================
+  // MOTOR ANALÍTICO INTERNO (Simulando o Bundle Consolidado pelo Vite)
+  // ==========================================================================
+  const ArchitecturalNarrativeEngine = {
+    processPayload(widgetPayload) {
+      // Validação estrita de recebimento da estrutura de dados do cubo
+      if (!widgetPayload || !widgetPayload.timelineData || widgetPayload.timelineData.length === 0) {
+        return {
+          status: "error",
+          text: "Pipeline ativa: Aguardando carga estruturada de metadados do SAC."
+        };
+      }
+
+      // Mensagem genérica estruturada para homologação e teste do fluxo de dados
+      return {
+        status: "success",
+        pipelineVerified: true,
+        timestamp: new Date().toISOString(),
+        text: `[ARQUITETURA HOMOLOGADA] O Narrative Analytics Engine interceptou com sucesso os dados do gráfico de colunas. Payload recebido com ${widgetPayload.timelineData.length} competências cronológicas. Pronto para acoplamento dos submotores estatísticos.`
+      };
+    }
+  };
+
+  // ==========================================================================
+  // TEMPLATE VISUAL DO COMPONENTE (CSS E HTML)
+  // ==========================================================================
   const template = document.createElement("template");
   template.innerHTML = `
     <style>
@@ -165,6 +192,9 @@
     </div>
   `;
 
+  // ==========================================================================
+  // CLASSE PRINCIPAL DO WEB COMPONENT (EvoSummaryWidget)
+  // ==========================================================================
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
@@ -249,16 +279,9 @@
     }
 
     _initStaticHighlightsDOM() {
-      const ul = document.createElement("ul");
-      ul.className = "ul-highlight";
-      this._hlMonthLi = document.createElement("li");
-      this._hlConsLi = document.createElement("li");
-      this._hlYtdLi = document.createElement("li");
-      ul.appendChild(this._hlMonthLi);
-      ul.appendChild(this._hlConsLi);
-      ul.appendChild(this._hlYtdLi);
-      this._highlightContentText.textContent = "";
-      this._highlightContentText.appendChild(ul);
+      if (this._highlightContentText) {
+        this._highlightContentText.textContent = "";
+      }
     }
 
     _toggleDropdownDOM() {
@@ -309,7 +332,6 @@
     renderChart() {
       if (!document.contains(this) || !this._shadowRoot) return;
 
-      // CORREÇÃO CRÍTICA: Elimina o placeholder dinâmico antigo antes de calcular o layout das colunas
       const residualPlaceholder = this._axisX.querySelector(".placeholder-text");
       if (residualPlaceholder) residualPlaceholder.remove();
 
@@ -480,7 +502,7 @@
         const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
         const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
 
-        const startIndex = Math.max(0, actualIndex - 11); // Modificado para garantir amostragem de 12 meses + 1 meta
+        const startIndex = Math.max(0, actualIndex - 11);
         const visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
 
         let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
@@ -587,15 +609,12 @@
         let variancePercent = 0;
         let directionalArrow = "";
 
-        // REVISÃO DE CÁLCULO: Se a barra de destino for do tipo orçamento (Budget Meta), inverte a lógica temporal pura
         if (itemTo.type === "budget") {
-          // Cenário OPEX: Economia real de despesa ocorre quando o Realizado (val1) é MENOR ou IGUAL ao Orçado (val2)
           const diff = val1 - val2; 
           isCostSaving = diff <= 0;
           variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         } else {
-          // Progressão temporal pura (Mês Atual x Mês Anterior ou Realizado 2026 x Realizado 2025)
           const diff = val2 - val1; 
           isCostSaving = diff <= 0;
           variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
@@ -622,9 +641,9 @@
       svg.appendChild(fragment);
     }
 
+    // REFATORADO: Conexão direta com o motor analítico mock de verificação estrutural
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
-      const monthLabel = currentBarNode.label.split(' ')[0];
       const currentYear = currentBarNode.yearValue; const previousYear = currentYear - 1;
 
       const diffNominal = actualVal - budgetVal;
@@ -684,21 +703,41 @@
         { value: totalBudgetYTDCompleto, type: "budget" }
       ];
 
-      const monthStatusText = isMonthSaving ? "economia de custos" : "aumento de despesas";
-      const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
-      
-      this._hlMonthLi.textContent = "";
-      const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}):`;
-      this._hlMonthLi.appendChild(s1); this._hlMonthLi.appendChild(document.createTextNode(` Fechamento com ${monthStatusText} de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+      // ----------------------------------------------------------------------
+      // INTERCEPTAÇÃO E POPULAÇÃO VIA MOTOR NARRATIVO (PROJETO COMPLEMENTAR)
+      // ----------------------------------------------------------------------
+      this._highlightContentText.textContent = "";
 
-      this._hlConsLi.textContent = "";
-      const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional:";
-      this._hlConsLi.appendChild(s2); this._hlConsLi.appendChild(document.createTextNode(` A absorção atingiu ${(consumptionMonthPercent).toFixed(1)}% do orçamento da competência.`));
+      // 1. Instancia o payload estruturado com a timeline processada do gráfico
+      const widgetPayload = {
+        cutoffIndex: actualIndex,
+        timelineData: fullSeriesData,
+        aggregatedBudget: budgetVal,
+        aggregatedActual: actualVal
+      };
 
-      this._hlYtdLi.textContent = "";
-      const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD:";
-      this._hlYtdLi.appendChild(s3); this._hlYtdLi.appendChild(document.createTextNode(` Acumulado com desvio ${ytdStatusText}, consumindo ${(consumoBudgetPercent).toFixed(1)}% do ano.`));
+      // 2. Dispara o processamento para o motor acoplado no topo do bundle
+      const response = ArchitecturalNarrativeEngine.processPayload(widgetPayload);
 
+      // 3. Renderiza dinamicamente o parágrafo baseado em regras de Design por Exceção
+      const infoParagraph = document.createElement("p");
+      infoParagraph.style.margin = "0";
+      infoParagraph.style.fontSize = "11.5px";
+      infoParagraph.style.lineHeight = "1.5";
+      infoParagraph.style.color = "#4a5568";
+
+      if (response.status === "success") {
+        infoParagraph.style.borderLeft = "4px solid #137333"; // Borda verde de sucesso da arquitetura
+        infoParagraph.style.paddingLeft = "10px";
+        infoParagraph.style.fontWeight = "600";
+        infoParagraph.textContent = response.text;
+      } else {
+        infoParagraph.style.borderLeft = "4px solid #c5221f"; // Falha estrutural ou de dados
+        infoParagraph.style.paddingLeft = "10px";
+        infoParagraph.textContent = response.text;
+      }
+
+      this._highlightContentText.appendChild(infoParagraph);
       this._insightGrid.style.display = "grid";
     }
 
