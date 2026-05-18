@@ -78,12 +78,14 @@
 
       .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto; }
       
-      /* DIMENSÕES CORRIGIDAS: Altura equilibrada, padding suficiente para a tag, barras grandes */
-      .chart-container-block { position: relative; height: 165px; padding-top: 50px; box-sizing: border-box; width: 100%; }
+      /* CÉU AJUSTADO: Reduzi o height e o padding para a haste colar nas barras e eliminar o branco */
+      .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
+      /* SVG OVERLAY */
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
       
+      /* BAR WRAPPERS E BARRAS */
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
       .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
       .bar-element.historical { background-color: var(--color-historical); }
@@ -94,6 +96,7 @@
         background-size: 6px 6px;
       }
       
+      /* KPI LABEL */
       .kpi-label { 
         position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; 
         background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3;
@@ -549,7 +552,8 @@
           monthNum: fullSeriesData[actualIndex].monthNum
         });
 
-        const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.25 || 1;
+        // O SEGREDO ESTÁ AQUI: maxVal * 1.10 reduz o espaço inútil a apenas 10%
+        const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
         const barElements = [];
 
         visibleSeriesData.forEach((d) => {
@@ -564,7 +568,6 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        /* TIMEOUT DE SEGURANÇA: Garante que as linhas do SVG desenhem APÓS as larguras da tela estarem corretas */
         setTimeout(() => {
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
           
@@ -598,7 +601,8 @@
         return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
       };
 
-      const ceilingY = 15;
+      // TETO EXATO: 20 pixels do topo. Como não tem espaço inútil, a tag encosta exatamente na label.
+      const ceilingY = 20;
       const floorY = containerHeight; 
       
       pairs.forEach((pair) => {
@@ -691,7 +695,8 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
-      const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
+      // YTD com 10% de margem no topo igual ao mensal
+      const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
       this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
