@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DYNAMIC NOW()-1 CUTOFF
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY (NOW-1 & MULTI-DIM)
    ========================================================================== */
 
 (function () {
@@ -428,24 +428,22 @@
         });
 
         // ==========================================================================
-        // ALGORITMO DE INICIALIZAÇÃO CRONOLÓGICA DINÂMICA (NOW - 1 MÊS)
+        // ALGORITMO DE INICIALIZAÇÃO CRONOLÓGICA INTELIGENTE (NOW - 1 MÊS = ABRIL 2026)
         // ==========================================================================
         const nowRuntime = new Date();
-        let targetMonthNum = nowRuntime.getMonth(); // Jan = 0, Fev = 1, Mai = 4 (Abril)
+        let targetMonthNum = nowRuntime.getMonth(); 
         let targetYearNum = nowRuntime.getFullYear();
         
         if (targetMonthNum === 0) {
-          targetMonthNum = 12; // Se for Janeiro, volta para Dezembro do ano anterior
+          targetMonthNum = 12; 
           targetYearNum -= 1;
         }
 
-        // Tenta encontrar o mês dinamicamente (Now - 1) dentro das competências do cubo
         let dynamicIdx = fullSeriesData.findIndex(d => d.yearValue === targetYearNum && d.monthNum === targetMonthNum);
         
         if (dynamicIdx !== -1) {
           defaultActualIndex = dynamicIdx;
         } else {
-          // Fallback estrutural retrocompatível caso o mês específico não esteja instanciado no banco
           fullSeriesData.forEach((d, idx) => {
             if (d.type === "actual") defaultActualIndex = idx;
           });
@@ -725,6 +723,9 @@
       const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
+      // ==========================================================================
+      // ENGINE DE HIGHLIGHTS MULTIDIMENSIONAL COMPLETA (MÊS SELECIONADO)
+      // ==========================================================================
       const breakdownMap = {};
       const financialData = this._currentData;
 
@@ -758,18 +759,29 @@
         }
       });
 
+      // ALGORITMO BIDIRECIONAL DE EXTRAÇÃO DE INSIGHTS (OPEX)
       let topOffenderName = "";
-      let topOffenderValue = 0;
+      let topOffenderValue = 0; // Armazena o maior desvio positivo (estouro)
+      let topSaverName = "";
+      let topSaverValue = 0;    // Armazena a maior economia absoluta (saving)
 
       Object.keys(breakdownMap).forEach(key => {
         const d = breakdownMap[key];
-        const desvio = d.realizado - d.orcado; 
-        if (desvio > topOffenderValue) {
-          topOffenderValue = desvio;
-          topOffenderName = key;
+        const desvio = d.realizado - d.orcado;
+        if (desvio > 0) {
+          if (desvio > topOffenderValue) {
+            topOffenderValue = desvio;
+            topOffenderName = key;
+          }
+        } else if (desvio < 0) {
+          if (Math.abs(desvio) > topSaverValue) {
+            topSaverValue = Math.abs(desvio);
+            topSaverName = key;
+          }
         }
       });
 
+      // REIDRATAÇÃO DOS ELEMENTOS DO DOM (IMUNIZAÇÃO ABSOLUTA ANTI-XSS)
       this._hlMonthLi.textContent = "";
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); 
@@ -808,6 +820,7 @@
       this._hlYtdLi.appendChild(valueSpan3);
       this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
 
+      // GATILHO DA INTERFACE ENRIQUECIDA PELAS DIMENSÕES DE ITEM FINANCEIRO E CONTA CONTÁBIL
       this._hlOffenderLi.textContent = "";
       if (topOffenderValue > 0) {
         this._hlOffenderLi.style.display = "block";
@@ -817,9 +830,20 @@
         offenderSpan.style.color = "#D32F2F"; 
         offenderSpan.style.fontWeight = "700";
         this._hlOffenderLi.appendChild(s4);
-        this._hlOffenderLi.appendChild(document.createTextNode("O maior detrator do orçamento no mês foi a linha de "));
+        this._hlOffenderLi.appendChild(document.createTextNode("Apesar do resultado global, identificou-se desvio acima da meta na linha de "));
         this._hlOffenderLi.appendChild(offenderSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`, gerando um estouro de R$ ${formatM(topOffenderValue)}.`));
+        this._hlOffenderLi.appendChild(document.createTextNode(`, com estouro de R$ ${formatM(topOffenderValue)}.`));
+      } else if (topSaverValue > 0) {
+        this._hlOffenderLi.style.display = "block";
+        const s4 = document.createElement("strong"); s4.textContent = "Detalhamento de Eficiência: ";
+        const saverSpan = document.createElement("span");
+        saverSpan.textContent = topSaverName;
+        saverSpan.style.color = "#2E7D32"; 
+        saverSpan.style.fontWeight = "700";
+        this._hlOffenderLi.appendChild(s4);
+        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta excelente performance na linha de "));
+        this._hlOffenderLi.appendChild(saverSpan);
+        this._hlOffenderLi.appendChild(document.createTextNode(`, liderando a economia com menos R$ ${formatM(topSaverValue)} contra a meta.`));
       } else {
         this._hlOffenderLi.style.display = "none";
       }
