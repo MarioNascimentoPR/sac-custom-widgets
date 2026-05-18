@@ -166,7 +166,6 @@
         top: -22px;
       }
       
-      /* CONTAINER EIXO X COM SUPORTE À TAG DE ANO SECUNDÁRIA (Anexo 1) */
       .axis-x-block {
         display: flex;
         flex-direction: column;
@@ -197,16 +196,6 @@
       .axis-label.actual-month {
         color: var(--color-actual);
         font-weight: 700;
-      }
-
-      .axis-year-tag {
-        text-align: center;
-        font-size: 10px;
-        font-weight: 700;
-        color: #a0aec0;
-        margin-top: 2px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
       }
       
       .variance-tag {
@@ -309,7 +298,6 @@
         color: #1a202c;
       }
 
-      /* CAIXA DE RESUMOS DINÂMICOS COM HEADER INTEGRADO (Anexo 2) */
       .text-insight-holder {
         display: flex;
         flex-direction: column;
@@ -323,21 +311,22 @@
       .text-insight-holder.saving { border-left-color: #34a853; }
       .text-insight-holder.increase { border-left-color: #f9ab00; }
 
+      /* CORREÇÃO DO CABEÇALHO DA CAIXA: Renomeado para Highlights (Anexo 2) */
       .insight-box-header {
         display: flex;
         align-items: center;
         gap: 6px;
         font-size: calc(var(--font-size-labels) - 0.5px);
         font-weight: 700;
-        color: #4a5568;
+        color: #2d3748;
         margin-bottom: 8px;
         padding-bottom: 4px;
         border-bottom: 1px dashed #e2e8f0;
       }
 
       .insight-box-header svg {
-        width: 13px;
-        height: 13px;
+        width: 14px;
+        height: 14px;
         fill: currentColor;
       }
 
@@ -396,7 +385,6 @@
       
       <div class="axis-x-block">
         <div class="axis-x" id="axisX"></div>
-        <div class="axis-year-tag" id="axisYearTag"></div>
       </div>
 
       <div class="insight-grid" id="insightGrid" style="display: none;">
@@ -430,8 +418,8 @@
         </div>
         <div class="text-insight-holder" id="textInsightBox">
           <div class="insight-box-header">
-            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-            <span>Sumário Executivo Dinâmico</span>
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Highlights</span>
           </div>
           <p class="insight-paragraph" id="insightTextDesc"></p>
         </div>
@@ -457,7 +445,6 @@
         this._chartArea = this._shadowRoot.getElementById("chartArea");
         this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
         this._axisX = this._shadowRoot.getElementById("axisX");
-        this._axisYearTag = this._shadowRoot.getElementById("axisYearTag");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         
         this._lblActRow = this._shadowRoot.getElementById("lbl-act-row");
@@ -524,7 +511,6 @@
       while (this._axisX.firstChild) {
         this._axisX.removeChild(this._axisX.firstChild);
       }
-      this._axisYearTag.textContent = "";
 
       const svg = this._svgOverlay;
       const paths = svg.querySelectorAll('path');
@@ -572,7 +558,6 @@
         }
 
         const timelineMap = {};
-        let baselineYear = "";
 
         financialData.data.forEach(row => {
           const tempoObj = row[tempoDimId];
@@ -582,15 +567,6 @@
           const tLabel = tempoObj.label || tempoObj.description || tId;
 
           if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
-
-          // EXTRAÇÃO DE ANO DO METADADOS (Anexo 1)
-          if (!baselineYear && tempoObj.parentId) {
-            const cleanYear = String(tempoObj.parentId).replace(/[^0-9]/g, '');
-            if (cleanYear.length === 4) baselineYear = cleanYear;
-          }
-          if (!baselineYear && tId.replace(/[^0-9]/g, '').length === 4) {
-            baselineYear = tId.replace(/[^0-9]/g, '');
-          }
 
           if (!timelineMap[tId]) {
             timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false };
@@ -634,7 +610,18 @@
         sortedMonths.forEach((m, idx) => {
           const type = m.isCurrentMonth ? "actual" : "historical";
           if (type === "actual") actualIndex = idx;
-          seriesData.push({ label: m.label, value: m.realizado, type });
+
+          // IDENTIFICAÇÃO DE ANO NO EIXO (Anexo 1): Extrai o ano do ID ou String (Formato Jan 25, Mar 25)
+          let finalLabel = m.label;
+          let foundYear = "";
+          const matches = m.id.match(/\\d{4}/);
+          if (matches) foundYear = matches[0].substring(2, 4);
+          
+          if (foundYear && !finalLabel.includes(foundYear)) {
+            finalLabel = `${finalLabel} ${foundYear}`;
+          }
+
+          seriesData.push({ label: finalLabel, value: m.realizado, type });
         });
 
         if (actualIndex === -1 && seriesData.length > 0) {
@@ -646,15 +633,12 @@
         const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
         
         seriesData.push({
-          label: `budget - ${targetBudgetSource.label}`,
+          label: `budget - ${seriesData[actualIndex].label}`,
           value: calculatedBudget,
           type: "budget"
         });
 
         this._clearDOM();
-
-        // Injeção da Tag de Ano abaixo do eixo (Fallback inteligente baseado na data atual caso o SAC omita o parent)
-        this._axisYearTag.textContent = baselineYear ? `Exercício Comercial de ${baselineYear}` : "Exercício Corrente";
 
         const maxVal = Math.max(...seriesData.map(d => d.value)) * 1.25 || 1;
         const barElements = [];
@@ -685,9 +669,7 @@
         });
 
         this._drawUnifiedFlatConnections(barElements, seriesData, actualIndex);
-        
-        // Passa o histórico completo de meses para viabilizar a análise comparativa retroativa
-        this._renderInsightPanel(sortedMonths, actualIndex, calculatedBudget);
+        this._renderInsightPanel(seriesData, sortedMonths, actualIndex, calculatedBudget);
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
@@ -777,11 +759,10 @@
       });
     }
 
-    // INTERPRETAÇÃO DE TEXTO AVANÇADA: Processa desvios contra o Budget e contra o Mês Anterior simultaneamente
-    _renderInsightPanel(sortedMonths, actualIndex, budgetVal) {
+    _renderInsightPanel(seriesData, sortedMonths, actualIndex, budgetVal) {
       const currentMonthNode = sortedMonths[actualIndex];
       const actualVal = currentMonthNode.realizado;
-      const monthLabel = currentMonthNode.label;
+      const monthLabel = seriesData[actualIndex].label;
 
       const diffNominal = actualVal - budgetVal;
       const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
@@ -804,30 +785,29 @@
 
       this._textInsightBox.classList.add(semClassBudget);
 
-      // Bloco A: Análise contra o Planejado (Budget)
       let dynamicNarration = `
         A performance consolidada de <span class="bold-val">${monthLabel}</span> atingiu 
         <span class="bold-val">${formatM(actualVal)}</span>. Em relação ao orçamento planejado (Budget), 
-        o desvio nominal foi de <span class="inline-highlight ${semClassBudget}">${formatNominal(diffNominal)}</span> 
+        o desvim nominal foi de <span class="inline-highlight ${semClassBudget}">${formatNominal(diffNominal)}</span> 
         (<span class="inline-highlight ${semClassBudget}">${formatPercent(diffPercent)}</span>), configurando 
         um quadro de <span class="bold-val">${statusTextBudget}</span> ${relatoFimBudget}
       `;
 
-      // Bloco B: Inteligência Sequencial - Análise de Tendência contra o Mês Anterior (Requisito Adicional)
+      // ADIÇÃO DE INTELIGÊNCIA COMPARTIMENTADA: Análise Temporal em relação ao mês anterior (Anexo 2)
       if (actualIndex > 0) {
-        const prevMonthNode = sortedMonths[actualIndex - 1];
-        const prevVal = prevMonthNode.realizado;
-        const diffPrev = actualVal - prevVal;
-        const diffPrevPct = prevVal !== 0 ? (diffPrev / prevVal) * 100 : 0;
+        const prevMonthVal = sortedMonths[actualIndex - 1].realizado;
+        const prevMonthLabel = seriesData[actualIndex - 1].label;
+        const diffPrev = actualVal - prevMonthVal;
+        const diffPrevPct = prevMonthVal !== 0 ? (diffPrev / prevMonthVal) * 100 : 0;
 
         let semClassPrev = diffPrev > 0 ? "increase" : "saving";
-        let statusTextPrev = diffPrev > 0 ? "um avanço de despesas operacionais" : "uma contração salutar de custos";
+        let statusTextPrev = diffPrev > 0 ? "um avanço sequencial de despesas" : "uma contração estável de custos";
 
         dynamicNarration += `
-          <br><br><b>Comparado ao mês anterior (${prevMonthNode.label}):</b> A oscilação nominal fechou em 
+          <br><br><b>Comparado ao mês anterior (${prevMonthLabel}):</b> A oscilação nominal fechou em 
           <span class="inline-highlight ${semClassPrev}">${formatNominal(diffPrev)}</span> 
           (<span class="inline-highlight ${semClassPrev}">${formatPercent(diffPrevPct)}</span>), registrando 
-          <span class="bold-val">${statusTextPrev}</span> na performance sequencial dos períodos analíticos.
+          <span class="bold-val">${statusTextPrev}</span> na performance evolutiva dos períodos.
         `;
       }
 
