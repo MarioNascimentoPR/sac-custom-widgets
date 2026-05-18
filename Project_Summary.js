@@ -21,15 +21,67 @@
       this._fpsLastTime = performance.now();
     }
 
+    _buildDataSignature(cubeData) {
+      const rows = Array.isArray(cubeData) ? cubeData : (cubeData && cubeData.data);
+      if (!Array.isArray(rows)) return "";
+      let hash = 2166136261;
+      const mix = (value) => {
+        const text = String(value == null ? "" : value);
+        for (let i = 0; i < text.length; i++) {
+          hash ^= text.charCodeAt(i);
+          hash = Math.imul(hash, 16777619);
+        }
+      };
+
+      if (!Array.isArray(cubeData) && cubeData.metadata) {
+        const metadata = cubeData.metadata;
+        const dimensions = metadata.dimensions || {};
+        const mainStructureMembers = metadata.mainStructureMembers || {};
+        Object.keys(dimensions).forEach(key => {
+          const dim = dimensions[key] || {};
+          mix(key); mix(dim.id); mix(dim.description); mix(dim.label);
+        });
+        Object.keys(mainStructureMembers).forEach(key => {
+          const measure = mainStructureMembers[key] || {};
+          mix(key); mix(measure.id); mix(measure.description); mix(measure.label);
+        });
+      }
+
+      mix(rows.length);
+      rows.forEach(row => {
+        if (!row) return;
+        if (row.versionContext) {
+          mix(row.versionContext.isActualMonth);
+        }
+        Object.keys(row).forEach(key => {
+          const cell = row[key];
+          mix(key);
+          if (cell && typeof cell === "object") {
+            mix(cell.id);
+            mix(cell.label || cell.description);
+            if (cell.properties) {
+              mix(cell.properties.isCurrent);
+            }
+            mix(cell.formattedValue !== undefined ? cell.formattedValue : cell.raw);
+          } else {
+            mix(cell);
+          }
+        });
+      });
+
+      return `${rows.length}:${hash >>> 0}`;
+    }
+
     verifyRedundancy(cubeData) {
       if (!ENABLE_TELEMETRY || !cubeData) return false;
       try {
-        const sample = cubeData.slice(0, 5).map(r => r.id || "").join("|");
-        if (this._lastDataSignature === sample) {
+        const signature = this._buildDataSignature(cubeData);
+        if (!signature) return false;
+        if (this._lastDataSignature === signature) {
           this.metrics.redundantRenders++;
           return true;
         }
-        this._lastDataSignature = sample;
+        this._lastDataSignature = signature;
       } catch (e) { return false; }
       return false;
     }
@@ -365,13 +417,36 @@
         isSaving: ytdDiff <= 0
       };
 
-      const scannedRows = cubeData.map(row => {
+      const fullSeriesById = new Map(fullSeriesData.map(d => [d.id, d]));
+      const topCandidates = [];
+      const topLimit = 200;
+
+      cubeData.forEach((row, index) => {
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
-        return { row, weight: Math.abs(rawValue) };
+        const candidate = { row, weight: Math.abs(rawValue), index };
+
+        if (topCandidates.length < topLimit) {
+          topCandidates.push(candidate);
+          return;
+        }
+
+        let minIdx = 0;
+        for (let i = 1; i < topCandidates.length; i++) {
+          if (
+            topCandidates[i].weight < topCandidates[minIdx].weight ||
+            (topCandidates[i].weight === topCandidates[minIdx].weight && topCandidates[i].index > topCandidates[minIdx].index)
+          ) {
+            minIdx = i;
+          }
+        }
+
+        if (candidate.weight > topCandidates[minIdx].weight) {
+          topCandidates[minIdx] = candidate;
+        }
       });
-      
-      scannedRows.sort((a, b) => b.weight - a.weight);
-      const topImpactRows = scannedRows.slice(0, 200).map(item => item.row);
+
+      topCandidates.sort((a, b) => (b.weight - a.weight) || (a.index - b.index));
+      const topImpactRows = topCandidates.map(item => item.row);
 
       const itemFinanceiroMap = {};
 
@@ -379,7 +454,7 @@
         if (!tempoDimId || !itemFinanceiroDimId) return;
         const tObj = row[tempoDimId]; if (!tObj) return;
         
-        const rowMonthNode = fullSeriesData.find(d => d.id === String(tObj.id));
+        const rowMonthNode = fullSeriesById.get(String(tObj.id));
         if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > targetNode.monthNum) return;
 
         const itemObj = row[itemFinanceiroDimId];
@@ -490,6 +565,10 @@
       this._updateQueued = false;
       this._analyticsEngine = new EvoNarrativeEngine();
       this._profiler = new EvoStreamProfiler();
+
+      this._metadataSignature = "";
+      this._metadataContext = null;
+      this._seriesCache = null;
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -632,7 +711,7 @@
     onCustomWidgetAfterUpdate(changedProperties) {
       this._updateStyles();
       if ("performanceCube" in changedProperties && this.performanceCube) {
-        if (this._profiler.verifyRedundancy(this.performanceCube.data)) {
+        if (this._profiler.verifyRedundancy(this.performanceCube)) {
           if (ENABLE_TELEMETRY) this._lblRedund.textContent = this._profiler.metrics.redundantRenders;
           return; 
         }
@@ -640,6 +719,7 @@
         this._currentData = this.performanceCube;
         this._selectedCutoffId = null;
         this._isTreeBuilt = false; 
+        this._seriesCache = null;
         if (this._shadowRoot) {
           this._treeDropdownContent.textContent = ""; 
           this.requestUpdate();
@@ -660,6 +740,75 @@
       if (typeof val === 'number') return val;
       if (!val || val === "-") return 0;
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+    }
+
+    _getMetadataContext(metadata) {
+      const dimensions = metadata.dimensions || {};
+      const mainStructureMembers = metadata.mainStructureMembers || {};
+      const dimKeys = Object.keys(dimensions);
+      const measureKeys = Object.keys(mainStructureMembers);
+
+      if (dimKeys.length < 1 || measureKeys.length < 1) return null;
+
+      const signatureParts = [];
+      dimKeys.forEach(key => {
+        const dim = dimensions[key] || {};
+        signatureParts.push(key, dim.id || "", dim.description || "", dim.label || "");
+      });
+      measureKeys.forEach(key => {
+        const measure = mainStructureMembers[key] || {};
+        signatureParts.push(key, measure.id || "", measure.description || "", measure.label || "");
+      });
+
+      const metadataSignature = signatureParts.join("|");
+      if (this._metadataContext && this._metadataSignature === metadataSignature) {
+        return this._metadataContext;
+      }
+
+      const measId = measureKeys[0];
+      let tempoDimId = null;
+      let versaoDimId = null;
+      let itemFinanceiroDimId = null;
+      let contaContabilDimId = null;
+
+      dimKeys.forEach(key => {
+        const desc = String(dimensions[key].description || "").toUpperCase();
+        const id = String(dimensions[key].id || "").toUpperCase();
+        
+        if (desc.includes("VERSÃO") || desc.includes("VERSION") || desc.includes("CENÁRIO") || id.includes("VERSION") || id.includes("CATEGORY")) {
+          versaoDimId = key;
+        } else if (desc.includes("TEMPO") || desc.includes("MÊS") || desc.includes("MES") || desc.includes("ANO") || desc.includes("DATE") || id.includes("TIME") || id.includes("CALENDAR")) {
+          tempoDimId = key;
+        } else if (desc.includes("ITEM") || id.includes("ITEM") || desc.includes("FINANCEIRO")) {
+          itemFinanceiroDimId = key;
+        } else if (desc.includes("CONTA") || id.includes("ACCOUNT") || desc.includes("CONTÁBIL") || desc.includes("CONTABIL")) {
+          contaContabilDimId = key;
+        }
+      });
+
+      if (!tempoDimId) tempoDimId = dimKeys[0];
+      if (!versaoDimId) versaoDimId = dimKeys[1] || null;
+
+      const extraDimIds = dimKeys.filter(key => key !== tempoDimId && key !== versaoDimId);
+      if (!itemFinanceiroDimId) itemFinanceiroDimId = extraDimIds[0] || null;
+      if (!contaContabilDimId) contaContabilDimId = extraDimIds[1] || null;
+
+      const measureInfo = mainStructureMembers[measId] || {};
+      const context = {
+        dimKeys,
+        measureKeys,
+        measId,
+        measureInfo,
+        tempoDimId,
+        versaoDimId,
+        itemFinanceiroDimId,
+        contaContabilDimId,
+        extraDimIds
+      };
+
+      this._metadataSignature = metadataSignature;
+      this._metadataContext = context;
+      return context;
     }
 
     renderChart() {
@@ -683,114 +832,24 @@
       try {
         const tParsingStart = performance.now();
         const metadata = financialData.metadata;
-        const dimensions = metadata.dimensions || {};
-        const mainStructureMembers = metadata.mainStructureMembers || {};
+        const metadataContext = this._getMetadataContext(metadata);
+        if (!metadataContext) return;
 
-        const dimKeys = Object.keys(dimensions);
-        const measureKeys = Object.keys(mainStructureMembers);
-
-        if (dimKeys.length < 1 || measureKeys.length < 1) return;
-
-        this._measId = measureKeys[0];
+        this._measId = metadataContext.measId;
+        this._tempoDimId = metadataContext.tempoDimId;
+        this._versaoDimId = metadataContext.versaoDimId;
+        this._itemFinanceiroDimId = metadataContext.itemFinanceiroDimId;
+        this._contaContabilDimId = metadataContext.contaContabilDimId;
+        this._extraDimIds = metadataContext.extraDimIds;
         
-        const measureInfo = mainStructureMembers[this._measId] || {};
+        const measureInfo = metadataContext.measureInfo || {};
         const indicatorLabel = measureInfo.label || measureInfo.description || measureInfo.id || "Indicador";
         if (this._widgetTitle) {
           this._widgetTitle.textContent = `Overview - ${indicatorLabel}`;
         }
 
-        this._tempoDimId = null;
-        this._versaoDimId = null;
-        this._itemFinanceiroDimId = null;
-        this._contaContabilDimId = null;
-
-        dimKeys.forEach(key => {
-          const desc = String(dimensions[key].description || "").toUpperCase();
-          const id = String(dimensions[key].id || "").toUpperCase();
-          
-          if (desc.includes("VERSÃO") || desc.includes("VERSION") || desc.includes("CENÁRIO") || id.includes("VERSION") || id.includes("CATEGORY")) {
-            this._versaoDimId = key;
-          } else if (desc.includes("TEMPO") || desc.includes("MÊS") || desc.includes("MES") || desc.includes("ANO") || desc.includes("DATE") || id.includes("TIME") || id.includes("CALENDAR")) {
-            this._tempoDimId = key;
-          } else if (desc.includes("ITEM") || id.includes("ITEM") || desc.includes("FINANCEIRO")) {
-            this._itemFinanceiroDimId = key;
-          } else if (desc.includes("CONTA") || id.includes("ACCOUNT") || desc.includes("CONTÁBIL") || desc.includes("CONTABIL")) {
-            this._contaContabilDimId = key;
-          }
-        });
-
-        if (!this._tempoDimId) this._tempoDimId = dimKeys[0];
-        if (!this._versaoDimId) this._versaoDimId = dimKeys[1] || null;
-
-        this._extraDimIds = dimKeys.filter(key => key !== this._tempoDimId && key !== this._versaoDimId);
-        if (!this._itemFinanceiroDimId) this._itemFinanceiroDimId = this._extraDimIds[0] || null;
-        if (!this._contaContabilDimId) this._contaContabilDimId = this._extraDimIds[1] || null;
-
-        const timelineMap = {};
-        const currentYearRuntime = new Date().getFullYear();
-
-        financialData.data.forEach(row => {
-          const tempoObj = row[this._tempoDimId]; if (!tempoObj) return;
-          const tId = String(tempoObj.id); 
-          if (tId.toLowerCase().includes("(all)")) return;
-          
-          const tLabel = tempoObj.label || tempoObj.description || tId;
-          if (tLabel.toLowerCase().includes("(all)")) return;
-
-          if (!timelineMap[tId]) {
-            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false, rowContext: row };
-          }
-          if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
-          if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
-
-          const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
-          if (this._versaoDimId) {
-            const vObj = row[this._versaoDimId];
-            if (vObj) {
-              const vId = String(vObj.id).toUpperCase(); 
-              const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
-              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { 
-                timelineMap[tId].orcado += rawValue; 
-              } else { 
-                timelineMap[tId].realizado += rawValue; 
-              }
-            }
-          } else { timelineMap[tId].realizado += rawValue; }
-        });
-
-        const sortedMonths = Object.values(timelineMap);
-        if (sortedMonths.length === 0) return;
-
-        const fullSeriesData = [];
-        let defaultActualIndex = -1;
-
-        sortedMonths.forEach((m) => {
-          let parsedYear = currentYearRuntime;
-          const matches = m.id.match(this._yearRegex);
-          if (matches) {
-            parsedYear = parseInt(matches[0]);
-          } else {
-            const labelDigits = m.label.match(this._yearRegex);
-            if (labelDigits) parsedYear = parseInt(labelDigits[0]);
-          }
-
-          if (parsedYear < 2022 || parsedYear > 2028) return;
-
-          const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
-          const targetMonthIndex = this._monthOrderMap[cleanLabelUpper] || 1;
-          const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
-
-          fullSeriesData.push({ 
-            id: m.id, label: alignedLabel, value: m.realizado, type: m.isCurrentMonth ? "actual" : "historical", originalNode: m, yearValue: parsedYear, monthNum: targetMonthIndex, rawRow: m.rowContext 
-          });
-        });
-
-        fullSeriesData.sort((a, b) => {
-          if (a.yearValue !== b.yearValue) return a.yearValue - b.yearValue;
-          return a.monthNum - b.monthNum;
-        });
-
         const nowRuntime = new Date();
+        const currentYearRuntime = nowRuntime.getFullYear();
         let targetMonthNum = nowRuntime.getMonth(); 
         let targetYearNum = nowRuntime.getFullYear();
         
@@ -799,18 +858,104 @@
           targetYearNum -= 1;
         }
 
-        let dynamicIdx = fullSeriesData.findIndex(d => d.yearValue === targetYearNum && d.monthNum === targetMonthNum);
-        
-        if (dynamicIdx !== -1) {
-          defaultActualIndex = dynamicIdx;
+        const runtimeCutoffKey = `${targetYearNum}-${targetMonthNum}`;
+        let fullSeriesData;
+        let defaultActualIndex = -1;
+
+        if (
+          this._seriesCache &&
+          this._seriesCache.sourceData === financialData &&
+          this._seriesCache.metadataSignature === this._metadataSignature &&
+          this._seriesCache.runtimeCutoffKey === runtimeCutoffKey
+        ) {
+          fullSeriesData = this._seriesCache.fullSeriesData;
+          defaultActualIndex = this._seriesCache.defaultActualIndex;
         } else {
-          fullSeriesData.forEach((d, idx) => {
-            if (d.type === "actual") defaultActualIndex = idx;
+          const timelineMap = {};
+
+          financialData.data.forEach(row => {
+            const tempoObj = row[this._tempoDimId]; if (!tempoObj) return;
+            const tId = String(tempoObj.id); 
+            if (tId.toLowerCase().includes("(all)")) return;
+            
+            const tLabel = tempoObj.label || tempoObj.description || tId;
+            if (tLabel.toLowerCase().includes("(all)")) return;
+
+            if (!timelineMap[tId]) {
+              timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false, rowContext: row };
+            }
+            if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
+            if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
+
+            const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+            if (this._versaoDimId) {
+              const vObj = row[this._versaoDimId];
+              if (vObj) {
+                const vId = String(vObj.id).toUpperCase(); 
+                const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
+                if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { 
+                  timelineMap[tId].orcado += rawValue; 
+                } else { 
+                  timelineMap[tId].realizado += rawValue; 
+                }
+              }
+            } else { timelineMap[tId].realizado += rawValue; }
           });
-          if (defaultActualIndex === -1 && fullSeriesData.length > 0) {
-            defaultActualIndex = fullSeriesData.length - 1;
+
+          const sortedMonths = Object.values(timelineMap);
+          if (sortedMonths.length === 0) return;
+
+          fullSeriesData = [];
+
+          sortedMonths.forEach((m) => {
+            let parsedYear = currentYearRuntime;
+            const matches = m.id.match(this._yearRegex);
+            if (matches) {
+              parsedYear = parseInt(matches[0]);
+            } else {
+              const labelDigits = m.label.match(this._yearRegex);
+              if (labelDigits) parsedYear = parseInt(labelDigits[0]);
+            }
+
+            if (parsedYear < 2022 || parsedYear > 2028) return;
+
+            const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
+            const targetMonthIndex = this._monthOrderMap[cleanLabelUpper] || 1;
+            const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
+
+            fullSeriesData.push({ 
+              id: m.id, label: alignedLabel, value: m.realizado, type: m.isCurrentMonth ? "actual" : "historical", originalNode: m, yearValue: parsedYear, monthNum: targetMonthIndex, rawRow: m.rowContext 
+            });
+          });
+
+          fullSeriesData.sort((a, b) => {
+            if (a.yearValue !== b.yearValue) return a.yearValue - b.yearValue;
+            return a.monthNum - b.monthNum;
+          });
+
+          let dynamicIdx = fullSeriesData.findIndex(d => d.yearValue === targetYearNum && d.monthNum === targetMonthNum);
+          
+          if (dynamicIdx !== -1) {
+            defaultActualIndex = dynamicIdx;
+          } else {
+            fullSeriesData.forEach((d, idx) => {
+              if (d.type === "actual") defaultActualIndex = idx;
+            });
+            if (defaultActualIndex === -1 && fullSeriesData.length > 0) {
+              defaultActualIndex = fullSeriesData.length - 1;
+            }
           }
+
+          this._seriesCache = {
+            sourceData: financialData,
+            metadataSignature: this._metadataSignature,
+            runtimeCutoffKey,
+            fullSeriesData,
+            defaultActualIndex
+          };
         }
+
+        if (fullSeriesData.length === 0) return;
 
         if (!this._isTreeBuilt && fullSeriesData.length > 0) {
           this._treeDropdownContent.textContent = ""; 
