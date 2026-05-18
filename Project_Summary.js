@@ -757,9 +757,14 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        // Executa o cálculo de bounding box sincronizado no próximo ciclo do navegador
+        // RE-SINCRONIZAÇÃO COMPLETA: Macrotask isolada garante leitura estável após o fluxo de layout do SAC se assentar
         setTimeout(() => {
+          if (!document.contains(this)) return;
           this._renderBoundingConnectors(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
+          
+          // Mapeamento responsivo do mini-chart YTD
+          const ytdBars = [this._miniBarPrev, this._miniBarAct, this._miniBarBud];
+          this._renderBoundingConnectors(this._svgYtdOverlay, this._ytdChartArea, ytdBars, this._ytdSeriesMockData, 1, "ytd");
         }, 0);
 
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
@@ -770,11 +775,15 @@
     }
 
     /* ==========================================================================
-       SOLUÇÃO DE ALTISSIMA PRECISÃO VIA API BoundingBox DINÂMICA
+       PROCESSO DE ALTA PRECISÃO COMPUTAÇÃO GRÁFICA VIA getBoundingClientRect
        ========================================================================== */
     _renderBoundingConnectors(svg, chartAreaContainer, barElements, seriesData, actualIndex, mode) {
-      if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
+      if (!svg || !chartAreaContainer || actualIndex === -1) return;
       
+      // Limpeza prévia de vetores e tags no escopo do contêiner específico
+      svg.querySelectorAll('path').forEach(el => el.remove());
+      svg.querySelectorAll('foreignObject').forEach(el => el.remove());
+
       const containerRect = chartAreaContainer.getBoundingClientRect();
       if (containerRect.width === 0 || containerRect.height === 0) return;
 
@@ -787,18 +796,21 @@
         pairs.push({ from: 1, to: 2 });
       }
 
-      // Procura o centro horizontal exato de cada barra calculada em tempo real na tela [cite: 126, 127]
+      // Função matemática que captura e traduz as coordenadas reais dos nós para o espaço local do Shadow DOM
       const getRealCenterAndTopX = (idx) => {
         const bar = barElements[idx];
         if (!bar) return { x: 0, y: 0 };
         const rect = bar.getBoundingClientRect();
+        // Evita divisões por zero ou larguras colapsadas pré-render
+        if (rect.width === 0) return { x: bar.offsetLeft + (bar.offsetWidth / 2), y: chartAreaContainer.offsetHeight - bar.offsetHeight };
+        
         const centerX = (rect.left + rect.width / 2) - containerRect.left;
         const topY = rect.top - containerRect.top;
         return { x: centerX, y: topY };
       };
 
-      // FIX ABSOLUTO: Teto fixado em 20px no topo do canvas, garantindo pista livre total acima das labels
-      const fixedCeilingY = 20;
+      // FIX DO TOPO: Pista elevada para 22px isolando totalmente os números dos gráficos
+      const fixedCeilingY = 22;
 
       pairs.forEach((pair) => {
         const coordFrom = getRealCenterAndTopX(pair.from);
@@ -810,7 +822,7 @@
         const diff = val2 - val1;
         let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
 
-        // Regra semântica rígida: Gastar menos é Verde (Sucesso), gastar mais é Vermelho (Estouro) [cite: 124]
+        // Regra semântica financeira de custos: Menos gasto = Verde (Saving), Mais gasto = Vermelho (Estouro)
         const isSaving = diff <= 0;
         if (!isSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
         else if (isSaving && variancePercent > 0) { variancePercent = -variancePercent; }
@@ -818,21 +830,22 @@
         const directionalArrow = isSaving ? "▼ " : "▲ ";
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
 
-        // Conector sólido elegante acoplado de forma limpa por trás do texto numérico
+        // Criação do vetor contínuo sem cortes
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y - 28} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 28}`);
+        // Traçado em formato de gancho passando de forma limpa acima do KPI numérico de dados
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y - 32} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 32}`);
         path.setAttribute("stroke", "var(--color-border-axis)");
         path.setAttribute("stroke-width", "1.25");
         path.setAttribute("fill", "none");
         path.setAttribute("marker-end", "url(#arrow-neutral)");
         svg.appendChild(path);
 
-        // Caixa de texto HTML absoluta injetada na pista superior do SVG
+        // Caixa HTML acoplada na pista superior do SVG
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString());
+        foreignObj.setAttribute("x", (midX - 38).toString());
         foreignObj.setAttribute("y", (fixedCeilingY - 11).toString());
-        foreignObj.setAttribute("width", "70");
+        foreignObj.setAttribute("width", "76");
         foreignObj.setAttribute("height", "22");
 
         const div = document.createElement("div");
@@ -920,16 +933,12 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      // RE-INJEÇÃO RESPONSIVA DAS LINHAS YTD VIA API BOUNDING BOX (Evita encolhimento de tela)
-      const ytdBarElements = [this._miniBarPrev, this._miniBarAct, this._miniBarBud];
-      const ytdSeriesMock = [
+      // Estruturação do mock de dados para o processamento em lote do mini-gráfico YTD responsivo
+      this._ytdSeriesMockData = [
         { value: totalRealizadoYTDAntigo },
         { value: totalRealizadoYTDAtual },
         { value: totalBudgetYTDCompleto }
       ];
-      setTimeout(() => {
-        this._renderBoundingConnectors(this._svgYtdOverlay, this._ytdChartArea, ytdBarElements, ytdSeriesMock, 1, "ytd");
-      }, 0);
 
       const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
       const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
