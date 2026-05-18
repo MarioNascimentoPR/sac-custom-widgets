@@ -254,15 +254,22 @@
         border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0;
       }
       .executive-panel-title { font-size: var(--small-font-size); font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 12px; }
-      .waterfall-chart { display: flex; align-items: flex-end; gap: 8px; min-height: 220px; height: 220px; overflow-x: auto; padding: 8px 2px 0; }
-      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 74px; height: 100%; position: relative; }
-      .waterfall-value { position: absolute; top: 0; font-size: var(--small-font-size); font-weight: 700; color: #334155; white-space: nowrap; }
-      .waterfall-bar-wrap { position: relative; height: calc(100% - 28px); width: 100%; }
-      .waterfall-bar { position: absolute; left: 0; right: 0; width: 100%; border-radius: 5px 5px 0 0; min-height: 4px; }
+      .waterfall-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+      .waterfall-panel-header .executive-panel-title { margin-bottom: 0; }
+      .waterfall-mode-tabs { display: inline-flex; border: 1px solid #dbe3ec; border-radius: 7px; background: #f8fafc; padding: 2px; gap: 2px; }
+      .waterfall-mode-btn { border: none; background: transparent; color: #475569; font-size: var(--small-font-size); font-weight: 700; border-radius: 5px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
+      .waterfall-mode-btn.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
+      .waterfall-caption { font-size: var(--small-font-size); color: #64748b; margin-bottom: 8px; min-height: 16px; }
+      .waterfall-chart { position: relative; display: flex; align-items: stretch; gap: 10px; min-height: 240px; height: 240px; overflow-x: auto; padding: 8px 4px 2px; border-top: 1px solid #eef2f6; }
+      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 82px; height: 100%; position: relative; }
+      .waterfall-value { height: 24px; display: flex; align-items: flex-start; justify-content: center; font-size: var(--small-font-size); font-weight: 700; color: #334155; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .waterfall-bar-wrap { position: relative; flex: 1; width: 100%; border-bottom: 1px solid #dbe3ec; }
+      .waterfall-bar { position: absolute; left: 10%; right: 10%; width: 80%; border-radius: 5px 5px 0 0; min-height: 4px; box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.08); }
       .waterfall-bar.total { background: #1f77b4; }
       .waterfall-bar.positive { background: #d32f2f; }
       .waterfall-bar.negative { background: #2e7d32; }
-      .waterfall-label { margin-top: 7px; font-size: var(--small-font-size); font-weight: 600; color: #475569; text-align: center; line-height: 1.2; min-height: 28px; }
+      .waterfall-label { margin-top: 7px; font-size: var(--small-font-size); font-weight: 600; color: #475569; text-align: center; line-height: 1.2; min-height: 34px; max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+      .waterfall-empty { align-self: center; color: #64748b; font-size: var(--ui-font-size); padding: 20px; }
       .executive-summary-list { margin: 0; padding-left: 18px; color: #334155; font-size: var(--ui-font-size); line-height: 1.6; display: flex; flex-direction: column; gap: 10px; }
       .diagnostic-toolbar {
         display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; margin-bottom: 14px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
@@ -467,7 +474,14 @@
         </div>
         <div class="executive-grid">
           <div class="executive-panel">
-            <div class="executive-panel-title">Waterfall de Variação YTD</div>
+            <div class="waterfall-panel-header">
+              <div class="executive-panel-title">Waterfall</div>
+              <div class="waterfall-mode-tabs">
+                <button class="waterfall-mode-btn active" id="waterfallYtdBtn" type="button">YTD Real x Orçado</button>
+                <button class="waterfall-mode-btn" id="waterfallMomBtn" type="button">MoM Realizado</button>
+              </div>
+            </div>
+            <div class="waterfall-caption" id="waterfallCaption"></div>
             <div class="waterfall-chart" id="waterfallChart"></div>
           </div>
           <div class="executive-panel">
@@ -905,6 +919,7 @@
       this._tooltipPayloadCache = new Map();
       this._tooltipCacheLimit = 6;
       this._activeView = "executive";
+      this._waterfallMode = "ytd";
       this._materialityMinValue = 0;
       this._materialityMinPct = 0;
       this._lastAnalyticsViewContext = null;
@@ -961,6 +976,9 @@
         this._execRiskPill = this._shadowRoot.getElementById("execRiskPill");
         this._execRiskSub = this._shadowRoot.getElementById("execRiskSub");
         this._waterfallChart = this._shadowRoot.getElementById("waterfallChart");
+        this._waterfallCaption = this._shadowRoot.getElementById("waterfallCaption");
+        this._waterfallYtdBtn = this._shadowRoot.getElementById("waterfallYtdBtn");
+        this._waterfallMomBtn = this._shadowRoot.getElementById("waterfallMomBtn");
         this._executiveSummaryList = this._shadowRoot.getElementById("executiveSummaryList");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
@@ -1026,6 +1044,8 @@
         this._materialityValueInput.addEventListener("input", () => this._handleMaterialityChange());
         this._materialityPctInput.addEventListener("input", () => this._handleMaterialityChange());
         this._exportPptBtn.addEventListener("click", () => this._exportCurrentViewToPpt());
+        this._waterfallYtdBtn.addEventListener("click", () => this._setWaterfallMode("ytd"));
+        this._waterfallMomBtn.addEventListener("click", () => this._setWaterfallMode("mom"));
 
         this._initStaticHighlightsDOM();
         this._setActiveView(this._activeView);
@@ -1468,6 +1488,13 @@
       this._renderAnalyticsViews();
     }
 
+    _setWaterfallMode(mode) {
+      this._waterfallMode = mode === "mom" ? "mom" : "ytd";
+      if (this._waterfallYtdBtn) this._waterfallYtdBtn.classList.toggle("active", this._waterfallMode === "ytd");
+      if (this._waterfallMomBtn) this._waterfallMomBtn.classList.toggle("active", this._waterfallMode === "mom");
+      this._renderAnalyticsViews();
+    }
+
     _getFilteredInsightRows(rows) {
       const minAbsValue = this._materialityMinValue * 1000000;
       const minAbsPct = this._materialityMinPct;
@@ -1475,6 +1502,82 @@
         Math.abs(item.desvio) >= minAbsValue &&
         Math.abs(item.pctVar) >= minAbsPct
       ));
+    }
+
+    _getFilteredWaterfallRows(rows) {
+      const minAbsValue = this._materialityMinValue * 1000000;
+      const minAbsPct = this._materialityMinPct;
+      return (rows || []).filter(item => (
+        Math.abs(item.delta) >= minAbsValue &&
+        Math.abs(item.pctVar || 0) >= minAbsPct
+      ));
+    }
+
+    _getMoMDriverRows(context) {
+      const currentNode = context.currentBarNode;
+      const previousNode = currentNode ? currentNode.previousSeriesData : null;
+      if (!currentNode || !previousNode) return [];
+
+      const currentComposition = this._getTooltipComposition(currentNode, "actual");
+      const previousComposition = this._getTooltipComposition(previousNode, "actual");
+      const names = new Set([...Object.keys(currentComposition || {}), ...Object.keys(previousComposition || {})]);
+      const rows = [];
+      names.forEach(name => {
+        const currentValue = currentComposition[name] || 0;
+        const previousValue = previousComposition[name] || 0;
+        const delta = currentValue - previousValue;
+        if (Math.abs(delta) <= 0.00001) return;
+        rows.push({
+          itemName: name,
+          delta,
+          pctVar: previousValue !== 0 ? (delta / Math.abs(previousValue)) * 100 : 999,
+          currentValue,
+          previousValue
+        });
+      });
+      return rows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    }
+
+    _getWaterfallModel(context) {
+      if (this._waterfallMode === "mom") {
+        const previousNode = context.currentBarNode ? context.currentBarNode.previousSeriesData : null;
+        const rawRows = this._getMoMDriverRows(context);
+        const filteredRows = this._getFilteredWaterfallRows(rawRows).slice(0, 6);
+        const startValue = previousNode ? previousNode.value : 0;
+        const endValue = context.currentBarNode ? context.currentBarNode.value : 0;
+        return {
+          mode: "mom",
+          startLabel: previousNode ? previousNode.label : "Mês anterior",
+          endLabel: context.currentBarNode ? context.currentBarNode.label : "Mês atual",
+          startValue,
+          endValue,
+          rows: filteredRows,
+          totalDelta: endValue - startValue,
+          caption: previousNode
+            ? `Ponte da variação mensal do realizado: ${previousNode.label} para ${context.currentBarNode.label}.`
+            : "Sem mês anterior disponível para calcular MoM realizado."
+        };
+      }
+
+      const rawRows = (context.analysis.waterfallTable || []).map(item => ({
+        itemName: item.itemName,
+        delta: item.desvio,
+        pctVar: item.pctVar,
+        isSaving: item.isSaving
+      }));
+      const filteredRows = this._getFilteredWaterfallRows(rawRows)
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+        .slice(0, 6);
+      return {
+        mode: "ytd",
+        startLabel: "Orçamento YTD",
+        endLabel: "Realizado YTD",
+        startValue: context.totalBudgetYTDCompleto,
+        endValue: context.totalRealizadoYTDAtual,
+        rows: filteredRows,
+        totalDelta: context.totalRealizadoYTDAtual - context.totalBudgetYTDCompleto,
+        caption: "Ponte entre orçamento acumulado e realizado acumulado, explicada pelos principais drivers filtrados."
+      };
     }
 
     _getForecastSummary(context) {
@@ -1532,38 +1635,48 @@
       this._setText(this._execRiskPill, risk.label);
       this._setText(this._execRiskSub, risk.description);
 
-      this._renderWaterfall(filteredRows, context.totalBudgetYTDCompleto, context.totalRealizadoYTDAtual);
-      this._renderExecutiveSummary(context, filteredRows, forecast, risk);
+      const waterfallModel = this._getWaterfallModel(context);
+      this._renderWaterfall(waterfallModel);
+      this._renderExecutiveSummary(context, filteredRows, forecast, risk, waterfallModel);
     }
 
-    _renderWaterfall(rows, budgetYtd, actualYtd) {
+    _renderWaterfall(model) {
       if (!this._waterfallChart) return;
       this._waterfallChart.textContent = "";
+      if (this._waterfallCaption) this._setText(this._waterfallCaption, model.caption);
 
-      const strongestRows = [...rows]
-        .sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio))
-        .slice(0, 6);
-      const explainedGap = strongestRows.reduce((sum, item) => sum + item.desvio, 0);
-      const residualGap = actualYtd - budgetYtd - explainedGap;
+      if (model.mode === "mom" && !model.rows.length && !model.totalDelta) {
+        const empty = document.createElement("div");
+        empty.className = "waterfall-empty";
+        empty.textContent = "Sem base anterior disponível para a ponte MoM.";
+        this._waterfallChart.appendChild(empty);
+        return;
+      }
+
+      const explainedGap = model.rows.reduce((sum, item) => sum + item.delta, 0);
+      const residualGap = model.totalDelta - explainedGap;
       const steps = [
-        { label: "Orçamento YTD", value: budgetYtd, type: "total" },
-        ...strongestRows.map(item => ({ label: item.itemName, delta: item.desvio, type: item.desvio >= 0 ? "positive" : "negative" })),
+        { label: model.startLabel, value: model.startValue, type: "total" },
+        ...model.rows.map(item => ({ label: item.itemName, delta: item.delta, type: item.delta >= 0 ? "positive" : "negative" })),
         ...(Math.abs(residualGap) > 0.00001 ? [{ label: "Demais itens", delta: residualGap, type: residualGap >= 0 ? "positive" : "negative" }] : []),
-        { label: "Realizado YTD", value: actualYtd, type: "total" }
+        { label: model.endLabel, value: model.endValue, type: "total" }
       ];
 
-      let current = budgetYtd;
-      const levels = [budgetYtd, actualYtd];
+      let current = model.startValue;
+      const levels = [model.startValue, model.endValue];
       steps.forEach(step => {
         if (step.delta !== undefined) {
           levels.push(current, current + step.delta);
           current += step.delta;
         }
       });
-      const minLevel = Math.min(...levels, 0);
-      const maxLevel = Math.max(...levels, 1);
+      let minLevel = Math.min(...levels);
+      let maxLevel = Math.max(...levels);
+      const padding = Math.max((maxLevel - minLevel) * 0.08, Math.max(Math.abs(model.totalDelta) * 0.12, 1));
+      minLevel -= padding;
+      maxLevel += padding;
       const range = maxLevel - minLevel || 1;
-      current = budgetYtd;
+      current = model.startValue;
       const fragment = document.createDocumentFragment();
 
       steps.forEach(step => {
@@ -1596,7 +1709,8 @@
         barEl.style.height = `${heightPct}%`;
         const labelEl = document.createElement("div");
         labelEl.className = "waterfall-label";
-        labelEl.textContent = step.label;
+        labelEl.textContent = this._compactWaterfallLabel(step.label);
+        labelEl.title = step.label;
         wrapEl.appendChild(barEl);
         stepEl.appendChild(valueEl);
         stepEl.appendChild(wrapEl);
@@ -1607,7 +1721,13 @@
       this._waterfallChart.appendChild(fragment);
     }
 
-    _renderExecutiveSummary(context, filteredRows, forecast, risk) {
+    _compactWaterfallLabel(label) {
+      const text = String(label || "");
+      if (text.length <= 18) return text;
+      return `${text.slice(0, 16)}…`;
+    }
+
+    _renderExecutiveSummary(context, filteredRows, forecast, risk, waterfallModel) {
       if (!this._executiveSummaryList) return;
       this._executiveSummaryList.textContent = "";
       const fragment = document.createDocumentFragment();
@@ -1615,9 +1735,13 @@
       const concentration = context.diffYtdNominal !== 0
         ? (topDrivers.reduce((sum, item) => sum + Math.abs(item.desvio), 0) / Math.abs(context.diffYtdNominal)) * 100
         : 0;
+      const waterfallText = waterfallModel.mode === "mom"
+        ? `No MoM realizado, a ponte mostra variação de ${(waterfallModel.totalDelta >= 0 ? "+" : "")}${(waterfallModel.totalDelta / 1000000).toFixed(2)}M entre ${waterfallModel.startLabel} e ${waterfallModel.endLabel}.`
+        : `No YTD Real x Orçado, a ponte explica ${(waterfallModel.totalDelta >= 0 ? "+" : "")}${(waterfallModel.totalDelta / 1000000).toFixed(2)}M de variação acumulada.`;
       const bullets = [
         `O YTD encerra com ${context.diffYtdNominal <= 0 ? "variação favorável" : "variação desfavorável"} de R$ ${Math.abs(context.diffYtdNominal / 1000000).toFixed(2)}M.`,
         `O forecast projeta R$ ${(forecast.projectedActual / 1000000).toFixed(2)}M no fechamento e mantém o status ${risk.label.toLowerCase()}.`,
+        waterfallText,
         topDrivers.length > 0
           ? `Os ${topDrivers.length} maiores drivers explicam ${Math.min(concentration, 999).toFixed(1)}% da variação YTD filtrada.`
           : "Nenhum driver ultrapassa os filtros de materialidade definidos."
