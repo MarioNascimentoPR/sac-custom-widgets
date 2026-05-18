@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - OUTLIER ENGINE DRILL-DOWN
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DYNAMIC PER-ITEM HIGHLIGHTS
    ========================================================================== */
 
 (function () {
@@ -32,15 +32,6 @@
         display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
       .tree-dropdown-content.show { display: block; }
-      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
-      .tree-year-node:hover { background-color: #edf2f7; }
-      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
-      .tree-year-node.expanded::before { transform: rotate(90deg); }
-      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
-      .tree-months-container.show { display: flex; }
-      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
-      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
-      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       .widget-legend { display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0; }
       .legend-item { display: flex; align-items: center; gap: 5px; }
       .legend-color { width: 10px; height: 10px; border-radius: 2px; }
@@ -262,22 +253,10 @@
     }
 
     _initStaticHighlightsDOM() {
-      const ul = document.createElement("ul");
-      ul.className = "ul-highlight";
-      this._hlMonthLi = document.createElement("li");
-      this._hlConsLi = document.createElement("li");
-      this._hlYtdLi = document.createElement("li");
-      this._hlExtraLi1 = document.createElement("li"); 
-      this._hlExtraLi2 = document.createElement("li"); 
-      
-      ul.appendChild(this._hlMonthLi);
-      ul.appendChild(this._hlConsLi);
-      ul.appendChild(this._hlYtdLi);
-      ul.appendChild(this._hlExtraLi1);
-      ul.appendChild(this._hlExtraLi2);
-      
+      this._hlUl = document.createElement("ul");
+      this._hlUl.className = "ul-highlight";
       this._highlightContentText.textContent = "";
-      this._highlightContentText.appendChild(ul);
+      this._highlightContentText.appendChild(this._hlUl);
     }
 
     _toggleDropdownDOM() {
@@ -543,7 +522,7 @@
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
 
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
-        this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
+        this._renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, calculatedBudget);
 
         requestAnimationFrame(() => {
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
@@ -669,7 +648,10 @@
       svg.appendChild(fragment);
     }
 
-    _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
+    /* ==========================================================================
+       ENGINE DE HIGHLIGHTS DINÂMICA - DETALHAMENTO DE CADA ITEM FINANCEIRO
+       ========================================================================== */
+    _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
       const currentYear = currentBarNode.yearValue; const previousYear = currentYear - 1;
@@ -737,25 +719,30 @@
       const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
-      this._hlMonthLi.textContent = "";
+      // Limpeza atômica do contêiner de lista para remontagem dinâmica
+      this._hlUl.textContent = "";
+
+      // Injeção segura das 3 linhas de telemetria corporativa global
+      const liMonth = document.createElement("li");
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
-      this._hlMonthLi.appendChild(s1); this._hlMonthLi.appendChild(document.createTextNode("Fechamento com ")); this._hlMonthLi.appendChild(statusSpan1); this._hlMonthLi.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+      liMonth.appendChild(s1); liMonth.appendChild(document.createTextNode("Fechamento com ")); liMonth.appendChild(statusSpan1); liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+      this._hlUl.appendChild(liMonth);
 
-      this._hlConsLi.textContent = "";
+      const liCons = document.createElement("li");
       const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
       const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
-      this._hlConsLi.appendChild(s2); this._hlConsLi.appendChild(document.createTextNode("A absorção atingiu ")); this._hlConsLi.appendChild(statusSpan2); this._hlConsLi.appendChild(document.createTextNode(" do orçamento da competência."));
+      liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
+      this._hlUl.appendChild(liCons);
 
-      this._hlYtdLi.textContent = "";
+      const liYtd = document.createElement("li");
       const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD: ";
       const statusSpan3 = document.createElement("span"); statusSpan3.textContent = ytdStatusText; statusSpan3.style.color = semanticColorYTD; statusSpan3.style.fontWeight = "700";
       const valueSpan3 = document.createElement("span"); valueSpan3.textContent = `${consumoBudgetPercent.toFixed(1)}%`; valueSpan3.style.fontWeight = "700";
-      this._hlYtdLi.appendChild(s3); this._hlYtdLi.appendChild(document.createTextNode("Acumulado com desvio ")); this._hlYtdLi.appendChild(statusSpan3); this._hlYtdLi.appendChild(document.createTextNode(", consumindo ")); this._hlYtdLi.appendChild(valueSpan3); this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
+      liYtd.appendChild(s3); liYtd.appendChild(document.createTextNode("Acumulado com desvio ")); liYtd.appendChild(statusSpan3); liYtd.appendChild(document.createTextNode(", consumindo ")); liYtd.appendChild(valueSpan3); liYtd.appendChild(document.createTextNode(" do ano."));
+      this._hlUl.appendChild(liYtd);
 
-      // ==========================================================================
-      // ENGINE DE HIGHLIGHTS COM REGRA DE EXCLUSÃO DO ITEM "OUTROS"
-      // ==========================================================================
+      // Agregação multidimensional limpa em memória (YTD acumulado)
       const itemFinanceiroMap = {};
       const financialData = this._currentData;
 
@@ -770,11 +757,24 @@
 
         const itemObj = row[this._itemFinanceiroDimId];
         const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
-
         const itemUpper = itemName.toUpperCase();
         
-        // CORREÇÃO: Cláusula de barreira para descartar e mitigar o item "Outros" ou agregadores padrão
-        if (itemUpper.includes("TOTAL") || itemUpper.includes("ALL_MEMBERS") || itemUpper.includes("(ALL)") || itemUpper === "OUTROS") return;
+        // HIGIENIZAÇÃO: Exclusão estrita de agregadores padrão, do item "Outros" e de rateios/liquidações
+        if (
+          itemUpper.includes("TOTAL") || 
+          itemUpper.includes("ALL_MEMBERS") || 
+          itemUpper.includes("(ALL)") || 
+          itemUpper === "OUTROS" || 
+          itemUpper.includes("RATEIO") || 
+          itemUpper.includes("LIQUIDA")
+        ) return;
+
+        let contaName = "Geral";
+        if (this._contaContabilDimId && row[this._contaContabilDimId]) {
+          contaName = row[this._contaContabilDimId].label || row[this._contaContabilDimId].description || row[this._contaContabilDimId].id || "Geral";
+        }
+        const contaUpper = contaName.toUpperCase();
+        if (contaUpper.includes("RATEIO") || contaUpper.includes("LIQUIDA")) return;
 
         if (!itemFinanceiroMap[itemName]) {
           itemFinanceiroMap[itemName] = { realizado: 0, orcado: 0, contas: {} };
@@ -797,71 +797,79 @@
           itemFinanceiroMap[itemName].realizado += rawValue;
         }
 
-        if (this._contaContabilDimId && row[this._contaContabilDimId]) {
-          const contaName = row[this._contaContabilDimId].label || row[this._contaContabilDimId].description || row[this._contaContabilDimId].id || "Geral";
-          if (!itemFinanceiroMap[itemName].contas[contaName]) {
-            itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
-          }
-          if (isBudget) {
-            itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue;
-          } else {
-            itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue;
-          }
+        if (!itemFinanceiroMap[itemName].contas[contaName]) {
+          itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
+        }
+        if (isBudget) {
+          itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue;
+        } else {
+          itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue;
         }
       });
 
-      let maxOutlierOffender = ""; let maxOffenderVal = 0; let maxOffenderConta = "";
-      let maxOutlierSaver = ""; let maxSaverVal = 0; let maxSaverConta = "";
-
+      // ==========================================================================
+      // MAPEAMENTO E RENDERIZAÇÃO SEQUENCIAL DE CADA ITEM FINANCEIRO VÁLIDO
+      // ==========================================================================
       Object.keys(itemFinanceiroMap).forEach(itemName => {
         const metrics = itemFinanceiroMap[itemName];
         const desvioItem = metrics.realizado - metrics.orcado;
+        const isSaving = desvioItem <= 0;
+        const pctVar = metrics.orcado !== 0 ? (desvioItem / metrics.orcado) * 100 : 0;
+        
+        const statusText = isSaving ? "economia operacional" : "desvio adverso";
+        const semanticColor = isSaving ? "#2E7D32" : "#D32F2F";
+        const directionalArrow = isSaving ? "▼ " : "▲ ";
 
-        if (desvioItem > 0 && desvioItem > maxOffenderVal) {
-          maxOffenderVal = desvioItem; maxOutlierOffender = itemName;
-          let topContaVal = 0;
-          Object.keys(metrics.contas).forEach(cName => {
-            const cDesvio = metrics.contas[cName].realizado - metrics.contas[cName].orcado;
-            if (cDesvio > topContaVal) { topContaVal = cDesvio; maxOffenderConta = cName; }
-          });
-        } else if (desvioItem < 0 && Math.abs(desvioItem) > maxSaverVal) {
-          maxSaverVal = Math.abs(desvioItem); maxOutlierSaver = itemName;
-          let topContaSave = 0;
-          Object.keys(metrics.contas).forEach(cName => {
-            const cDesvio = metrics.contas[cName].orcado - metrics.contas[cName].realizado;
-            if (cDesvio > topContaSave) { topContaSave = cDesvio; maxSaverConta = cName; }
-          });
+        // Localiza a subconta contábil de maior magnitude (Outlier driver interno do item)
+        let keyContaName = "";
+        let keyContaMaxAbs = -1;
+        Object.keys(metrics.contas).forEach(cName => {
+          const cDiff = metrics.contas[cName].realizado - metrics.contas[cName].orcado;
+          if (Math.abs(cDiff) > keyContaMaxAbs) {
+            keyContaMaxAbs = Math.abs(cDiff);
+            keyContaName = cName;
+          }
+        });
+
+        // Builder estrutural atômico por item financeiro (Blindagem XSS total)
+        const liItem = document.createElement("li");
+        const sLabel = document.createElement("strong");
+        sLabel.textContent = `${itemName}: `;
+        liItem.appendChild(sLabel);
+
+        liItem.appendChild(document.createTextNode("O acumulado YTD consolidou "));
+        
+        const spanStatus = document.createElement("span");
+        spanStatus.textContent = statusText;
+        spanStatus.style.color = semanticColor;
+        spanStatus.style.fontWeight = "700";
+        liItem.appendChild(spanStatus);
+
+        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(desvioItem/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(pctVar).toFixed(2)}%), registrando Realizado de R$ ${(metrics.realizado/1000000).toFixed(2)}M contra orçamento de R$ ${(metrics.orcado/1000000).toFixed(2)}M.`));
+
+        // Incorpora a conta contábil mais relevante para enriquecer o contexto de negócio
+        if (keyContaName && keyContaMaxAbs > 0) {
+          const cDiffReal = metrics.contas[keyContaName].realizado - metrics.contas[keyContaName].orcado;
+          const cSaving = cDiffReal <= 0;
+          const cColor = cSaving ? "#2E7D32" : "#D32F2F";
+          
+          liItem.appendChild(document.createTextNode(" O principal driver desse comportamento foi a natureza de "));
+          const spanConta = document.createElement("span");
+          spanConta.textContent = keyContaName;
+          spanConta.style.fontWeight = "700";
+          liItem.appendChild(spanConta);
+          liItem.appendChild(document.createTextNode(" com um impacto de "));
+          
+          const spanContaDiff = document.createElement("span");
+          spanContaDiff.textContent = `${cDiffReal >= 0 ? "+" : ""}${(cDiffReal/1000000).toFixed(2)}M`;
+          spanContaDiff.style.color = cColor;
+          spanContaDiff.style.fontWeight = "700";
+          liItem.appendChild(spanContaDiff);
+          liItem.appendChild(document.createTextNode("."));
         }
+
+        this._hlUl.appendChild(liItem);
       });
-
-      // Renderização condicional no painel lateral
-      this._hlExtraLi1.textContent = "";
-      if (maxOutlierOffender) {
-        this._hlExtraLi1.style.display = "block";
-        const b4 = document.createElement("strong"); b4.textContent = "Outlier de Despesa do Período: ";
-        const itemSpan = document.createElement("span"); itemSpan.textContent = maxOutlierOffender; itemSpan.style.color = "#D32F2F"; itemSpan.style.fontWeight = "700";
-        this._hlExtraLi1.appendChild(b4); this._hlExtraLi1.appendChild(document.createTextNode("No período acumulado, a linha de ")); this._hlExtraLi1.appendChild(itemSpan);
-        this._hlExtraLi1.appendChild(document.createTextNode(` consolidou o maior estouro orçamentário do projeto, gerando um desvio adverso de R$ ${formatM(maxOffenderVal)}`));
-        if (maxOffenderConta) {
-          const cSpan = document.createElement("span"); cSpan.textContent = maxOffenderConta; cSpan.style.fontWeight = "700";
-          this._hlExtraLi1.appendChild(document.createTextNode(" impulsionado pela conta contábil de ")); this._hlExtraLi1.appendChild(cSpan);
-        }
-        this._hlExtraLi1.appendChild(document.createTextNode("."));
-      } else { this._hlExtraLi1.style.display = "none"; }
-
-      this._hlExtraLi2.textContent = "";
-      if (maxOutlierSaver) {
-        this._hlExtraLi2.style.display = "block";
-        const b5 = document.createElement("strong"); b5.textContent = "Outlier de Eficiência do Período: ";
-        const saverSpan = document.createElement("span"); saverSpan.textContent = maxOutlierSaver; saverSpan.style.color = "#2E7D32"; saverSpan.style.fontWeight = "700";
-        this._hlExtraLi2.appendChild(b5); this._hlExtraLi2.appendChild(document.createTextNode("O maior vetor de otimização mapeado foi o item de ")); this._hlExtraLi2.appendChild(saverSpan);
-        this._hlExtraLi2.appendChild(document.createTextNode(` com uma economia de R$ ${formatM(maxSaverVal)} frente às metas`));
-        if (maxSaverConta) {
-          const cSpan2 = document.createElement("span"); cSpan2.textContent = maxSaverConta; cSpan2.style.fontWeight = "700";
-          this._hlExtraLi2.appendChild(document.createTextNode(" liderada pela natureza de ")); this._hlExtraLi2.appendChild(cSpan2);
-        }
-        this._hlExtraLi2.appendChild(document.createTextNode("."));
-      } else { this._hlExtraLi2.style.display = "none"; }
 
       this._insightGrid.style.display = "grid";
     }
