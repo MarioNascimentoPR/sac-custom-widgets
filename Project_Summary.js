@@ -271,15 +271,17 @@
       .waterfall-label { margin-top: 7px; font-size: var(--small-font-size); font-weight: 600; color: #475569; text-align: center; line-height: 1.2; min-height: 34px; max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
       .waterfall-empty { align-self: center; color: #64748b; font-size: var(--ui-font-size); padding: 20px; }
       .executive-summary-list { margin: 0; padding-left: 18px; color: #334155; font-size: var(--ui-font-size); line-height: 1.6; display: flex; flex-direction: column; gap: 10px; }
-      .diagnostic-toolbar {
-        display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; margin-bottom: 14px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
-      }
-      .diagnostic-control { display: flex; flex-direction: column; gap: 4px; }
-      .diagnostic-control label { font-size: var(--small-font-size); font-weight: 700; color: #475569; }
-      .diagnostic-control input {
-        width: 110px; border: 1px solid #cbd5e0; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 6px 8px; font-size: var(--ui-font-size);
-      }
-      .diagnostic-control-note { font-size: var(--small-font-size); color: #64748b; }
+      .supplier-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+      .supplier-kpi { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 12px 13px; display: flex; flex-direction: column; gap: 5px; }
+      .supplier-kpi-label { font-size: var(--small-font-size); font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.55px; }
+      .supplier-kpi-value { font-size: calc(var(--title-font-size) + 1px); line-height: 1.15; font-weight: 700; color: #0f172a; }
+      .supplier-kpi-sub { font-size: var(--small-font-size); color: #475569; }
+      .supplier-panel { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0; }
+      .supplier-table { width: 100%; border-collapse: collapse; font-size: var(--ui-font-size); color: #334155; }
+      .supplier-table th { text-align: left; font-size: var(--small-font-size); color: #64748b; text-transform: uppercase; letter-spacing: 0.55px; padding: 7px 8px; border-bottom: 1px solid #e2e8f0; }
+      .supplier-table td { padding: 9px 8px; border-bottom: 1px solid #eef2f6; font-weight: 600; }
+      .supplier-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .supplier-empty { color: #64748b; font-size: var(--ui-font-size); padding: 18px 4px; }
       .main-visualization-layout { display: flex; width: 100%; gap: var(--layout-gap); margin-bottom: 22px; flex-shrink: 0; align-items: stretch; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
       .visualization-column.monthly-col { flex: 3; }
@@ -380,6 +382,7 @@
       :host([data-layout="stacked"]) .filter-container-finance { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
       :host([data-layout="stacked"]) .executive-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       :host([data-layout="stacked"]) .executive-grid { grid-template-columns: 1fr; }
+      :host([data-layout="stacked"]) .supplier-kpi-grid { grid-template-columns: 1fr; }
       :host([data-layout="stacked"]) .main-visualization-layout { flex-direction: column; }
       :host([data-layout="stacked"]) .visualization-column.ytd-col { border-left: none; border-top: 1px solid #e2e8f0; padding-left: 0; padding-top: 14px; }
       :host([data-layout="stacked"]) .insight-grid { grid-template-columns: 1fr; }
@@ -448,6 +451,7 @@
       <div class="view-tabs" role="tablist" aria-label="Visões do widget">
         <button class="view-tab active" id="executiveTabBtn" type="button" role="tab" aria-selected="true">Executivo</button>
         <button class="view-tab" id="diagnosticTabBtn" type="button" role="tab" aria-selected="false">Diagnóstico</button>
+        <button class="view-tab" id="supplierTabBtn" type="button" role="tab" aria-selected="false">Fornecedores</button>
       </div>
       <div class="view-panel active" id="executiveView">
         <div class="executive-kpi-grid">
@@ -491,17 +495,6 @@
         </div>
       </div>
       <div class="view-panel" id="diagnosticView">
-        <div class="diagnostic-toolbar">
-          <div class="diagnostic-control">
-            <label for="materialityValueInput">Materialidade mínima</label>
-            <input id="materialityValueInput" type="number" min="0" step="0.1" value="0">
-          </div>
-          <div class="diagnostic-control">
-            <label for="materialityPctInput">Variação mínima (%)</label>
-            <input id="materialityPctInput" type="number" min="0" step="0.5" value="0">
-          </div>
-          <div class="diagnostic-control-note">Valores em milhões. Use 0 para exibir todos os drivers relevantes.</div>
-        </div>
       <div class="main-visualization-layout">
         <div class="monthly-col visualization-column">
           <div class="chart-container-block">
@@ -556,6 +549,29 @@
           <div class="highlight-content-text" id="highlightContentText"></div>
         </div>
       </div>
+      </div>
+      <div class="view-panel" id="supplierView">
+        <div class="supplier-kpi-grid">
+          <div class="supplier-kpi">
+            <div class="supplier-kpi-label">Maior Fornecedor YTD</div>
+            <div class="supplier-kpi-value" id="supplierTopName">-</div>
+            <div class="supplier-kpi-sub" id="supplierTopValue">-</div>
+          </div>
+          <div class="supplier-kpi">
+            <div class="supplier-kpi-label">Base Analisada</div>
+            <div class="supplier-kpi-value" id="supplierCount">-</div>
+            <div class="supplier-kpi-sub" id="supplierCountSub">fornecedores com realizado no período</div>
+          </div>
+          <div class="supplier-kpi">
+            <div class="supplier-kpi-label">Concentração Top 5</div>
+            <div class="supplier-kpi-value" id="supplierTop5Share">-</div>
+            <div class="supplier-kpi-sub" id="supplierPeriodLabel">-</div>
+          </div>
+        </div>
+        <div class="supplier-panel">
+          <div class="executive-panel-title">Análise de Fornecedores</div>
+          <div id="supplierTableWrap"></div>
+        </div>
       </div>
       <div class="bar-tooltip" id="barTooltip" aria-hidden="true"></div>
     </div>
@@ -920,14 +936,13 @@
       this._tooltipCacheLimit = 6;
       this._activeView = "executive";
       this._waterfallMode = "ytd";
-      this._materialityMinValue = 0;
-      this._materialityMinPct = 0;
       this._lastAnalyticsViewContext = null;
 
       this._tempoDimId = null;
       this._versaoDimId = null;
       this._itemFinanceiroDimId = null;
       this._contaContabilDimId = null;
+      this._fornecedorDimId = null;
       this._extraDimIds = [];
       this._reflowCount = 0;
 
@@ -963,10 +978,10 @@
         this._exportPptBtn = this._shadowRoot.getElementById("exportPptBtn");
         this._executiveTabBtn = this._shadowRoot.getElementById("executiveTabBtn");
         this._diagnosticTabBtn = this._shadowRoot.getElementById("diagnosticTabBtn");
+        this._supplierTabBtn = this._shadowRoot.getElementById("supplierTabBtn");
         this._executiveView = this._shadowRoot.getElementById("executiveView");
         this._diagnosticView = this._shadowRoot.getElementById("diagnosticView");
-        this._materialityValueInput = this._shadowRoot.getElementById("materialityValueInput");
-        this._materialityPctInput = this._shadowRoot.getElementById("materialityPctInput");
+        this._supplierView = this._shadowRoot.getElementById("supplierView");
         this._execActualYtd = this._shadowRoot.getElementById("execActualYtd");
         this._execActualYtdSub = this._shadowRoot.getElementById("execActualYtdSub");
         this._execForecast = this._shadowRoot.getElementById("execForecast");
@@ -980,6 +995,12 @@
         this._waterfallYtdBtn = this._shadowRoot.getElementById("waterfallYtdBtn");
         this._waterfallMomBtn = this._shadowRoot.getElementById("waterfallMomBtn");
         this._executiveSummaryList = this._shadowRoot.getElementById("executiveSummaryList");
+        this._supplierTopName = this._shadowRoot.getElementById("supplierTopName");
+        this._supplierTopValue = this._shadowRoot.getElementById("supplierTopValue");
+        this._supplierCount = this._shadowRoot.getElementById("supplierCount");
+        this._supplierTop5Share = this._shadowRoot.getElementById("supplierTop5Share");
+        this._supplierPeriodLabel = this._shadowRoot.getElementById("supplierPeriodLabel");
+        this._supplierTableWrap = this._shadowRoot.getElementById("supplierTableWrap");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
@@ -1041,8 +1062,7 @@
         });
         this._executiveTabBtn.addEventListener("click", () => this._setActiveView("executive"));
         this._diagnosticTabBtn.addEventListener("click", () => this._setActiveView("diagnostic"));
-        this._materialityValueInput.addEventListener("input", () => this._handleMaterialityChange());
-        this._materialityPctInput.addEventListener("input", () => this._handleMaterialityChange());
+        this._supplierTabBtn.addEventListener("click", () => this._setActiveView("supplier"));
         this._exportPptBtn.addEventListener("click", () => this._exportCurrentViewToPpt());
         this._waterfallYtdBtn.addEventListener("click", () => this._setWaterfallMode("ytd"));
         this._waterfallMomBtn.addEventListener("click", () => this._setWaterfallMode("mom"));
@@ -1150,6 +1170,8 @@
         upper.includes("ALL_MEMBERS") ||
         upper.includes("(ALL)") ||
         upper === "OUTROS" ||
+        upper.includes("NÃO INFORMADO") ||
+        upper.includes("NAO INFORMADO") ||
         upper.includes("RATEIO") ||
         upper.includes("LIQUIDA")
       );
@@ -1464,28 +1486,29 @@
     }
 
     _setActiveView(viewName) {
-      this._activeView = viewName === "diagnostic" ? "diagnostic" : "executive";
+      this._activeView = viewName === "diagnostic" || viewName === "supplier" ? viewName : "executive";
       const isExecutive = this._activeView === "executive";
+      const isDiagnostic = this._activeView === "diagnostic";
+      const isSupplier = this._activeView === "supplier";
       if (this._executiveView) this._executiveView.classList.toggle("active", isExecutive);
-      if (this._diagnosticView) this._diagnosticView.classList.toggle("active", !isExecutive);
+      if (this._diagnosticView) this._diagnosticView.classList.toggle("active", isDiagnostic);
+      if (this._supplierView) this._supplierView.classList.toggle("active", isSupplier);
       if (this._executiveTabBtn) {
         this._executiveTabBtn.classList.toggle("active", isExecutive);
         this._executiveTabBtn.setAttribute("aria-selected", isExecutive ? "true" : "false");
       }
       if (this._diagnosticTabBtn) {
-        this._diagnosticTabBtn.classList.toggle("active", !isExecutive);
-        this._diagnosticTabBtn.setAttribute("aria-selected", isExecutive ? "false" : "true");
+        this._diagnosticTabBtn.classList.toggle("active", isDiagnostic);
+        this._diagnosticTabBtn.setAttribute("aria-selected", isDiagnostic ? "true" : "false");
+      }
+      if (this._supplierTabBtn) {
+        this._supplierTabBtn.classList.toggle("active", isSupplier);
+        this._supplierTabBtn.setAttribute("aria-selected", isSupplier ? "true" : "false");
       }
       if (this._lastAnalyticsViewContext) this._renderAnalyticsViews();
-      if (!isExecutive) {
+      if (isDiagnostic) {
         requestAnimationFrame(() => this.requestLayoutUpdate());
       }
-    }
-
-    _handleMaterialityChange() {
-      this._materialityMinValue = Math.max(0, Number(this._materialityValueInput ? this._materialityValueInput.value : 0) || 0);
-      this._materialityMinPct = Math.max(0, Number(this._materialityPctInput ? this._materialityPctInput.value : 0) || 0);
-      this._renderAnalyticsViews();
     }
 
     _setWaterfallMode(mode) {
@@ -1495,22 +1518,12 @@
       this._renderAnalyticsViews();
     }
 
-    _getFilteredInsightRows(rows) {
-      const minAbsValue = this._materialityMinValue * 1000000;
-      const minAbsPct = this._materialityMinPct;
-      return (rows || []).filter(item => (
-        Math.abs(item.desvio) >= minAbsValue &&
-        Math.abs(item.pctVar) >= minAbsPct
-      ));
+    _getInsightRows(rows) {
+      return rows || [];
     }
 
-    _getFilteredWaterfallRows(rows) {
-      const minAbsValue = this._materialityMinValue * 1000000;
-      const minAbsPct = this._materialityMinPct;
-      return (rows || []).filter(item => (
-        Math.abs(item.delta) >= minAbsValue &&
-        Math.abs(item.pctVar || 0) >= minAbsPct
-      ));
+    _getWaterfallRows(rows) {
+      return rows || [];
     }
 
     _getMoMDriverRows(context) {
@@ -1542,7 +1555,7 @@
       if (this._waterfallMode === "mom") {
         const previousNode = context.currentBarNode ? context.currentBarNode.previousSeriesData : null;
         const rawRows = this._getMoMDriverRows(context);
-        const filteredRows = this._getFilteredWaterfallRows(rawRows).slice(0, 6);
+        const filteredRows = this._getWaterfallRows(rawRows).slice(0, 6);
         const startValue = previousNode ? previousNode.value : 0;
         const endValue = context.currentBarNode ? context.currentBarNode.value : 0;
         return {
@@ -1565,7 +1578,7 @@
         pctVar: item.pctVar,
         isSaving: item.isSaving
       }));
-      const filteredRows = this._getFilteredWaterfallRows(rawRows)
+      const filteredRows = this._getWaterfallRows(rawRows)
         .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
         .slice(0, 6);
       return {
@@ -1606,8 +1619,8 @@
     _renderAnalyticsViews() {
       if (!this._lastAnalyticsViewContext) return;
       const context = this._lastAnalyticsViewContext;
-      const filteredRows = this._getFilteredInsightRows(context.analysis.waterfallTable);
-      const detailRows = this._getFilteredInsightRows(context.analysis.outlierTable);
+      const filteredRows = this._getInsightRows(context.analysis.waterfallTable);
+      const detailRows = this._getInsightRows(context.analysis.outlierTable);
       this._pendingHighlightDetailItems = detailRows;
       this._highlightDetailRendered = false;
       if (this._highlightToggleBtn) {
@@ -1615,6 +1628,7 @@
       }
       if (this._isHighlightDetailOpen) this._renderHighlightDetailItems();
       this._renderExecutiveView(context, filteredRows);
+      this._renderSupplierView(context);
     }
 
     _renderExecutiveView(context, filteredRows) {
@@ -1743,8 +1757,8 @@
         `O forecast projeta R$ ${(forecast.projectedActual / 1000000).toFixed(2)}M no fechamento e mantém o status ${risk.label.toLowerCase()}.`,
         waterfallText,
         topDrivers.length > 0
-          ? `Os ${topDrivers.length} maiores drivers explicam ${Math.min(concentration, 999).toFixed(1)}% da variação YTD filtrada.`
-          : "Nenhum driver ultrapassa os filtros de materialidade definidos."
+          ? `Os ${topDrivers.length} maiores drivers explicam ${Math.min(concentration, 999).toFixed(1)}% da variação YTD.`
+          : "Nenhum driver relevante foi identificado para o período."
       ];
       bullets.forEach(text => {
         const li = document.createElement("li");
@@ -1752,6 +1766,122 @@
         fragment.appendChild(li);
       });
       this._executiveSummaryList.appendChild(fragment);
+    }
+
+    _buildSupplierAnalysis(context) {
+      if (!this._fornecedorDimId || !this._currentData || !Array.isArray(this._currentData.data)) {
+        return { rows: [], currentTotal: 0, ytdTotal: 0 };
+      }
+
+      const currentYear = context.currentBarNode.yearValue;
+      const cutoffMonth = context.currentBarNode.monthNum;
+      const currentMonthId = String(context.currentBarNode.id);
+      const suppliers = new Map();
+      const ensureSupplier = (name) => {
+        if (!suppliers.has(name)) {
+          suppliers.set(name, { name, currentRealizado: 0, currentOrcado: 0, ytdRealizado: 0, ytdOrcado: 0 });
+        }
+        return suppliers.get(name);
+      };
+
+      this._currentData.data.forEach(row => {
+        const tempoObj = this._tempoDimId ? row[this._tempoDimId] : null;
+        if (!tempoObj) return;
+        const seriesNode = context.fullSeriesById ? context.fullSeriesById.get(String(tempoObj.id)) : null;
+        if (!seriesNode) return;
+        const isCurrentMonth = String(tempoObj.id) === currentMonthId;
+        const isCurrentYtd = seriesNode.yearValue === currentYear && seriesNode.monthNum <= cutoffMonth;
+        if (!isCurrentMonth && !isCurrentYtd) return;
+
+        const fornecedor = this._getRowMemberLabel(row, this._fornecedorDimId, "Fornecedor não informado");
+        if (this._shouldIgnoreCompositionMember(fornecedor)) return;
+        const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+        const isBudget = this._versaoDimId ? this._isBudgetVersionObject(row[this._versaoDimId]) : false;
+        const supplier = ensureSupplier(fornecedor);
+
+        if (isCurrentMonth) {
+          if (isBudget) supplier.currentOrcado += rawValue;
+          else supplier.currentRealizado += rawValue;
+        }
+        if (isCurrentYtd) {
+          if (isBudget) supplier.ytdOrcado += rawValue;
+          else supplier.ytdRealizado += rawValue;
+        }
+      });
+
+      const rows = Array.from(suppliers.values())
+        .filter(item => Math.abs(item.ytdRealizado) > 0 || Math.abs(item.currentRealizado) > 0)
+        .map(item => ({
+          ...item,
+          currentDelta: item.currentRealizado - item.currentOrcado,
+          ytdDelta: item.ytdRealizado - item.ytdOrcado,
+          ytdShare: 0
+        }))
+        .sort((a, b) => Math.abs(b.ytdRealizado) - Math.abs(a.ytdRealizado));
+      const ytdTotal = rows.reduce((sum, item) => sum + Math.abs(item.ytdRealizado), 0);
+      const currentTotal = rows.reduce((sum, item) => sum + Math.abs(item.currentRealizado), 0);
+      rows.forEach(item => {
+        item.ytdShare = ytdTotal !== 0 ? (Math.abs(item.ytdRealizado) / ytdTotal) * 100 : 0;
+      });
+      return { rows, currentTotal, ytdTotal };
+    }
+
+    _renderSupplierView(context) {
+      if (!this._supplierView) return;
+      const formatM = (value) => `${value >= 0 ? "" : "-"}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
+      if (!this._fornecedorDimId) {
+        this._setText(this._supplierTopName, "Dimensão ausente");
+        this._setText(this._supplierTopValue, "Inclua Fornecedor no data binding.");
+        this._setText(this._supplierCount, "-");
+        this._setText(this._supplierTop5Share, "-");
+        this._setText(this._supplierPeriodLabel, context.currentBarNode ? context.currentBarNode.label : "-");
+        if (this._supplierTableWrap) this._supplierTableWrap.innerHTML = `<div class="supplier-empty">A dimensão Fornecedor ainda não foi vinculada ao widget.</div>`;
+        return;
+      }
+
+      const analysis = this._buildSupplierAnalysis(context);
+      const topSupplier = analysis.rows[0] || null;
+      const top5Total = analysis.rows.slice(0, 5).reduce((sum, item) => sum + Math.abs(item.ytdRealizado), 0);
+      const top5Share = analysis.ytdTotal !== 0 ? (top5Total / analysis.ytdTotal) * 100 : 0;
+
+      this._setText(this._supplierTopName, topSupplier ? topSupplier.name : "-");
+      this._setText(this._supplierTopValue, topSupplier ? `${formatM(topSupplier.ytdRealizado)} no YTD` : "Sem realizado no período");
+      this._setText(this._supplierCount, analysis.rows.length);
+      this._setText(this._supplierTop5Share, `${top5Share.toFixed(1)}%`);
+      this._setText(this._supplierPeriodLabel, `Corte ${context.currentBarNode.label}`);
+
+      if (!this._supplierTableWrap) return;
+      if (!analysis.rows.length) {
+        this._supplierTableWrap.innerHTML = `<div class="supplier-empty">Sem fornecedores com realizado para o período selecionado.</div>`;
+        return;
+      }
+
+      const rowsHtml = analysis.rows.slice(0, 12).map(item => `
+        <tr>
+          <td>${this._escapeHtml(item.name)}</td>
+          <td class="num">${this._escapeHtml(formatM(item.currentRealizado))}</td>
+          <td class="num">${this._escapeHtml(formatM(item.currentDelta))}</td>
+          <td class="num">${this._escapeHtml(formatM(item.ytdRealizado))}</td>
+          <td class="num">${this._escapeHtml(formatM(item.ytdDelta))}</td>
+          <td class="num">${item.ytdShare.toFixed(1)}%</td>
+        </tr>
+      `).join("");
+
+      this._supplierTableWrap.innerHTML = `
+        <table class="supplier-table">
+          <thead>
+            <tr>
+              <th>Fornecedor</th>
+              <th>Realizado Mês</th>
+              <th>Desvio Mês</th>
+              <th>Realizado YTD</th>
+              <th>Desvio YTD</th>
+              <th>Part. YTD</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      `;
     }
 
     async _exportCurrentViewToPpt() {
@@ -2102,6 +2232,12 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
+    _getRowMemberLabel(row, dimId, fallback) {
+      if (!dimId || !row || !row[dimId]) return fallback;
+      const node = row[dimId];
+      return node.label || node.description || node.id || fallback;
+    }
+
     _getMetadataContext(metadata) {
       const dimensions = metadata.dimensions || {};
       const mainStructureMembers = metadata.mainStructureMembers || {};
@@ -2130,6 +2266,7 @@
       let versaoDimId = null;
       let itemFinanceiroDimId = null;
       let contaContabilDimId = null;
+      let fornecedorDimId = null;
 
       dimKeys.forEach(key => {
         const desc = String(dimensions[key].description || "").toUpperCase();
@@ -2143,6 +2280,8 @@
           itemFinanceiroDimId = key;
         } else if (desc.includes("CONTA") || id.includes("ACCOUNT") || desc.includes("CONTÁBIL") || desc.includes("CONTABIL")) {
           contaContabilDimId = key;
+        } else if (desc.includes("FORNECEDOR") || desc.includes("VENDOR") || desc.includes("SUPPLIER") || id.includes("FORNECEDOR") || id.includes("VENDOR") || id.includes("SUPPLIER")) {
+          fornecedorDimId = key;
         }
       });
 
@@ -2152,6 +2291,7 @@
       const extraDimIds = dimKeys.filter(key => key !== tempoDimId && key !== versaoDimId);
       if (!itemFinanceiroDimId) itemFinanceiroDimId = extraDimIds[0] || null;
       if (!contaContabilDimId) contaContabilDimId = extraDimIds[1] || null;
+      if (!fornecedorDimId) fornecedorDimId = extraDimIds.find(key => key !== itemFinanceiroDimId && key !== contaContabilDimId) || null;
 
       const measureInfo = mainStructureMembers[measId] || {};
       const context = {
@@ -2163,6 +2303,7 @@
         versaoDimId,
         itemFinanceiroDimId,
         contaContabilDimId,
+        fornecedorDimId,
         extraDimIds
       };
 
@@ -2201,6 +2342,7 @@
         this._versaoDimId = metadataContext.versaoDimId;
         this._itemFinanceiroDimId = metadataContext.itemFinanceiroDimId;
         this._contaContabilDimId = metadataContext.contaContabilDimId;
+        this._fornecedorDimId = metadataContext.fornecedorDimId;
         this._extraDimIds = metadataContext.extraDimIds;
         
         const measureInfo = metadataContext.measureInfo || {};
@@ -2802,6 +2944,7 @@
 
       this._lastAnalyticsViewContext = {
         currentBarNode,
+        fullSeriesById: fullSeriesData._byIdMap,
         diffYtdNominal,
         diffYtdPercent,
         totalRealizadoYTDAtual,
