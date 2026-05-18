@@ -192,7 +192,6 @@
       .legend-color.hist { background-color: var(--color-historical); }
       .legend-color.act { background-color: var(--color-actual); }
       
-      /* HACHURADO DISCRETO NA LEGENDA */
       .legend-color.bud { 
         background-color: transparent; 
         border: 1px solid var(--color-budget);
@@ -205,7 +204,7 @@
         position: relative;
         height: 165px; 
         padding-top: 32px; 
-        margin-bottom: 0px; /* Zerado margem para alinhar perfeitamente com a linha de base */
+        margin-bottom: 0px; 
         flex-shrink: 0;
         box-sizing: border-box;
       }
@@ -252,7 +251,7 @@
         position: relative;
         display: flex;
         justify-content: center;
-        margin-bottom: 0px; /* Força encostar na linha */
+        margin-bottom: 0px; 
         bottom: 0px;
       }
       
@@ -264,11 +263,10 @@
         box-sizing: border-box;
       }
       
-      /* HACHURADO DISCRETO NA BARRA E CORREÇÃO DO ALINHAMENTO BASE (Fim do gap de pixels) */
       .bar-element.budget {
         background-color: transparent;
-        border: 1px dashed var(--color-budget);
-        border-bottom: 1px solid var(--color-budget); /* Garante fechamento na base */
+        border: 1px solid var(--color-budget);
+        border-bottom: 1px solid var(--color-budget); 
         box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
@@ -843,6 +841,7 @@
 
         this._clearDOM();
 
+        // Janela móvel de 13 meses cravados
         let visibleSeriesData = [];
         const startIndex = Math.max(0, actualIndex - 12); 
         visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
@@ -880,6 +879,7 @@
       }
     }
 
+    // CORREÇÃO DOS ÍNDICES DE ALINHAMENTO DO SVG (Encontro perfeito de linhas)
     _drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex) {
       if (!document.contains(this) || !this._shadowRoot || visibleActualIndex === -1) return;
       const svg = this._svgOverlay; const containerHeight = this._chartArea.offsetHeight; if (containerHeight === 0) return;
@@ -888,8 +888,9 @@
       if (visibleActualIndex > 0) pairsToConnect.push({ from: visibleActualIndex - 1, to: visibleActualIndex, type: "monthly" });
       if (visibleActualIndex < barElements.length - 1) pairsToConnect.push({ from: visibleActualIndex, to: visibleActualIndex + 1, type: "budget" });
       
-      if (visibleActualIndex >= 12) {
-        pairsToConnect.push({ from: visibleActualIndex - 12, to: visibleActualIndex, type: "yoy" });
+      // FIX CIRÚRGICO DO REQUISITO: O mês homologo do ano passado na esteira visível de 13 colunas fica SEMPRE na posição zero (0)
+      if (visibleSeriesData.length >= 14 && visibleActualIndex === 12) {
+        pairsToConnect.push({ from: 0, to: 12, type: "yoy" });
       }
 
       const getBarCenterAndTop = (idx) => {
@@ -914,13 +915,16 @@
         const varianceText = (variancePercent >= 0 ? "+" : "") + variancePercent.toFixed(2) + "%";
         const markerId = "url(#arrow-neutral)";
         
-        const lineCeiling = pair.type === "yoy" ? globalCeilingY - 24 : globalCeilingY;
-        const lineStrokeColor = pair.type === "yoy" ? "#2b6cb0" : "#718096";
+        // CORREÇÃO VISUAL: Estilo e cores unificadas para que as linhas se encontrem na mesma esteira globalCeilingY
+        const lineCeiling = globalCeilingY;
+        const lineStrokeColor = "#718096";
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${lineCeiling} L ${coordTo.x} ${lineCeiling} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); path.setAttribute("marker-end", markerId);
-        if (pair.type === "yoy") {
+        
+        // Modificado o tracejado para seguir o mesmo estilo (monthly e yoy retos e contínuos, mantendo o padrão executivo)
+        if (pair.type === "yoy" || pair.type === "budget") {
           path.setAttribute("stroke-dasharray", "3,3"); 
         }
         svg.appendChild(path);
@@ -928,7 +932,9 @@
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
         
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (lineCeiling - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        // Ajuste no posicionamento vertical do card YoY para evitar encavalamento com as pontes de menor curso
+        const textOffset = pair.type === "yoy" ? lineCeiling - 13 : lineCeiling - 11;
+        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", textOffset.toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
         
         const div = document.createElement("div"); div.style.display = "flex"; div.style.justify = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
         const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
