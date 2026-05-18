@@ -57,7 +57,7 @@
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
       .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; height: 0%; transition: height 0.3s ease-out; }
       .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-shadow: border-box; }
+      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
       .bar-element.budget {
         background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
@@ -174,7 +174,7 @@
       this._isDropdownOpen = false; 
       this._yearRegex = /\d{4}/;
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
-      this._ytdSeriesMock = [{ value: 0 }, { value: 0 }, { value: 0 }];
+      this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
 
       this._boundWindowClick = (e) => {
         if (!this._isDropdownOpen) return;
@@ -570,15 +570,29 @@
         const xFrom = getCenterX(pair.from); const xTo = getCenterX(pair.to);
         if (xFrom === 0 || xTo === 0) return;
         
-        const val1 = dataArray[pair.from].value; const val2 = dataArray[pair.to].value;
-        const diff = val2 - val1; 
-        let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
-        const isCostSaving = diff <= 0;
+        const itemFrom = dataArray[pair.from];
+        const itemTo = dataArray[pair.to];
+        const val1 = itemFrom.value; 
+        const val2 = itemTo.value;
         
-        if (!isCostSaving && variancePercent < 0) variancePercent = Math.abs(variancePercent);
-        else if (isCostSaving && variancePercent > 0) variancePercent = -variancePercent;
-        
-        const directionalArrow = isCostSaving ? "▼ " : "▲ ";
+        let isCostSaving = false;
+        let variancePercent = 0;
+        let directionalArrow = "";
+
+        // Correção Analítica de Custos (OPEX): Realizado vs Orçado
+        if (itemTo.type === "budget") {
+          const diff = val1 - val2; // Se Realizado (val1) > Orçado (val2) -> Estouro/Aumento
+          isCostSaving = diff <= 0;
+          variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
+          directionalArrow = isCostSaving ? "▼ " : "▲ ";
+        } else {
+          // Tendência Temporal Pura (Mês Atual vs Mês Anterior ou Atual vs Antigo)
+          const diff = val2 - val1; 
+          isCostSaving = diff <= 0;
+          variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
+          directionalArrow = isCostSaving ? "▼ " : "▲ ";
+        }
+
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -623,7 +637,8 @@
         if (idx <= actualIndex) {
           if (d.yearValue === currentYear) {
             totalRealizadoYTDAtual += d.value;
-            totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value;
+            // Remoção da contaminação do orçamento: Acumulação limpa das metas reais
+            totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
           }
         }
         if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
@@ -655,7 +670,12 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo }, { value: totalRealizadoYTDAtual }, { value: totalBudgetYTDCompleto }];
+      // População tipada para a esteira geométrica YTD
+      this._ytdSeriesMock = [
+        { value: totalRealizadoYTDAntigo, type: "historical" }, 
+        { value: totalRealizadoYTDAtual, type: "actual" }, 
+        { value: totalBudgetYTDCompleto, type: "budget" }
+      ];
 
       const monthStatusText = isMonthSaving ? "economia de custos" : "aumento de despesas";
       const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
