@@ -4,7 +4,7 @@
 
 (function () {
   // CHAVE DE DESATIVAÇÃO OPERACIONAL: Altere para false para desligar 100% a Telemetria
-  const ENABLE_TELEMETRY = false;
+  const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
      SUBSISTEMA ENCAPSULADO DE TELEMETRIA E PROFILING CIENTÍFICO (HEADLESS)
@@ -587,18 +587,18 @@
       const easingPressure = adverse && acceleration < -adaptiveFloor;
       const intensifyingSaving = !adverse && acceleration < -adaptiveFloor;
 
-      let priorityLabel = adverse ? "Prioridade média" : "Eficiência relevante";
+      let priorityLabel = adverse ? "Variação desfavorável monitorada" : "Variação favorável monitorada";
       if (absContribution >= 30 || absPct >= 15 || Math.abs(desvio) >= adaptiveFloor * 8) {
-        priorityLabel = adverse ? "Prioridade alta" : "Eficiência crítica";
+        priorityLabel = adverse ? "Variação desfavorável material" : "Variação favorável material";
       } else if (budgetShare >= 15 || absMonth >= adaptiveFloor * 2) {
-        priorityLabel = adverse ? "Monitorar de perto" : "Eficiência material";
+        priorityLabel = adverse ? "Ponto de atenção orçamentária" : "Aderência orçamentária favorável";
       }
 
-      let trendLabel = "estável";
-      if (acceleratingAgainstBudget) trendLabel = "pressão acelerando no mês";
-      else if (easingPressure) trendLabel = "pressão em desaceleração";
-      else if (intensifyingSaving) trendLabel = "economia ganhando força";
-      else if (!adverse && acceleration > adaptiveFloor) trendLabel = "economia perdendo tração";
+      let trendLabel = "comportamento estável";
+      if (acceleratingAgainstBudget) trendLabel = "deterioração na competência";
+      else if (easingPressure) trendLabel = "redução da variação desfavorável na competência";
+      else if (intensifyingSaving) trendLabel = "ampliação da variação favorável na competência";
+      else if (!adverse && acceleration > adaptiveFloor) trendLabel = "menor contribuição favorável na competência";
 
       let insightType = adverse ? "risk" : "saving";
       if (absPct < 2 && absContribution < 8) insightType = "monitoring";
@@ -609,7 +609,7 @@
 
     _scoreFeature(desvio, pctVar, contributionPct, monthDiff, acceleration, classification) {
       const riskBoost = desvio > 0 ? 1.15 : 1;
-      const priorityBoost = classification.priorityLabel.includes("alta") || classification.priorityLabel.includes("crítica") ? 1.25 : 1;
+      const priorityBoost = classification.priorityLabel.includes("material") || classification.priorityLabel.includes("atenção") ? 1.25 : 1;
       const trendBoost = classification.insightType === "acceleration" ? 1.20 : 1;
       const varianceWeight = 1 + Math.min(Math.abs(pctVar), 80) / 200;
       const contributionWeight = 1 + Math.min(Math.abs(contributionPct), 150) / 150;
@@ -1519,7 +1519,7 @@
       this._lastHighlightKey = highlightKey;
       this._hlUl.textContent = "";
 
-      const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
+      const monthStatusText = diffNominal <= 0 ? "variação favorável" : "variação desfavorável";
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
@@ -1527,7 +1527,7 @@
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
       liMonth.appendChild(s1); liMonth.appendChild(document.createTextNode("Fechamento com ")); liMonth.appendChild(statusSpan1); 
-      liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+      liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M em relação ao orçamento da competência.`));
       this._hlUl.appendChild(liMonth);
 
       const liCons = document.createElement("li");
@@ -1553,52 +1553,52 @@
         const liSummary = document.createElement("li");
         const sSummary = document.createElement("strong"); sSummary.textContent = "Leitura executiva: ";
         liSummary.appendChild(sSummary);
-        liSummary.appendChild(document.createTextNode(`a engine priorizou ${analysis.outlierTable.length} driver(s), com maior peso em `));
+        liSummary.appendChild(document.createTextNode(`a análise identificou ${analysis.outlierTable.length} item(ns) de maior impacto, com destaque para `));
         const spanLead = document.createElement("span"); spanLead.textContent = lead.itemName; spanLead.style.fontWeight = "700";
         liSummary.appendChild(spanLead);
-        liSummary.appendChild(document.createTextNode(`, classificado como ${lead.priorityLabel.toLowerCase()} e com ${lead.trendLabel}.`));
+        liSummary.appendChild(document.createTextNode(`, enquadrado como ${lead.priorityLabel.toLowerCase()} e com ${lead.trendLabel}.`));
         this._hlUl.appendChild(liSummary);
       }
 
       analysis.outlierTable.forEach(item => {
-        const statusText = item.isSaving ? "economia operacional" : "pressão de custo";
+        const statusText = item.isSaving ? "variação favorável" : "variação desfavorável";
         const semanticColor = item.isSaving ? "#2E7D32" : "#D32F2F";
         const directionalArrow = item.isSaving ? "▼ " : "▲ ";
         const contributionText = item.contributionPct > 0
-          ? `, explicando ${Math.min(item.contributionPct, 999).toFixed(1)}% do desvio líquido YTD`
+          ? `, representando ${Math.min(item.contributionPct, 999).toFixed(1)}% da variação líquida YTD`
           : "";
-        const budgetShareText = item.budgetShare > 0 ? ` e consumindo ${item.budgetShare.toFixed(1)}% do orçamento analisado` : "";
+        const budgetShareText = item.budgetShare > 0 ? ` e participação de ${item.budgetShare.toFixed(1)}% no orçamento analisado` : "";
 
         const liItem = document.createElement("li");
         const sLabel = document.createElement("strong"); sLabel.textContent = `${item.priorityLabel} - ${item.itemName}: `;
         liItem.appendChild(sLabel);
 
-        liItem.appendChild(document.createTextNode("YTD com "));
+        liItem.appendChild(document.createTextNode("No acumulado YTD, apresenta "));
         const spanStatus = document.createElement("span"); spanStatus.textContent = statusText; spanStatus.style.color = semanticColor; spanStatus.style.fontWeight = "700";
         liItem.appendChild(spanStatus);
 
-        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(item.desvio/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(item.pctVar).toFixed(2)}%)${contributionText}${budgetShareText}. Realizado de R$ ${(item.realizado/1000000).toFixed(2)}M contra orçamento de R$ ${(item.budget/1000000).toFixed(2)}M.`));
+        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(item.desvio/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(item.pctVar).toFixed(2)}%)${contributionText}${budgetShareText}. Realizado acumulado de R$ ${(item.realizado/1000000).toFixed(2)}M versus orçamento de R$ ${(item.budget/1000000).toFixed(2)}M.`));
 
-        if (item.trendLabel && item.trendLabel !== "estável") {
+        if (item.trendLabel && item.trendLabel !== "comportamento estável") {
           const trendColor = item.insightType === "acceleration" ? "#D32F2F" : (item.isSaving ? "#2E7D32" : "#EF6C00");
-          liItem.appendChild(document.createTextNode(" Sinal recente: "));
+          liItem.appendChild(document.createTextNode(" Comportamento recente: "));
           const spanTrend = document.createElement("span"); spanTrend.textContent = item.trendLabel; spanTrend.style.color = trendColor; spanTrend.style.fontWeight = "700";
           liItem.appendChild(spanTrend);
-          liItem.appendChild(document.createTextNode(`, com efeito mensal de ${(item.monthDiff >= 0 ? "+" : "")}${(item.monthDiff/1000000).toFixed(2)}M.`));
+          liItem.appendChild(document.createTextNode(`, com variação mensal de ${(item.monthDiff >= 0 ? "+" : "")}${(item.monthDiff/1000000).toFixed(2)}M.`));
         }
 
         if (Math.abs(item.yoyDiff) > 0) {
-          liItem.appendChild(document.createTextNode(` Frente ao ano anterior, o realizado variou ${(item.yoyDiff >= 0 ? "+" : "")}${(item.yoyDiff/1000000).toFixed(2)}M (${item.yoyDiff >= 0 ? "alta" : "queda"} de ${Math.abs(item.yoyPct).toFixed(1)}%).`));
+          liItem.appendChild(document.createTextNode(` Em relação ao mesmo intervalo do ano anterior, o realizado apresentou variação de ${(item.yoyDiff >= 0 ? "+" : "")}${(item.yoyDiff/1000000).toFixed(2)}M (${item.yoyDiff >= 0 ? "aumento" : "redução"} de ${Math.abs(item.yoyPct).toFixed(1)}%).`));
         }
 
         if (item.driverConta && Math.abs(item.driverImpact) > 0) {
           const cSaving = item.driverImpact <= 0;
           const cColor = cSaving ? "#2E7D32" : "#D32F2F";
-          const driverShareText = item.driverShare > 0 ? `, representando ${Math.min(item.driverShare, 999).toFixed(1)}% do desvio do item` : "";
+          const driverShareText = item.driverShare > 0 ? `, equivalente a ${Math.min(item.driverShare, 999).toFixed(1)}% da variação do item` : "";
           
-          liItem.appendChild(document.createTextNode(" Conta determinante: "));
+          liItem.appendChild(document.createTextNode(" Principal natureza contábil: "));
           const spanConta = document.createElement("span"); spanConta.textContent = item.driverConta; spanConta.style.fontWeight = "700";
-          liItem.appendChild(spanConta); liItem.appendChild(document.createTextNode(" com impacto de "));
+          liItem.appendChild(spanConta); liItem.appendChild(document.createTextNode(" com variação de "));
           
           const spanContaDiff = document.createElement("span");
           spanContaDiff.textContent = `${item.driverImpact >= 0 ? "+" : ""}${(item.driverImpact/1000000).toFixed(2)}M`;
