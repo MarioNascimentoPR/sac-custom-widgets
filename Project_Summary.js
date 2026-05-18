@@ -386,9 +386,9 @@
       const outlierTable = [];
       const rankingTable = [];
 
-      let monthActual = targetNode.value;
-      let monthBudget = targetNode.originalNode.orcado > 0 ? targetNode.originalNode.orcado : targetNode.originalNode.realizado;
-      let monthDiff = monthActual - monthBudget;
+      const monthActual = targetNode.value;
+      const monthBudget = targetNode.originalNode.orcado > 0 ? targetNode.originalNode.orcado : targetNode.originalNode.realizado;
+      const monthDiff = monthActual - monthBudget;
 
       varianceTable.month = {
         actual: monthActual, budget: monthBudget, diffNominal: monthDiff,
@@ -408,7 +408,7 @@
         }
       });
       if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
-      let ytdDiff = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
+      const ytdDiff = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
 
       varianceTable.ytd = {
         actual: totalRealizadoYTDAtual, budget: totalBudgetYTDCompleto, previous: totalRealizadoYTDAntigo,
@@ -418,90 +418,77 @@
       };
 
       const fullSeriesById = new Map(fullSeriesData.map(d => [d.id, d]));
-      const topCandidates = [];
-      const topLimit = 200;
+      const itemFinanceiroMap = new Map();
+      const targetMonthNum = targetNode.monthNum;
+      const previousMonthNum = targetMonthNum > 1 ? targetMonthNum - 1 : 12;
+      const previousMonthYear = targetMonthNum > 1 ? currentYear : previousYear;
 
-      cubeData.forEach((row, index) => {
-        const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
-        const candidate = { row, weight: Math.abs(rawValue), index };
-
-        if (topCandidates.length < topLimit) {
-          topCandidates.push(candidate);
-          return;
+      const ensureItem = (itemName) => {
+        if (!itemFinanceiroMap.has(itemName)) {
+          itemFinanceiroMap.set(itemName, {
+            ytd: { realizado: 0, orcado: 0 },
+            month: { realizado: 0, orcado: 0 },
+            previousMonth: { realizado: 0, orcado: 0 },
+            previousYtd: { realizado: 0, orcado: 0 },
+            contas: {}
+          });
         }
+        return itemFinanceiroMap.get(itemName);
+      };
 
-        let minIdx = 0;
-        for (let i = 1; i < topCandidates.length; i++) {
-          if (
-            topCandidates[i].weight < topCandidates[minIdx].weight ||
-            (topCandidates[i].weight === topCandidates[minIdx].weight && topCandidates[i].index > topCandidates[minIdx].index)
-          ) {
-            minIdx = i;
-          }
-        }
+      const addValue = (bucket, rawValue, isBudget) => {
+        if (isBudget) bucket.orcado += rawValue;
+        else bucket.realizado += rawValue;
+      };
 
-        if (candidate.weight > topCandidates[minIdx].weight) {
-          topCandidates[minIdx] = candidate;
-        }
-      });
-
-      topCandidates.sort((a, b) => (b.weight - a.weight) || (a.index - b.index));
-      const topImpactRows = topCandidates.map(item => item.row);
-
-      const itemFinanceiroMap = {};
-
-      topImpactRows.forEach(row => {
+      cubeData.forEach(row => {
         if (!tempoDimId || !itemFinanceiroDimId) return;
         const tObj = row[tempoDimId]; if (!tObj) return;
-        
+
         const rowMonthNode = fullSeriesById.get(String(tObj.id));
-        if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > targetNode.monthNum) return;
+        if (!rowMonthNode) return;
 
-        const itemObj = row[itemFinanceiroDimId];
-        const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
-        const itemUpper = itemName.toUpperCase();
+        const isCurrentYTD = rowMonthNode.yearValue === currentYear && rowMonthNode.monthNum <= targetMonthNum;
+        const isPreviousYTD = rowMonthNode.yearValue === previousYear && rowMonthNode.monthNum <= targetMonthNum;
+        const isTargetMonth = rowMonthNode.yearValue === currentYear && rowMonthNode.monthNum === targetMonthNum;
+        const isPreviousMonth = rowMonthNode.yearValue === previousMonthYear && rowMonthNode.monthNum === previousMonthNum;
+        if (!isCurrentYTD && !isPreviousYTD && !isPreviousMonth) return;
 
-        if (
-          itemUpper.includes("TOTAL") || itemUpper.includes("ALL_MEMBERS") || 
-          itemUpper.includes("(ALL)") || itemUpper === "OUTROS" || 
-          itemUpper.includes("RATEIO") || itemUpper.includes("LIQUIDA")
-        ) return;
+        const itemName = this._getMemberLabel(row, itemFinanceiroDimId, "Outros");
+        if (this._isIgnoredMember(itemName)) return;
 
-        let contaName = "Geral";
-        if (contaContabilDimId && row[contaContabilDimId]) {
-          contaName = row[contaContabilDimId].label || row[contaContabilDimId].description || row[contaContabilDimId].id || "Geral";
-        }
-        const contaUpper = contaName.toUpperCase();
-        if (contaUpper.includes("RATEIO") || contaUpper.includes("LIQUIDA")) return;
-
-        if (!itemFinanceiroMap[itemName]) {
-          itemFinanceiroMap[itemName] = { realizado: 0, orcado: 0, contas: {} };
-        }
+        const contaName = this._getMemberLabel(row, contaContabilDimId, "Geral");
+        if (this._isIgnoredMember(contaName, true)) return;
 
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
-        let isBudget = false;
-        if (versaoDimId && row[versaoDimId]) {
-          const vId = String(row[versaoDimId].id).toUpperCase();
-          const vLabel = String(row[versaoDimId].label || row[versaoDimId].description || "").toUpperCase();
-          if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
-            isBudget = true;
-          }
-        }
+        const isBudget = this._isBudgetRow(row, versaoDimId);
+        const item = ensureItem(itemName);
 
-        if (isBudget) { itemFinanceiroMap[itemName].orcado += rawValue; } 
-        else { itemFinanceiroMap[itemName].realizado += rawValue; }
-
-        if (!itemFinanceiroMap[itemName].contas[contaName]) {
-          itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
+        if (isCurrentYTD) {
+          addValue(item.ytd, rawValue, isBudget);
+          if (!item.contas[contaName]) item.contas[contaName] = { realizado: 0, orcado: 0 };
+          addValue(item.contas[contaName], rawValue, isBudget);
         }
-        if (isBudget) { itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue; } 
-        else { itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue; }
+        if (isTargetMonth) addValue(item.month, rawValue, isBudget);
+        if (isPreviousMonth) addValue(item.previousMonth, rawValue, isBudget);
+        if (isPreviousYTD) addValue(item.previousYtd, rawValue, isBudget);
       });
 
-      Object.keys(itemFinanceiroMap).forEach(name => {
-        const item = itemFinanceiroMap[name];
-        const desvioNominal = item.realizado - item.orcado;
-        const variancePct = item.orcado !== 0 ? (desvioNominal / item.orcado) * 100 : 0;
+      const absYtdDiff = Math.abs(ytdDiff);
+      const adaptiveFloor = Math.max(1000, Math.abs(totalBudgetYTDCompleto) * 0.002);
+
+      itemFinanceiroMap.forEach((item, name) => {
+        const desvioNominal = item.ytd.realizado - item.ytd.orcado;
+        const variancePct = item.ytd.orcado !== 0 ? (desvioNominal / item.ytd.orcado) * 100 : 0;
+        const consumption = item.ytd.orcado !== 0 ? (item.ytd.realizado / item.ytd.orcado) * 100 : 0;
+        const contributionPct = absYtdDiff !== 0 ? (Math.abs(desvioNominal) / absYtdDiff) * 100 : 0;
+        const budgetShare = totalBudgetYTDCompleto !== 0 ? (Math.abs(item.ytd.orcado) / Math.abs(totalBudgetYTDCompleto)) * 100 : 0;
+        const monthDiffValue = item.month.realizado - item.month.orcado;
+        const monthPctVar = item.month.orcado !== 0 ? (monthDiffValue / item.month.orcado) * 100 : 0;
+        const previousMonthDiff = item.previousMonth.realizado - item.previousMonth.orcado;
+        const acceleration = monthDiffValue - previousMonthDiff;
+        const yoyDiff = item.ytd.realizado - item.previousYtd.realizado;
+        const yoyPct = item.previousYtd.realizado !== 0 ? (yoyDiff / item.previousYtd.realizado) * 100 : 0;
 
         let driverContaName = ""; let maxContaImpact = -1;
         Object.keys(item.contas).forEach(cName => {
@@ -512,30 +499,155 @@
           }
         });
 
-        let driverImpactValue = 0;
-        if (driverContaName && item.contas[driverContaName]) {
-          driverImpactValue = item.contas[driverContaName].realizado - item.contas[driverContaName].orcado;
-        }
+        const driverImpactValue = driverContaName && item.contas[driverContaName]
+          ? item.contas[driverContaName].realizado - item.contas[driverContaName].orcado
+          : 0;
+        const driverShare = desvioNominal !== 0 ? (Math.abs(driverImpactValue) / Math.abs(desvioNominal)) * 100 : 0;
+        const classification = this._classifyFeature(desvioNominal, variancePct, contributionPct, budgetShare, monthDiffValue, acceleration, adaptiveFloor);
+        const score = this._scoreFeature(desvioNominal, variancePct, contributionPct, monthDiffValue, acceleration, classification);
 
         const featureRow = {
-          itemName: name, realizado: item.realizado, budget: item.orcado,
-          desvio: desvioNominal, pctVar: variancePct, isSaving: desvioNominal <= 0,
-          driverConta: driverContaName, driverImpact: driverImpactValue,
-          score: Math.abs(desvioNominal)
+          itemName: name,
+          realizado: item.ytd.realizado,
+          budget: item.ytd.orcado,
+          desvio: desvioNominal,
+          pctVar: variancePct,
+          consumption,
+          contributionPct,
+          budgetShare,
+          isSaving: desvioNominal <= 0,
+          driverConta: driverContaName,
+          driverImpact: driverImpactValue,
+          driverShare,
+          monthDiff: monthDiffValue,
+          monthPctVar,
+          previousMonthDiff,
+          acceleration,
+          yoyDiff,
+          yoyPct,
+          priorityLabel: classification.priorityLabel,
+          trendLabel: classification.trendLabel,
+          insightType: classification.insightType,
+          score
         };
 
         driverTable.push(featureRow);
-        if (Math.abs(desvioNominal) > 1000) { outlierTable.push(featureRow); }
+        if (
+          Math.abs(desvioNominal) >= adaptiveFloor ||
+          Math.abs(variancePct) >= 2 ||
+          contributionPct >= 8 ||
+          Math.abs(monthDiffValue) >= adaptiveFloor
+        ) {
+          outlierTable.push(featureRow);
+        }
       });
 
       rankingTable.push(...outlierTable);
       rankingTable.sort((a, b) => b.score - a.score);
+      const selectedInsights = this._selectNarrativeRows(rankingTable, varianceTable.ytd.isSaving);
+      const summary = this._buildSummary(selectedInsights, varianceTable);
 
       if (ENABLE_TELEMETRY && profiler) {
         profiler.metrics.steps.aggregation = performance.now() - tStartAggregation;
       }
 
-      return { varianceTable, driverTable, outlierTable: rankingTable, rankingTable };
+      return { varianceTable, driverTable, outlierTable: selectedInsights, rankingTable, summary };
+    }
+
+    _getMemberLabel(row, dimId, fallback) {
+      if (!dimId || !row[dimId]) return fallback;
+      const node = row[dimId];
+      return node.label || node.description || node.id || fallback;
+    }
+
+    _isIgnoredMember(name, allowGeneric) {
+      const upper = String(name || "").toUpperCase();
+      if (!upper) return true;
+      if (allowGeneric && upper === "GERAL") return false;
+      return (
+        upper.includes("TOTAL") || upper.includes("ALL_MEMBERS") ||
+        upper.includes("(ALL)") || upper === "OUTROS" ||
+        upper.includes("RATEIO") || upper.includes("LIQUIDA")
+      );
+    }
+
+    _isBudgetRow(row, versaoDimId) {
+      if (!versaoDimId || !row[versaoDimId]) return false;
+      const vId = String(row[versaoDimId].id).toUpperCase();
+      const vLabel = String(row[versaoDimId].label || row[versaoDimId].description || "").toUpperCase();
+      return vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET");
+    }
+
+    _classifyFeature(desvio, pctVar, contributionPct, budgetShare, monthDiff, acceleration, adaptiveFloor) {
+      const adverse = desvio > 0;
+      const absPct = Math.abs(pctVar);
+      const absContribution = Math.abs(contributionPct);
+      const absMonth = Math.abs(monthDiff);
+      const acceleratingAgainstBudget = adverse && acceleration > adaptiveFloor;
+      const easingPressure = adverse && acceleration < -adaptiveFloor;
+      const intensifyingSaving = !adverse && acceleration < -adaptiveFloor;
+
+      let priorityLabel = adverse ? "Prioridade média" : "Eficiência relevante";
+      if (absContribution >= 30 || absPct >= 15 || Math.abs(desvio) >= adaptiveFloor * 8) {
+        priorityLabel = adverse ? "Prioridade alta" : "Eficiência crítica";
+      } else if (budgetShare >= 15 || absMonth >= adaptiveFloor * 2) {
+        priorityLabel = adverse ? "Monitorar de perto" : "Eficiência material";
+      }
+
+      let trendLabel = "estável";
+      if (acceleratingAgainstBudget) trendLabel = "pressão acelerando no mês";
+      else if (easingPressure) trendLabel = "pressão em desaceleração";
+      else if (intensifyingSaving) trendLabel = "economia ganhando força";
+      else if (!adverse && acceleration > adaptiveFloor) trendLabel = "economia perdendo tração";
+
+      let insightType = adverse ? "risk" : "saving";
+      if (absPct < 2 && absContribution < 8) insightType = "monitoring";
+      if (acceleratingAgainstBudget) insightType = "acceleration";
+
+      return { priorityLabel, trendLabel, insightType };
+    }
+
+    _scoreFeature(desvio, pctVar, contributionPct, monthDiff, acceleration, classification) {
+      const riskBoost = desvio > 0 ? 1.15 : 1;
+      const priorityBoost = classification.priorityLabel.includes("alta") || classification.priorityLabel.includes("crítica") ? 1.25 : 1;
+      const trendBoost = classification.insightType === "acceleration" ? 1.20 : 1;
+      const varianceWeight = 1 + Math.min(Math.abs(pctVar), 80) / 200;
+      const contributionWeight = 1 + Math.min(Math.abs(contributionPct), 150) / 150;
+      return (Math.abs(desvio) * varianceWeight * contributionWeight * riskBoost * priorityBoost * trendBoost) + (Math.abs(monthDiff) * 0.35) + (Math.abs(acceleration) * 0.20);
+    }
+
+    _selectNarrativeRows(rankingTable, ytdIsSaving) {
+      const adverse = rankingTable.filter(item => !item.isSaving);
+      const savings = rankingTable.filter(item => item.isSaving);
+      const selected = [];
+      const addUnique = (item) => {
+        if (item && !selected.some(existing => existing.itemName === item.itemName)) selected.push(item);
+      };
+
+      if (ytdIsSaving) {
+        savings.slice(0, 2).forEach(addUnique);
+        adverse.slice(0, 2).forEach(addUnique);
+      } else {
+        adverse.slice(0, 3).forEach(addUnique);
+        savings.slice(0, 1).forEach(addUnique);
+      }
+
+      rankingTable.forEach(item => {
+        if (selected.length < 4) addUnique(item);
+      });
+
+      return selected.slice(0, 4).sort((a, b) => b.score - a.score);
+    }
+
+    _buildSummary(selectedInsights, varianceTable) {
+      const adverseCount = selectedInsights.filter(item => !item.isSaving).length;
+      const savingCount = selectedInsights.filter(item => item.isSaving).length;
+      return {
+        posture: varianceTable.ytd.isSaving ? "saving" : "adverse",
+        mainDriver: selectedInsights[0] || null,
+        adverseCount,
+        savingCount
+      };
     }
 
     _parseRawValue(val) {
@@ -1436,33 +1548,62 @@
         this._analysisCache = { key: highlightKey, analysis };
       }
 
+      if (analysis.summary && analysis.summary.mainDriver) {
+        const lead = analysis.summary.mainDriver;
+        const liSummary = document.createElement("li");
+        const sSummary = document.createElement("strong"); sSummary.textContent = "Leitura executiva: ";
+        liSummary.appendChild(sSummary);
+        liSummary.appendChild(document.createTextNode(`a engine priorizou ${analysis.outlierTable.length} driver(s), com maior peso em `));
+        const spanLead = document.createElement("span"); spanLead.textContent = lead.itemName; spanLead.style.fontWeight = "700";
+        liSummary.appendChild(spanLead);
+        liSummary.appendChild(document.createTextNode(`, classificado como ${lead.priorityLabel.toLowerCase()} e com ${lead.trendLabel}.`));
+        this._hlUl.appendChild(liSummary);
+      }
+
       analysis.outlierTable.forEach(item => {
-        const statusText = item.isSaving ? "economia operacional" : "desvio adverso";
+        const statusText = item.isSaving ? "economia operacional" : "pressão de custo";
         const semanticColor = item.isSaving ? "#2E7D32" : "#D32F2F";
         const directionalArrow = item.isSaving ? "▼ " : "▲ ";
+        const contributionText = item.contributionPct > 0
+          ? `, explicando ${Math.min(item.contributionPct, 999).toFixed(1)}% do desvio líquido YTD`
+          : "";
+        const budgetShareText = item.budgetShare > 0 ? ` e consumindo ${item.budgetShare.toFixed(1)}% do orçamento analisado` : "";
 
         const liItem = document.createElement("li");
-        const sLabel = document.createElement("strong"); sLabel.textContent = `${item.itemName}: `;
+        const sLabel = document.createElement("strong"); sLabel.textContent = `${item.priorityLabel} - ${item.itemName}: `;
         liItem.appendChild(sLabel);
 
-        liItem.appendChild(document.createTextNode("O acumulado YTD consolidou "));
+        liItem.appendChild(document.createTextNode("YTD com "));
         const spanStatus = document.createElement("span"); spanStatus.textContent = statusText; spanStatus.style.color = semanticColor; spanStatus.style.fontWeight = "700";
         liItem.appendChild(spanStatus);
 
-        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(item.desvio/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(item.pctVar).toFixed(2)}%), registrando Realizado de R$ ${(item.realizado/1000000).toFixed(2)}M contra orçamento de R$ ${(item.budget/1000000).toFixed(2)}M.`));
+        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(item.desvio/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(item.pctVar).toFixed(2)}%)${contributionText}${budgetShareText}. Realizado de R$ ${(item.realizado/1000000).toFixed(2)}M contra orçamento de R$ ${(item.budget/1000000).toFixed(2)}M.`));
+
+        if (item.trendLabel && item.trendLabel !== "estável") {
+          const trendColor = item.insightType === "acceleration" ? "#D32F2F" : (item.isSaving ? "#2E7D32" : "#EF6C00");
+          liItem.appendChild(document.createTextNode(" Sinal recente: "));
+          const spanTrend = document.createElement("span"); spanTrend.textContent = item.trendLabel; spanTrend.style.color = trendColor; spanTrend.style.fontWeight = "700";
+          liItem.appendChild(spanTrend);
+          liItem.appendChild(document.createTextNode(`, com efeito mensal de ${(item.monthDiff >= 0 ? "+" : "")}${(item.monthDiff/1000000).toFixed(2)}M.`));
+        }
+
+        if (Math.abs(item.yoyDiff) > 0) {
+          liItem.appendChild(document.createTextNode(` Frente ao ano anterior, o realizado variou ${(item.yoyDiff >= 0 ? "+" : "")}${(item.yoyDiff/1000000).toFixed(2)}M (${item.yoyDiff >= 0 ? "alta" : "queda"} de ${Math.abs(item.yoyPct).toFixed(1)}%).`));
+        }
 
         if (item.driverConta && Math.abs(item.driverImpact) > 0) {
           const cSaving = item.driverImpact <= 0;
           const cColor = cSaving ? "#2E7D32" : "#D32F2F";
+          const driverShareText = item.driverShare > 0 ? `, representando ${Math.min(item.driverShare, 999).toFixed(1)}% do desvio do item` : "";
           
-          liItem.appendChild(document.createTextNode(" O principal driver desse comportamento foi a natureza de "));
+          liItem.appendChild(document.createTextNode(" Conta determinante: "));
           const spanConta = document.createElement("span"); spanConta.textContent = item.driverConta; spanConta.style.fontWeight = "700";
-          liItem.appendChild(spanConta); liItem.appendChild(document.createTextNode(" com um impacto de "));
+          liItem.appendChild(spanConta); liItem.appendChild(document.createTextNode(" com impacto de "));
           
           const spanContaDiff = document.createElement("span");
           spanContaDiff.textContent = `${item.driverImpact >= 0 ? "+" : ""}${(item.driverImpact/1000000).toFixed(2)}M`;
           spanContaDiff.style.color = cColor; spanContaDiff.style.fontWeight = "700";
-          liItem.appendChild(spanContaDiff); liItem.appendChild(document.createTextNode("."));
+          liItem.appendChild(spanContaDiff); liItem.appendChild(document.createTextNode(`${driverShareText}.`));
         }
 
         this._hlUl.appendChild(liItem);
