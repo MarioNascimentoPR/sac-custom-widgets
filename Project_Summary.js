@@ -1,35 +1,8 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - ARCHITECTURAL INTEGRATION PHASE 1
-   ========================================================================== */
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY
+   ========================================================================= */
 
 (function () {
-  
-  // ==========================================================================
-  // MOTOR ANALÍTICO INTERNO (Simulando o Bundle Consolidado pelo Vite)
-  // ==========================================================================
-  const ArchitecturalNarrativeEngine = {
-    processPayload(widgetPayload) {
-      // Validação estrita de recebimento da estrutura de dados do cubo
-      if (!widgetPayload || !widgetPayload.timelineData || widgetPayload.timelineData.length === 0) {
-        return {
-          status: "error",
-          text: "Pipeline ativa: Aguardando carga estruturada de metadados do SAC."
-        };
-      }
-
-      // Mensagem genérica estruturada para homologação e teste do fluxo de dados
-      return {
-        status: "success",
-        pipelineVerified: true,
-        timestamp: new Date().toISOString(),
-        text: `[ARQUITETURA HOMOLOGADA] O Narrative Analytics Engine interceptou com sucesso os dados do gráfico de colunas. Payload recebido com ${widgetPayload.timelineData.length} competências cronológicas. Pronto para acoplamento dos submotores estatísticos.`
-      };
-    }
-  };
-
-  // ==========================================================================
-  // TEMPLATE VISUAL DO COMPONENTE (CSS E HTML)
-  // ==========================================================================
   const template = document.createElement("template");
   template.innerHTML = `
     <style>
@@ -118,9 +91,16 @@
       .status-badge-finance.success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
       .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; border: 1px solid #e8eaed; }
-      .highlight-card-area { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
+      
+      /* Ajuste estrutural alinhado com a neutralidade cromática solicitada */
+      .highlight-card-area { 
+        display: flex; flex-direction: column; background: #F8F9FA; border: 1px solid #e2e8f0; 
+        border-left: 4px solid #cbd5e0; border-radius: 8px; padding: 14px 16px; color: #333333;
+      }
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
+      .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
+      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -184,7 +164,7 @@
             </div>
           </div>
         </div>
-        <div class="highlight-card-area">
+        <div class="highlight-card-area" id="highlightCardArea">
           <div class="highlight-title-box"><span class="highlight-icon-box">💡</span><span>Highlights</span></div>
           <div class="highlight-content-text" id="highlightContentText"></div>
         </div>
@@ -192,9 +172,6 @@
     </div>
   `;
 
-  // ==========================================================================
-  // CLASSE PRINCIPAL DO WEB COMPONENT (EvoSummaryWidget)
-  // ==========================================================================
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
@@ -241,6 +218,7 @@
         this._ytdDiffPctBadge = this._shadowRoot.getElementById("ytd-diff-pct-badge");
         this._ytdPctRow = this._shadowRoot.getElementById("ytd-pct-row");
         this._highlightContentText = this._shadowRoot.getElementById("highlightContentText");
+        this._highlightCardArea = this._shadowRoot.getElementById("highlightCardArea");
 
         this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
         this._miniBarAct = this._shadowRoot.getElementById("mini-bar-act");
@@ -279,9 +257,16 @@
     }
 
     _initStaticHighlightsDOM() {
-      if (this._highlightContentText) {
-        this._highlightContentText.textContent = "";
-      }
+      const ul = document.createElement("ul");
+      ul.className = "ul-highlight";
+      this._hlMonthLi = document.createElement("li");
+      this._hlConsLi = document.createElement("li");
+      this._hlYtdLi = document.createElement("li");
+      ul.appendChild(this._hlMonthLi);
+      ul.appendChild(this._hlConsLi);
+      ul.appendChild(this._hlYtdLi);
+      this._highlightContentText.textContent = "";
+      this._highlightContentText.appendChild(ul);
     }
 
     _toggleDropdownDOM() {
@@ -502,7 +487,7 @@
         const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
         const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
 
-        const startIndex = Math.max(0, actualIndex - 11);
+        const startIndex = Math.max(0, actualIndex - 11); 
         const visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
 
         let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
@@ -641,9 +626,12 @@
       svg.appendChild(fragment);
     }
 
-    // REFATORADO: Conexão direta com o motor analítico mock de verificação estrutural
+    /* ==========================================================================
+       REFATORAÇÃO EXCLUSIVA: ENGINE DE NARRATIVAS (HIGHLIGHTS FEATURE)
+       ========================================================================== */
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
+      const monthLabel = currentBarNode.label.split(' ')[0];
       const currentYear = currentBarNode.yearValue; const previousYear = currentYear - 1;
 
       const diffNominal = actualVal - budgetVal;
@@ -697,47 +685,61 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      this._ytdSeriesMock = [
-        { value: totalRealizadoYTDAntigo, type: "historical" }, 
-        { value: totalRealizadoYTDAtual, type: "actual" }, 
-        { value: totalBudgetYTDCompleto, type: "budget" }
-      ];
+      this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
 
-      // ----------------------------------------------------------------------
-      // INTERCEPTAÇÃO E POPULAÇÃO VIA MOTOR NARRATIVO (PROJETO COMPLEMENTAR)
-      // ----------------------------------------------------------------------
-      this._highlightContentText.textContent = "";
-
-      // 1. Instancia o payload estruturado com a timeline processada do gráfico
-      const widgetPayload = {
-        cutoffIndex: actualIndex,
-        timelineData: fullSeriesData,
-        aggregatedBudget: budgetVal,
-        aggregatedActual: actualVal
-      };
-
-      // 2. Dispara o processamento para o motor acoplado no topo do bundle
-      const response = ArchitecturalNarrativeEngine.processPayload(widgetPayload);
-
-      // 3. Renderiza dinamicamente o parágrafo baseado em regras de Design por Exceção
-      const infoParagraph = document.createElement("p");
-      infoParagraph.style.margin = "0";
-      infoParagraph.style.fontSize = "11.5px";
-      infoParagraph.style.lineHeight = "1.5";
-      infoParagraph.style.color = "#4a5568";
-
-      if (response.status === "success") {
-        infoParagraph.style.borderLeft = "4px solid #137333"; // Borda verde de sucesso da arquitetura
-        infoParagraph.style.paddingLeft = "10px";
-        infoParagraph.style.fontWeight = "600";
-        infoParagraph.textContent = response.text;
-      } else {
-        infoParagraph.style.borderLeft = "4px solid #c5221f"; // Falha estrutural ou de dados
-        infoParagraph.style.paddingLeft = "10px";
-        infoParagraph.textContent = response.text;
+      // 1. COMPORTAMENTO GEOMÉTRICO E DESIGN POR EXCEÇÃO (MUTAÇÃO ATÔMICA DO BLOCO DE TEXTO NARRATIVO)
+      if (this._highlightCardArea) {
+        this._highlightCardArea.style.borderLeft = isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
       }
 
-      this._highlightContentText.appendChild(infoParagraph);
+      const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
+      const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
+      const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
+      const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
+      const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
+
+      // 2. INJEÇÃO ATÔMICA DOS TEMPLATES DE NARRATIVA PREVENINDO VULNERABILIDADES XSS (SEM USO DE INNERHTML)
+      // Linha 1: Mês Corrente
+      this._hlMonthLi.textContent = "";
+      const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
+      const statusSpan1 = document.createElement("span"); 
+      statusSpan1.textContent = monthStatusText; 
+      statusSpan1.style.color = semanticColorMonth; 
+      statusSpan1.style.fontWeight = "700";
+      this._hlMonthLi.appendChild(s1);
+      this._hlMonthLi.appendChild(document.createTextNode("Fechamento com "));
+      this._hlMonthLi.appendChild(statusSpan1);
+      this._hlMonthLi.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+
+      // Linha 2: Consumo Operacional
+      this._hlConsLi.textContent = "";
+      const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
+      const statusSpan2 = document.createElement("span");
+      statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`;
+      statusSpan2.style.color = semanticColorCons;
+      statusSpan2.style.fontWeight = "700";
+      this._hlConsLi.appendChild(s2);
+      this._hlConsLi.appendChild(document.createTextNode("A absorção atingiu "));
+      this._hlConsLi.appendChild(statusSpan2);
+      this._hlConsLi.appendChild(document.createTextNode(" do orçamento da competência."));
+
+      // Linha 3: Posicionamento YTD
+      this._hlYtdLi.textContent = "";
+      const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD: ";
+      const statusSpan3 = document.createElement("span");
+      statusSpan3.textContent = ytdStatusText;
+      statusSpan3.style.color = semanticColorYTD;
+      statusSpan3.style.fontWeight = "700";
+      const valueSpan3 = document.createElement("span");
+      valueSpan3.textContent = `${consumoBudgetPercent.toFixed(1)}%`;
+      valueSpan3.style.fontWeight = "700";
+      this._hlYtdLi.appendChild(s3);
+      this._hlYtdLi.appendChild(document.createTextNode("Acumulado com desvio "));
+      this._hlYtdLi.appendChild(statusSpan3);
+      this._hlYtdLi.appendChild(document.createTextNode(", consumindo "));
+      this._hlYtdLi.appendChild(valueSpan3);
+      this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
+
       this._insightGrid.style.display = "grid";
     }
 
