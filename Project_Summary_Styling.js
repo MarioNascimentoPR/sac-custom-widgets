@@ -23,7 +23,7 @@
         <label>Cor Orçado (Budget)</label><input id="cls-bud" type="color" />
       </div>
       <div class="control-group">
-        <label>Tamanho da Fonte Rótulos (px)</label><input id="font-size-lbl" type="number" min="8" max="16" />
+        <label>Tamanho da Fonte Rótulos (px)</label><input id="font-size-lbl" type="number" min="10" max="18" />
       </div>
     </div>
   `;
@@ -44,7 +44,7 @@
       if (inputAct) inputAct.addEventListener("change", (e) => this._changeProperty("colorActualMonth", e.target.value));
       if (inputHist) inputHist.addEventListener("change", (e) => this._changeProperty("colorHistorical", e.target.value));
       if (inputBud) inputBud.addEventListener("change", (e) => this._changeProperty("colorBudget", e.target.value));
-      if (inputFont) inputFont.addEventListener("change", (e) => this._changeProperty("fontSizeLabels", parseInt(e.target.value) || 12));
+      if (inputFont) inputFont.addEventListener("change", (e) => this._changeProperty("fontSizeLabels", parseInt(e.target.value) || 13));
     }
 
     _changeProperty(name, value) {
