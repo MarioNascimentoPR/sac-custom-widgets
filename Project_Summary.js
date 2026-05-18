@@ -78,11 +78,10 @@
 
       .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto; }
       
-      /* DE VOLTA AO EQUILÍBRIO: Altura e padding originais para barras grandes e imponentes */
-      .chart-container-block { position: relative; height: 165px; padding-top: 45px; box-sizing: border-box; width: 100%; }
+      /* DIMENSÕES CORRIGIDAS: Altura equilibrada, padding suficiente para a tag, barras grandes */
+      .chart-container-block { position: relative; height: 165px; padding-top: 50px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
-      /* MAGIA DO OVERFLOW VISIBLE: Permite que a tag suba sem ser cortada */
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
       
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
@@ -95,7 +94,10 @@
         background-size: 6px 6px;
       }
       
-      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3; }
+      .kpi-label { 
+        position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; 
+        background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3;
+      }
       .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; top: -24px; }
       
       .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
@@ -116,16 +118,14 @@
       .column-title-finance { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
 
       .panel-content-rows { display: flex; flex-direction: column; gap: 1px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; }
-
       .data-row-item { display: grid; grid-template-columns: 1.8fr 1fr 1fr; align-items: center; background: #ffffff; padding: 8px 12px; font-size: calc(var(--font-size-labels) - 0.5px); color: #2d3748; gap: 8px; }
-
+      
       .cell-label { font-weight: 600; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
       .cell-label::before { content: ''; width: 4px; height: 12px; background: #cbd5e0; border-radius: 2px; display: inline-block; flex-shrink: 0; }
       .row-m-style .cell-label::before { background: var(--color-actual); }
       .row-ytd-style .cell-label::before { background: #2b6cb0; }
 
       .cell-value { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1e293b; white-space: nowrap; }
-
       .cell-status-wrapper { display: flex; justify-content: flex-end; align-items: center; }
 
       .status-badge-finance { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-width: 75px; box-sizing: border-box; }
@@ -564,7 +564,7 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        /* TIMEOUT DE SEGURANÇA */
+        /* TIMEOUT DE SEGURANÇA: Garante que as linhas do SVG desenhem APÓS as larguras da tela estarem corretas */
         setTimeout(() => {
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
           
@@ -598,8 +598,7 @@
         return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
       };
 
-      // LINHA NO TOPO (PIXEL 16) - MANTENDO A BASE NO CHÃO (FLOORY)
-      const ceilingY = 16;
+      const ceilingY = 15;
       const floorY = containerHeight; 
       
       pairs.forEach((pair) => {
@@ -629,11 +628,8 @@
         
         const midX = xFrom + (xTo - xFrom) / 2;
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        
-        // TAG TOTALMENTE ACIMA DA LINHA (Y = 16 - 24 = -8px). 
-        // Com overflow: visible no SVG, ela preenche graciosamente a margem.
         foreignObj.setAttribute("x", (midX - 35).toString()); 
-        foreignObj.setAttribute("y", (ceilingY - 24).toString()); 
+        foreignObj.setAttribute("y", (ceilingY - 11).toString()); 
         foreignObj.setAttribute("width", "70"); 
         foreignObj.setAttribute("height", "22");
         
