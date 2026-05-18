@@ -59,7 +59,5 @@
     }
   }
 
-  if (!customElements.get("sac-summary-styling")) {
-    customElements.define("sac-summary-styling", EvoSummaryWidgetStyling);
-  }
+  customElements.define("sac-summary-styling", EvoSummaryWidgetStyling);
 })();
