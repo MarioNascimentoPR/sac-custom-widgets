@@ -33,6 +33,15 @@
         display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
       .tree-dropdown-content.show { display: block; }
+      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
+      .tree-year-node:hover { background-color: #edf2f7; }
+      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
+      .tree-year-node.expanded::before { transform: rotate(90deg); }
+      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
+      .tree-months-container.show { display: flex; }
+      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
+      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
+      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       .widget-legend { display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0; }
       .legend-item { display: flex; align-items: center; gap: 5px; }
       .legend-color { width: 10px; height: 10px; border-radius: 2px; }
@@ -178,7 +187,7 @@
   `;
 
   /* ==========================================================================
-     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA COGNITIVA (HEADLESS & DECOUPLED)
+     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA COGNITIVA (HEADLESS / DECOUPLED)
      ========================================================================== */
   class EvoNarrativeEngine {
     constructor() {
@@ -343,9 +352,6 @@
     }
   }
 
-  /* ==========================================================================
-     UI LAYER AND COMPONENT SCOPE MANAGEMENT
-     ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
@@ -691,6 +697,7 @@
           this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
         }
 
+        // CORREÇÃO: Varredura iterativa limpa sobre a NodeList sem chamadas aninhadas duplicadas
         const dropdownItems = this._treeDropdownContent.querySelectorAll(".tree-month-item");
         dropdownItems.forEach(item => {
           item.classList.toggle("selected", item.getAttribute("data-id") === this._selectedCutoffId);
@@ -842,63 +849,49 @@
       svg.appendChild(fragment);
     }
 
+    /* ==========================================================================
+       ETAPA DE RENDERING (UI LAYER) - CONSUMO E POPULAÇÃO LIMPA DO DOM
+       ========================================================================== */
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
       const currentYear = currentBarNode.yearValue; const previousYear = currentYear - 1;
 
-      const diffNominal = actualVal - budgetVal;
-      const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
-      const consumptionMonthPercent = budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0;
-      const isMonthSaving = diffNominal <= 0;
-      
+      // Execução e extração via classe de processamento puro desacoplado (Headless)
+      const analysis = this._analyticsEngine.analyze(
+        this._currentData.data, currentBarNode, currentYear, previousYear,
+        this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData
+      );
+
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
-      this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
-      this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
-      this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
-      this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
+      const mFeatures = analysis.varianceTable.month;
+      const yFeatures = analysis.varianceTable.ytd;
 
-      let totalRealizadoYTDAtual = 0; let totalRealizadoYTDAntigo = 0; let totalBudgetYTDCompleto = 0;
+      this._valDiffRow.textContent = (mFeatures.diffNominal >= 0 ? "+" : "") + formatM(mFeatures.diffNominal);
+      this._valPctRow.textContent = formatPercent(mFeatures.pctVar, mFeatures.isSaving);
+      this._valPctRow.className = "status-badge-finance " + (mFeatures.isSaving ? "success" : "warning");
+      this._valPctConsumptionRow.textContent = mFeatures.consumption.toFixed(2) + "%";
 
-      fullSeriesData.forEach((d, idx) => {
-        if (idx <= actualIndex) {
-          if (d.yearValue === currentYear) {
-            totalRealizadoYTDAtual += d.value;
-            totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
-          }
-        }
-        if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
-          totalRealizadoYTDAntigo += d.value;
-        }
-      });
+      this._ytdDiffRow.textContent = (yFeatures.diffNominal >= 0 ? "+" : "") + formatM(yFeatures.diffNominal);
+      this._ytdDiffPctBadge.textContent = formatPercent(yFeatures.pctVar, yFeatures.isSaving);
+      this._ytdDiffPctBadge.className = "status-badge-finance " + (yFeatures.isSaving ? "success" : "warning");
+      this._ytdPctRow.textContent = yFeatures.consumption.toFixed(2) + "%";
 
-      if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
+      const maxYTD = Math.max(yFeatures.previous, yFeatures.actual, yFeatures.budget) * 1.10 || 1;
+      this._miniBarPrev.style.height = `${(yFeatures.previous / maxYTD) * 100}%`;
+      this._miniBarAct.style.height = `${(yFeatures.actual / maxYTD) * 100}%`;
+      this._miniBarBud.style.height = `${(yFeatures.budget / maxYTD) * 100}%`;
 
-      const diffYtdNominal = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
-      const diffYtdPercent = totalBudgetYTDCompleto !== 0 ? (diffYtdNominal / totalBudgetYTDCompleto) * 100 : 0;
-      const consumoBudgetPercent = (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100;
-      const isYtdSaving = diffYtdNominal <= 0;
-
-      this._ytdDiffRow.textContent = (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal);
-      this._ytdDiffPctBadge.textContent = formatPercent(diffYtdPercent, isYtdSaving);
-      this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
-      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
-
-      const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
-      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
-      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
-      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
-
-      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
-      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
-      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
+      this._miniLblPrev.textContent = formatM(yFeatures.previous);
+      this._miniLblAct.textContent = formatM(yFeatures.actual);
+      this._miniLblBud.textContent = formatM(yFeatures.budget);
 
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
+      this._ytdSeriesMock = [{ value: yFeatures.previous, type: "historical" }, { value: yFeatures.actual, type: "actual" }, { value: yFeatures.budget, type: "budget" }];
 
       if (this._highlightCardArea) {
         this._highlightCardArea.style.borderLeft = yFeatures.isSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
@@ -906,44 +899,39 @@
 
       if (this._periodSummaryBanner) {
         this._periodSummaryBanner.style.display = "block";
-        this._periodSummaryBanner.className = isYtdSaving ? "period-summary-banner summary-saving" : "period-summary-banner summary-desvio";
+        this._periodSummaryBanner.className = yFeatures.isSaving ? "period-summary-banner summary-saving" : "period-summary-banner summary-desvio";
         this._periodSummaryBanner.textContent = "";
 
         this._periodSummaryBanner.appendChild(document.createTextNode("No acumulado YTD, o projeto opera "));
         const spanYtdStatus = document.createElement("strong");
-        spanYtdStatus.textContent = isYtdSaving ? "abaixo do teto orçamentário (eficiência) " : "acima da meta prevista (atenção) ";
+        spanYtdStatus.textContent = yFeatures.isSaving ? "abaixo do teto orçamentário (eficiência) " : "acima da meta prevista (atenção) ";
         this._periodSummaryBanner.appendChild(spanYtdStatus);
 
         this._periodSummaryBanner.appendChild(document.createTextNode("com variação de "));
         const spanYtdDelta = document.createElement("strong");
-        spanYtdDelta.textContent = `R$ ${Math.abs(diffYtdNominal/1000000).toFixed(2)}M (${diffYtdNominal >= 0 ? "+" : ""}${diffYtdPercent.toFixed(1)}%)`;
+        spanYtdDelta.textContent = `R$ ${Math.abs(yFeatures.diffNominal/1000000).toFixed(2)}M (${yFeatures.diffNominal >= 0 ? "+" : ""}${yFeatures.pctVar.toFixed(1)}%)`;
         this._periodSummaryBanner.appendChild(spanYtdDelta);
-        this._periodSummaryBanner.appendChild(document.createTextNode(`, absorvendo ${consumoBudgetPercent.toFixed(1)}% do orçamento total.`));
+        this._periodSummaryBanner.appendChild(document.createTextNode(`, absorvendo ${yFeatures.consumption.toFixed(1)}% do orçamento total.`));
       }
 
       this._hlUl.textContent = "";
 
-      const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
-      const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
-      const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
+      const monthStatusText = mFeatures.isSaving ? "economia de custos" : "estouro orçamentário";
+      const semanticColorMonth = mFeatures.isSaving ? "#2E7D32" : "#D32F2F";
+      const semanticColorCons = mFeatures.consumption > 100 ? "#D32F2F" : (mFeatures.consumption > 90 ? "#EF6C00" : "#2E7D32");
 
+      // CORREÇÃO: Sintaxe limpa e atômica para criação textual dos nós
       const liMonth = document.createElement("li");
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
-      liMonth.appendChild(s1); liMonth.appendChild(document.createTextNode("Fechamento com ")); liMonth.appendChild(statusSpan1); liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+      liMonth.appendChild(s1); liMonth.appendChild(document.createTextNode("Fechamento com ")); liMonth.appendChild(statusSpan1); liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(mFeatures.diffNominal/1000000).toFixed(2)}M.`));
       this._hlUl.appendChild(liMonth);
 
       const liCons = document.createElement("li");
       const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
-      const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
+      const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${mFeatures.consumption.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
       this._hlUl.appendChild(liCons);
-
-      // Execução e extração de outliers através da classe de processamento puro desacoplado
-      const analysis = this._analyticsEngine.analyze(
-        this._currentData.data, currentBarNode, currentYear, previousYear,
-        this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData
-      );
 
       analysis.outlierTable.forEach(item => {
         const statusText = item.isSaving ? "economia operacional" : "desvio adverso";
