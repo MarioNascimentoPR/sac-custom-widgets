@@ -198,6 +198,10 @@
         font-size: var(--small-font-size); font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
       }
       .telemetry-btn:hover { background-color: #e2e8f0; color: #1e293b; }
+      .export-btn {
+        font-size: var(--small-font-size); font-weight: 700; color: #1e293b; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s; user-select: none;
+      }
+      .export-btn:hover { background-color: #edf2f7; }
       .telemetry-modal {
         display: none; position: absolute; top: 48px; right: 18px; width: 330px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 1000; padding: 14px; font-size: 11px; color: #334155;
       }
@@ -223,6 +227,52 @@
         background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
         background-size: 4px 4px;
       }
+      .view-tabs {
+        display: inline-flex; align-self: flex-start; background: #f1f5f9; border: 1px solid #dbe3ec; border-radius: 7px; padding: 3px; gap: 3px; margin-bottom: 14px;
+      }
+      .view-tab {
+        border: none; background: transparent; color: #475569; font-size: var(--small-font-size); font-weight: 700; border-radius: 5px; padding: 6px 11px; cursor: pointer;
+      }
+      .view-tab.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
+      .view-panel { display: none; flex-direction: column; min-width: 0; }
+      .view-panel.active { display: flex; }
+      .executive-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+      .executive-kpi {
+        display: flex; flex-direction: column; gap: 5px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 13px; background: #ffffff;
+      }
+      .executive-kpi-label { font-size: var(--small-font-size); font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.55px; }
+      .executive-kpi-value { font-size: calc(var(--title-font-size) + 1px); line-height: 1.15; font-weight: 700; color: #0f172a; }
+      .executive-kpi-sub { font-size: var(--small-font-size); color: #475569; }
+      .risk-pill {
+        display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-width: 88px; border-radius: 999px; padding: 5px 10px; font-size: var(--small-font-size); font-weight: 700; border: 1px solid transparent;
+      }
+      .risk-pill.good { background: #e6f4ea; color: #137333; border-color: #ceead6; }
+      .risk-pill.watch { background: #fff4e5; color: #b45309; border-color: #fed7aa; }
+      .risk-pill.alert { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
+      .executive-grid { display: grid; grid-template-columns: minmax(280px, 1.2fr) minmax(0, 1fr); gap: var(--layout-gap); align-items: stretch; }
+      .executive-panel {
+        border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0;
+      }
+      .executive-panel-title { font-size: var(--small-font-size); font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 12px; }
+      .waterfall-chart { display: flex; align-items: flex-end; gap: 8px; min-height: 220px; height: 220px; overflow-x: auto; padding: 8px 2px 0; }
+      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 74px; height: 100%; position: relative; }
+      .waterfall-value { position: absolute; top: 0; font-size: var(--small-font-size); font-weight: 700; color: #334155; white-space: nowrap; }
+      .waterfall-bar-wrap { position: relative; height: calc(100% - 28px); width: 100%; }
+      .waterfall-bar { position: absolute; left: 0; right: 0; width: 100%; border-radius: 5px 5px 0 0; min-height: 4px; }
+      .waterfall-bar.total { background: #1f77b4; }
+      .waterfall-bar.positive { background: #d32f2f; }
+      .waterfall-bar.negative { background: #2e7d32; }
+      .waterfall-label { margin-top: 7px; font-size: var(--small-font-size); font-weight: 600; color: #475569; text-align: center; line-height: 1.2; min-height: 28px; }
+      .executive-summary-list { margin: 0; padding-left: 18px; color: #334155; font-size: var(--ui-font-size); line-height: 1.6; display: flex; flex-direction: column; gap: 10px; }
+      .diagnostic-toolbar {
+        display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; margin-bottom: 14px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
+      }
+      .diagnostic-control { display: flex; flex-direction: column; gap: 4px; }
+      .diagnostic-control label { font-size: var(--small-font-size); font-weight: 700; color: #475569; }
+      .diagnostic-control input {
+        width: 110px; border: 1px solid #cbd5e0; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 6px 8px; font-size: var(--ui-font-size);
+      }
+      .diagnostic-control-note { font-size: var(--small-font-size); color: #64748b; }
       .main-visualization-layout { display: flex; width: 100%; gap: var(--layout-gap); margin-bottom: 22px; flex-shrink: 0; align-items: stretch; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
       .visualization-column.monthly-col { flex: 3; }
@@ -321,12 +371,16 @@
       .bar-tooltip-empty { font-size: var(--ui-font-size); color: #64748b; }
       :host([data-layout="stacked"]) .widget-header { align-items: flex-start; flex-direction: column; }
       :host([data-layout="stacked"]) .filter-container-finance { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+      :host([data-layout="stacked"]) .executive-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      :host([data-layout="stacked"]) .executive-grid { grid-template-columns: 1fr; }
       :host([data-layout="stacked"]) .main-visualization-layout { flex-direction: column; }
       :host([data-layout="stacked"]) .visualization-column.ytd-col { border-left: none; border-top: 1px solid #e2e8f0; padding-left: 0; padding-top: 14px; }
       :host([data-layout="stacked"]) .insight-grid { grid-template-columns: 1fr; }
       :host([data-size="compact"]) .data-row-item { grid-template-columns: 1fr; align-items: flex-start; }
       :host([data-size="compact"]) .cell-value,
       :host([data-size="compact"]) .cell-status-wrapper { justify-content: flex-start; text-align: left; }
+      :host([data-size="compact"]) .executive-kpi-grid { grid-template-columns: 1fr; }
+      :host([data-size="compact"]) .waterfall-chart { min-height: 190px; height: 190px; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -338,6 +392,7 @@
           <span class="filter-label-finance">Corte:</span>
           <div class="tree-dropdown-trigger" id="treeDropdownTrigger">Selecionar...</div>
           <div class="tree-dropdown-content" id="treeDropdownContent"></div>
+          <button class="export-btn" id="exportPptBtn" type="button">Exportar PPT</button>
           
           <button class="telemetry-btn" id="telemetryBtn" style="display: none;">📊 Telemetria</button>
           
@@ -383,6 +438,56 @@
         <div class="legend-item"><div class="legend-color act"></div> Mês Atual (Realizado)</div>
         <div class="legend-item"><div class="legend-color bud"></div> Orçado (Budget)</div>
       </div>
+      <div class="view-tabs" role="tablist" aria-label="Visões do widget">
+        <button class="view-tab active" id="executiveTabBtn" type="button" role="tab" aria-selected="true">Executivo</button>
+        <button class="view-tab" id="diagnosticTabBtn" type="button" role="tab" aria-selected="false">Diagnóstico</button>
+      </div>
+      <div class="view-panel active" id="executiveView">
+        <div class="executive-kpi-grid">
+          <div class="executive-kpi">
+            <div class="executive-kpi-label">Realizado YTD</div>
+            <div class="executive-kpi-value" id="execActualYtd">-</div>
+            <div class="executive-kpi-sub" id="execActualYtdSub">-</div>
+          </div>
+          <div class="executive-kpi">
+            <div class="executive-kpi-label">Forecast Fechamento</div>
+            <div class="executive-kpi-value" id="execForecast">-</div>
+            <div class="executive-kpi-sub" id="execForecastSub">-</div>
+          </div>
+          <div class="executive-kpi">
+            <div class="executive-kpi-label">Desvio Projetado</div>
+            <div class="executive-kpi-value" id="execProjectedGap">-</div>
+            <div class="executive-kpi-sub" id="execProjectedGapSub">-</div>
+          </div>
+          <div class="executive-kpi">
+            <div class="executive-kpi-label">Semáforo</div>
+            <div class="executive-kpi-value"><span class="risk-pill" id="execRiskPill">-</span></div>
+            <div class="executive-kpi-sub" id="execRiskSub">-</div>
+          </div>
+        </div>
+        <div class="executive-grid">
+          <div class="executive-panel">
+            <div class="executive-panel-title">Waterfall de Variação YTD</div>
+            <div class="waterfall-chart" id="waterfallChart"></div>
+          </div>
+          <div class="executive-panel">
+            <div class="executive-panel-title">Leitura Executiva</div>
+            <ul class="executive-summary-list" id="executiveSummaryList"></ul>
+          </div>
+        </div>
+      </div>
+      <div class="view-panel" id="diagnosticView">
+        <div class="diagnostic-toolbar">
+          <div class="diagnostic-control">
+            <label for="materialityValueInput">Materialidade mínima</label>
+            <input id="materialityValueInput" type="number" min="0" step="0.1" value="0">
+          </div>
+          <div class="diagnostic-control">
+            <label for="materialityPctInput">Variação mínima (%)</label>
+            <input id="materialityPctInput" type="number" min="0" step="0.5" value="0">
+          </div>
+          <div class="diagnostic-control-note">Valores em milhões. Use 0 para exibir todos os drivers relevantes.</div>
+        </div>
       <div class="main-visualization-layout">
         <div class="monthly-col visualization-column">
           <div class="chart-container-block">
@@ -436,6 +541,7 @@
           <div class="highlight-title-box"><span class="highlight-icon-box">💡</span><span>Highlights</span></div>
           <div class="highlight-content-text" id="highlightContentText"></div>
         </div>
+      </div>
       </div>
       <div class="bar-tooltip" id="barTooltip" aria-hidden="true"></div>
     </div>
@@ -602,7 +708,7 @@
         profiler.metrics.steps.aggregation = performance.now() - tStartAggregation;
       }
 
-      return { outlierTable: selectedInsights, summary };
+      return { outlierTable: selectedInsights, waterfallTable: outlierTable, summary };
     }
 
     _getMemberLabel(row, dimId, fallback) {
@@ -798,6 +904,10 @@
       this._tooltipCompositionCache = new Map();
       this._tooltipPayloadCache = new Map();
       this._tooltipCacheLimit = 6;
+      this._activeView = "executive";
+      this._materialityMinValue = 0;
+      this._materialityMinPct = 0;
+      this._lastAnalyticsViewContext = null;
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -835,6 +945,23 @@
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
         this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
+        this._exportPptBtn = this._shadowRoot.getElementById("exportPptBtn");
+        this._executiveTabBtn = this._shadowRoot.getElementById("executiveTabBtn");
+        this._diagnosticTabBtn = this._shadowRoot.getElementById("diagnosticTabBtn");
+        this._executiveView = this._shadowRoot.getElementById("executiveView");
+        this._diagnosticView = this._shadowRoot.getElementById("diagnosticView");
+        this._materialityValueInput = this._shadowRoot.getElementById("materialityValueInput");
+        this._materialityPctInput = this._shadowRoot.getElementById("materialityPctInput");
+        this._execActualYtd = this._shadowRoot.getElementById("execActualYtd");
+        this._execActualYtdSub = this._shadowRoot.getElementById("execActualYtdSub");
+        this._execForecast = this._shadowRoot.getElementById("execForecast");
+        this._execForecastSub = this._shadowRoot.getElementById("execForecastSub");
+        this._execProjectedGap = this._shadowRoot.getElementById("execProjectedGap");
+        this._execProjectedGapSub = this._shadowRoot.getElementById("execProjectedGapSub");
+        this._execRiskPill = this._shadowRoot.getElementById("execRiskPill");
+        this._execRiskSub = this._shadowRoot.getElementById("execRiskSub");
+        this._waterfallChart = this._shadowRoot.getElementById("waterfallChart");
+        this._executiveSummaryList = this._shadowRoot.getElementById("executiveSummaryList");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
@@ -894,8 +1021,14 @@
           this._isDropdownOpen = !this._isDropdownOpen;
           this._toggleDropdownDOM();
         });
+        this._executiveTabBtn.addEventListener("click", () => this._setActiveView("executive"));
+        this._diagnosticTabBtn.addEventListener("click", () => this._setActiveView("diagnostic"));
+        this._materialityValueInput.addEventListener("input", () => this._handleMaterialityChange());
+        this._materialityPctInput.addEventListener("input", () => this._handleMaterialityChange());
+        this._exportPptBtn.addEventListener("click", () => this._exportCurrentViewToPpt());
 
         this._initStaticHighlightsDOM();
+        this._setActiveView(this._activeView);
         this._applyResponsiveMode();
       }
 
@@ -1308,6 +1441,488 @@
       });
       this._hlDetailUl.appendChild(fragment);
       this._highlightDetailRendered = true;
+    }
+
+    _setActiveView(viewName) {
+      this._activeView = viewName === "diagnostic" ? "diagnostic" : "executive";
+      const isExecutive = this._activeView === "executive";
+      if (this._executiveView) this._executiveView.classList.toggle("active", isExecutive);
+      if (this._diagnosticView) this._diagnosticView.classList.toggle("active", !isExecutive);
+      if (this._executiveTabBtn) {
+        this._executiveTabBtn.classList.toggle("active", isExecutive);
+        this._executiveTabBtn.setAttribute("aria-selected", isExecutive ? "true" : "false");
+      }
+      if (this._diagnosticTabBtn) {
+        this._diagnosticTabBtn.classList.toggle("active", !isExecutive);
+        this._diagnosticTabBtn.setAttribute("aria-selected", isExecutive ? "false" : "true");
+      }
+      if (this._lastAnalyticsViewContext) this._renderAnalyticsViews();
+      if (!isExecutive) {
+        requestAnimationFrame(() => this.requestLayoutUpdate());
+      }
+    }
+
+    _handleMaterialityChange() {
+      this._materialityMinValue = Math.max(0, Number(this._materialityValueInput ? this._materialityValueInput.value : 0) || 0);
+      this._materialityMinPct = Math.max(0, Number(this._materialityPctInput ? this._materialityPctInput.value : 0) || 0);
+      this._renderAnalyticsViews();
+    }
+
+    _getFilteredInsightRows(rows) {
+      const minAbsValue = this._materialityMinValue * 1000000;
+      const minAbsPct = this._materialityMinPct;
+      return (rows || []).filter(item => (
+        Math.abs(item.desvio) >= minAbsValue &&
+        Math.abs(item.pctVar) >= minAbsPct
+      ));
+    }
+
+    _getForecastSummary(context) {
+      const elapsedMonths = Math.max(1, context.currentBarNode.monthNum);
+      const remainingMonths = Math.max(0, 12 - elapsedMonths);
+      const monthlyRunRate = context.totalRealizadoYTDAtual / elapsedMonths;
+      const monthlyBudgetRunRate = context.totalBudgetYTDCompleto / elapsedMonths;
+      const projectedActual = context.totalRealizadoYTDAtual + (monthlyRunRate * remainingMonths);
+      const projectedBudget = context.totalBudgetYTDCompleto + (monthlyBudgetRunRate * remainingMonths);
+      const projectedGap = projectedActual - projectedBudget;
+      const projectedPct = projectedBudget !== 0 ? (projectedGap / projectedBudget) * 100 : 0;
+      return { elapsedMonths, remainingMonths, projectedActual, projectedBudget, projectedGap, projectedPct };
+    }
+
+    _getRiskState(context, forecastSummary) {
+      const absProjectedPct = Math.abs(forecastSummary.projectedPct);
+      if (forecastSummary.projectedGap <= 0 && absProjectedPct <= 5) {
+        return { label: "Controlado", className: "good", description: "Forecast dentro do orçamento projetado." };
+      }
+      if (forecastSummary.projectedGap <= 0 || absProjectedPct <= 10) {
+        return { label: "Acompanhar", className: "watch", description: "Pressão moderada no fechamento projetado." };
+      }
+      return { label: "Atenção", className: "alert", description: "Risco material de estouro no fechamento." };
+    }
+
+    _renderAnalyticsViews() {
+      if (!this._lastAnalyticsViewContext) return;
+      const context = this._lastAnalyticsViewContext;
+      const filteredRows = this._getFilteredInsightRows(context.analysis.waterfallTable);
+      const detailRows = this._getFilteredInsightRows(context.analysis.outlierTable);
+      this._pendingHighlightDetailItems = detailRows;
+      this._highlightDetailRendered = false;
+      if (this._highlightToggleBtn) {
+        this._setStyle(this._highlightToggleBtn, "display", detailRows.length > 0 ? "inline-flex" : "none");
+      }
+      if (this._isHighlightDetailOpen) this._renderHighlightDetailItems();
+      this._renderExecutiveView(context, filteredRows);
+    }
+
+    _renderExecutiveView(context, filteredRows) {
+      if (!this._executiveView) return;
+      const formatM = (value) => `${value >= 0 ? "" : "-"}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
+      const forecast = this._getForecastSummary(context);
+      const risk = this._getRiskState(context, forecast);
+      const ytdGapText = `${context.diffYtdNominal >= 0 ? "+" : ""}${(context.diffYtdNominal / 1000000).toFixed(2)}M`;
+      const forecastGapText = `${forecast.projectedGap >= 0 ? "+" : ""}${(forecast.projectedGap / 1000000).toFixed(2)}M`;
+
+      this._setText(this._execActualYtd, formatM(context.totalRealizadoYTDAtual));
+      this._setText(this._execActualYtdSub, `Desvio atual ${ytdGapText} vs orçamento YTD`);
+      this._setText(this._execForecast, formatM(forecast.projectedActual));
+      this._setText(this._execForecastSub, `Baseado em run rate de ${forecast.elapsedMonths} mês(es)`);
+      this._setText(this._execProjectedGap, formatM(forecast.projectedGap));
+      this._setText(this._execProjectedGapSub, `${forecastGapText} vs orçamento projetado`);
+      this._setClass(this._execRiskPill, `risk-pill ${risk.className}`);
+      this._setText(this._execRiskPill, risk.label);
+      this._setText(this._execRiskSub, risk.description);
+
+      this._renderWaterfall(filteredRows, context.totalBudgetYTDCompleto, context.totalRealizadoYTDAtual);
+      this._renderExecutiveSummary(context, filteredRows, forecast, risk);
+    }
+
+    _renderWaterfall(rows, budgetYtd, actualYtd) {
+      if (!this._waterfallChart) return;
+      this._waterfallChart.textContent = "";
+
+      const strongestRows = [...rows]
+        .sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio))
+        .slice(0, 6);
+      const explainedGap = strongestRows.reduce((sum, item) => sum + item.desvio, 0);
+      const residualGap = actualYtd - budgetYtd - explainedGap;
+      const steps = [
+        { label: "Orçamento YTD", value: budgetYtd, type: "total" },
+        ...strongestRows.map(item => ({ label: item.itemName, delta: item.desvio, type: item.desvio >= 0 ? "positive" : "negative" })),
+        ...(Math.abs(residualGap) > 0.00001 ? [{ label: "Demais itens", delta: residualGap, type: residualGap >= 0 ? "positive" : "negative" }] : []),
+        { label: "Realizado YTD", value: actualYtd, type: "total" }
+      ];
+
+      let current = budgetYtd;
+      const levels = [budgetYtd, actualYtd];
+      steps.forEach(step => {
+        if (step.delta !== undefined) {
+          levels.push(current, current + step.delta);
+          current += step.delta;
+        }
+      });
+      const minLevel = Math.min(...levels, 0);
+      const maxLevel = Math.max(...levels, 1);
+      const range = maxLevel - minLevel || 1;
+      current = budgetYtd;
+      const fragment = document.createDocumentFragment();
+
+      steps.forEach(step => {
+        let startValue;
+        let endValue;
+        if (step.type === "total") {
+          startValue = minLevel;
+          endValue = step.value;
+        } else {
+          startValue = current;
+          endValue = current + step.delta;
+          current = endValue;
+        }
+        const lower = Math.min(startValue, endValue);
+        const upper = Math.max(startValue, endValue);
+        const bottomPct = ((lower - minLevel) / range) * 100;
+        const heightPct = Math.max(((upper - lower) / range) * 100, 2);
+        const shownValue = step.type === "total" ? step.value : step.delta;
+
+        const stepEl = document.createElement("div");
+        stepEl.className = "waterfall-step";
+        const valueEl = document.createElement("div");
+        valueEl.className = "waterfall-value";
+        valueEl.textContent = `${shownValue >= 0 ? "" : "-"}R$ ${Math.abs(shownValue / 1000000).toFixed(2)}M`;
+        const wrapEl = document.createElement("div");
+        wrapEl.className = "waterfall-bar-wrap";
+        const barEl = document.createElement("div");
+        barEl.className = `waterfall-bar ${step.type}`;
+        barEl.style.bottom = `${bottomPct}%`;
+        barEl.style.height = `${heightPct}%`;
+        const labelEl = document.createElement("div");
+        labelEl.className = "waterfall-label";
+        labelEl.textContent = step.label;
+        wrapEl.appendChild(barEl);
+        stepEl.appendChild(valueEl);
+        stepEl.appendChild(wrapEl);
+        stepEl.appendChild(labelEl);
+        fragment.appendChild(stepEl);
+      });
+
+      this._waterfallChart.appendChild(fragment);
+    }
+
+    _renderExecutiveSummary(context, filteredRows, forecast, risk) {
+      if (!this._executiveSummaryList) return;
+      this._executiveSummaryList.textContent = "";
+      const fragment = document.createDocumentFragment();
+      const topDrivers = [...filteredRows].sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio)).slice(0, 3);
+      const concentration = context.diffYtdNominal !== 0
+        ? (topDrivers.reduce((sum, item) => sum + Math.abs(item.desvio), 0) / Math.abs(context.diffYtdNominal)) * 100
+        : 0;
+      const bullets = [
+        `O YTD encerra com ${context.diffYtdNominal <= 0 ? "variação favorável" : "variação desfavorável"} de R$ ${Math.abs(context.diffYtdNominal / 1000000).toFixed(2)}M.`,
+        `O forecast projeta R$ ${(forecast.projectedActual / 1000000).toFixed(2)}M no fechamento e mantém o status ${risk.label.toLowerCase()}.`,
+        topDrivers.length > 0
+          ? `Os ${topDrivers.length} maiores drivers explicam ${Math.min(concentration, 999).toFixed(1)}% da variação YTD filtrada.`
+          : "Nenhum driver ultrapassa os filtros de materialidade definidos."
+      ];
+      bullets.forEach(text => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        fragment.appendChild(li);
+      });
+      this._executiveSummaryList.appendChild(fragment);
+    }
+
+    async _exportCurrentViewToPpt() {
+      if (!this._widgetWrapper || !this._exportPptBtn) return;
+      const originalLabel = this._exportPptBtn.textContent;
+      try {
+        const snapshot = await this._captureWidgetPng();
+        this._exportPptBtn.disabled = true;
+        this._setText(this._exportPptBtn, "Gerando PPT...");
+        const pptBlob = this._buildPptxBlob(snapshot.dataUrl, snapshot.width, snapshot.height);
+        const url = URL.createObjectURL(pptBlob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `performance-summary-${this._activeView}.pptx`;
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        console.error("Falha ao exportar PPT", error);
+      } finally {
+        this._exportPptBtn.disabled = false;
+        this._setText(this._exportPptBtn, originalLabel);
+      }
+    }
+
+    async _captureWidgetPng() {
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch (e) { /* no-op */ }
+      }
+
+      const rect = this._widgetWrapper.getBoundingClientRect();
+      const width = Math.max(1, Math.ceil(rect.width));
+      const height = Math.max(1, Math.ceil(rect.height));
+      const clone = this._widgetWrapper.cloneNode(true);
+      const sourceInputs = this._widgetWrapper.querySelectorAll("input");
+      const cloneInputs = clone.querySelectorAll("input");
+      sourceInputs.forEach((input, index) => {
+        const cloneInput = cloneInputs[index];
+        if (!cloneInput) return;
+        cloneInput.setAttribute("value", input.value);
+        if (input.checked) cloneInput.setAttribute("checked", "checked");
+        else cloneInput.removeAttribute("checked");
+      });
+      const styles = Array.from(this._shadowRoot.querySelectorAll("style"))
+        .map(style => style.textContent.replace(/:host/g, ".export-host"))
+        .join("\n");
+      const serialized = new XMLSerializer().serializeToString(clone);
+      const sizeAttr = this.getAttribute("data-size") || "regular";
+      const layoutAttr = this.getAttribute("data-layout") || "split";
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <foreignObject width="100%" height="100%">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="export-host" data-size="${sizeAttr}" data-layout="${layoutAttr}" style="width:${width}px;height:${height}px;">
+              <style>${styles}</style>
+              ${serialized}
+            </div>
+          </foreignObject>
+        </svg>
+      `;
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = svgUrl;
+      });
+      const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.drawImage(image, 0, 0, width, height);
+      return { dataUrl: canvas.toDataURL("image/png"), width, height };
+    }
+
+    _buildPptxBlob(pngDataUrl, width, height) {
+      const encoder = new TextEncoder();
+      const pngBytes = this._base64ToBytes(pngDataUrl.split(",")[1]);
+      const slideWidth = 12192000;
+      const slideHeight = Math.round(slideWidth * (height / width));
+      const now = new Date().toISOString();
+      const entries = [
+        {
+          path: "[Content_Types].xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+              <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+              <Default Extension="xml" ContentType="application/xml"/>
+              <Default Extension="png" ContentType="image/png"/>
+              <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+              <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+              <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+              <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+              <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+              <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+              <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+            </Types>`)
+        },
+        {
+          path: "_rels/.rels",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+              <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+            </Relationships>`)
+        },
+        {
+          path: "docProps/core.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+              <dc:title>Performance Summary</dc:title>
+              <dc:creator>Performance Summary Widget</dc:creator>
+              <cp:lastModifiedBy>Performance Summary Widget</cp:lastModifiedBy>
+              <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
+              <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
+            </cp:coreProperties>`)
+        },
+        {
+          path: "docProps/app.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+              <Application>Performance Summary Widget</Application>
+              <Slides>1</Slides>
+            </Properties>`)
+        },
+        {
+          path: "ppt/presentation.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+              <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+              <p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst>
+              <p:sldSz cx="${slideWidth}" cy="${slideHeight}" type="custom"/>
+              <p:notesSz cx="6858000" cy="9144000"/>
+            </p:presentation>`)
+        },
+        {
+          path: "ppt/_rels/presentation.xml.rels",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+            </Relationships>`)
+        },
+        {
+          path: "ppt/slides/slide1.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+              <p:cSld><p:spTree>
+                <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+                <p:grpSpPr/>
+                <p:pic>
+                  <p:nvPicPr><p:cNvPr id="2" name="Widget Snapshot"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>
+                  <p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+                  <p:spPr>
+                    <a:xfrm><a:off x="0" y="0"/><a:ext cx="${slideWidth}" cy="${slideHeight}"/></a:xfrm>
+                    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                  </p:spPr>
+                </p:pic>
+              </p:spTree></p:cSld>
+              <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+            </p:sld>`)
+        },
+        {
+          path: "ppt/slides/_rels/slide1.xml.rels",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>
+            </Relationships>`)
+        },
+        {
+          path: "ppt/slideMasters/slideMaster1.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+              <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
+              <p:clrMap accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" bg1="lt1" bg2="lt2" folHlink="folHlink" hlink="hlink" tx1="dk1" tx2="dk2"/>
+              <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
+              <p:txStyles/>
+            </p:sldMaster>`)
+        },
+        {
+          path: "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+            </Relationships>`)
+        },
+        {
+          path: "ppt/slideLayouts/slideLayout1.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
+              <p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
+              <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+            </p:sldLayout>`)
+        },
+        {
+          path: "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+            </Relationships>`)
+        },
+        {
+          path: "ppt/theme/theme1.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
+              <a:themeElements>
+                <a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2><a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2><a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme>
+                <a:fontScheme name="Office">
+                  <a:majorFont><a:latin typeface="Arial"/></a:majorFont>
+                  <a:minorFont><a:latin typeface="Arial"/></a:minorFont>
+                </a:fontScheme>
+                <a:fmtScheme name="Office">
+                  <a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
+                  <a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
+                  <a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
+                  <a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst>
+                </a:fmtScheme>
+              </a:themeElements>
+            </a:theme>`)
+        },
+        { path: "ppt/media/image1.png", data: pngBytes }
+      ];
+      return new Blob([this._zipEntries(entries)], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+    }
+
+    _base64ToBytes(base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    _zipEntries(entries) {
+      const encoder = new TextEncoder();
+      const localFiles = [];
+      const centralFiles = [];
+      let offset = 0;
+      entries.forEach(entry => {
+        const nameBytes = encoder.encode(entry.path);
+        const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data);
+        const crc = this._crc32(data);
+        const localHeader = this._concatBytes([
+          this._u32(0x04034b50), this._u16(20), this._u16(0), this._u16(0), this._u16(0), this._u16(0),
+          this._u32(crc), this._u32(data.length), this._u32(data.length), this._u16(nameBytes.length), this._u16(0), nameBytes
+        ]);
+        localFiles.push(localHeader, data);
+
+        const centralHeader = this._concatBytes([
+          this._u32(0x02014b50), this._u16(20), this._u16(20), this._u16(0), this._u16(0), this._u16(0), this._u16(0),
+          this._u32(crc), this._u32(data.length), this._u32(data.length), this._u16(nameBytes.length), this._u16(0), this._u16(0),
+          this._u16(0), this._u16(0), this._u32(0), this._u32(offset), nameBytes
+        ]);
+        centralFiles.push(centralHeader);
+        offset += localHeader.length + data.length;
+      });
+      const centralDirectory = this._concatBytes(centralFiles);
+      const localSection = this._concatBytes(localFiles);
+      const endRecord = this._concatBytes([
+        this._u32(0x06054b50), this._u16(0), this._u16(0), this._u16(entries.length), this._u16(entries.length),
+        this._u32(centralDirectory.length), this._u32(localSection.length), this._u16(0)
+      ]);
+      return this._concatBytes([localSection, centralDirectory, endRecord]);
+    }
+
+    _crc32(bytes) {
+      let crc = -1;
+      for (let i = 0; i < bytes.length; i++) {
+        crc ^= bytes[i];
+        for (let j = 0; j < 8; j++) {
+          crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+        }
+      }
+      return (crc ^ -1) >>> 0;
+    }
+
+    _u16(value) {
+      return new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
+    }
+
+    _u32(value) {
+      return new Uint8Array([value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff]);
+    }
+
+    _concatBytes(chunks) {
+      const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const output = new Uint8Array(total);
+      let offset = 0;
+      chunks.forEach(chunk => {
+        output.set(chunk, offset);
+        offset += chunk.length;
+      });
+      return output;
     }
 
     _toggleDropdownDOM() {
@@ -2061,10 +2676,16 @@
         this._setStyle(this._highlightToggleBtn, "display", analysis.outlierTable.length > 0 ? "inline-flex" : "none");
       }
 
-      this._pendingHighlightDetailItems = analysis.outlierTable;
-      if (this._isHighlightDetailOpen) {
-        this._renderHighlightDetailItems();
-      }
+      this._lastAnalyticsViewContext = {
+        currentBarNode,
+        diffYtdNominal,
+        diffYtdPercent,
+        totalRealizadoYTDAtual,
+        totalRealizadoYTDAntigo,
+        totalBudgetYTDCompleto,
+        analysis
+      };
+      this._renderAnalyticsViews();
 
       if (ENABLE_TELEMETRY) {
         this._profiler.metrics.steps.highlights = performance.now() - tHLStart;
