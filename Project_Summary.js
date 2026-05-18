@@ -28,112 +28,39 @@
         overflow-x: hidden;
       }
 
-      .widget-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 14px;
-        border-bottom: 1px solid #f0f0f0;
-        padding-bottom: 8px;
-        flex-shrink: 0;
-        gap: 12px;
-      }
+      .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex-shrink: 0; gap: 12px; }
+      .header-left-block { display: flex; flex-direction: column; }
+      .widget-title { font-size: 13px; font-weight: 700; color: #2c3e50; }
+      .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
 
-      .header-left-block {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .widget-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #2c3e50;
-      }
-
-      .filter-container-finance {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        z-index: 100;
-      }
-
-      .filter-label-finance {
-        font-size: 11px;
-        font-weight: 600;
-        color: #4a5568;
-      }
+      .filter-container-finance { position: relative; display: flex; align-items: center; gap: 6px; z-index: 100; }
+      .filter-label-finance { font-size: 11px; font-weight: 600; color: #4a5568; }
 
       .tree-dropdown-trigger {
-        font-size: 11px;
-        font-weight: 700;
-        color: #2d3748;
-        background-color: #f8fafc;
-        border: 1px solid #cbd5e0;
-        border-radius: 6px;
-        padding: 4px 28px 4px 10px;
-        cursor: pointer;
-        min-width: 120px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        font-size: 11px; font-weight: 700; color: #2d3748; background-color: #f8fafc; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 28px 4px 10px; cursor: pointer; min-width: 120px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 8px center;
-        background-size: 12px;
-        user-select: none;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        overflow: hidden;
+        background-repeat: no-repeat; background-position: right 8px center; background-size: 12px; user-select: none; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
       }
 
       .tree-dropdown-content {
-        display: none;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        margin-top: 4px;
-        background: #ffffff;
-        border: 1px solid #cbd5e0;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        max-height: 260px;
-        overflow-y: auto;
-        min-width: 160px;
-        padding: 6px 0;
+        display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
 
       .tree-dropdown-content.show { display: block; }
 
-      .tree-year-node {
-        font-weight: 700;
-        color: #2d3748;
-        padding: 6px 10px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        user-select: none;
-      }
+      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
       .tree-year-node:hover { background-color: #edf2f7; }
-      .tree-year-node::before {
-        content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block;
-      }
+      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
       .tree-year-node.expanded::before { transform: rotate(90deg); }
 
-      .tree-months-container {
-        display: none; flex-direction: column; padding-left: 14px; background: #f7fafc;
-      }
+      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
       .tree-months-container.show { display: flex; }
 
       .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
       .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
       .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
 
-      .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
-
-      .widget-legend {
-        display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0;
-      }
+      .widget-legend { display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0; }
       .legend-item { display: flex; align-items: center; gap: 5px; }
       .legend-color { width: 10px; height: 10px; border-radius: 2px; }
       .legend-color.hist { background-color: var(--color-historical); }
@@ -144,185 +71,78 @@
         background-size: 4px 4px;
       }
 
-      .main-visualization-layout {
-        display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch;
-      }
+      .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
       .visualization-column.monthly-col { flex: 3; }
       .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
 
-      .ytd-chart-header-title {
-        font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto;
-      }
+      .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto; }
       
-      .chart-container-block {
-        position: relative; height: 145px; padding-top: 32px; box-sizing: border-box; width: 100%;
-      }
-      .chart-area {
-        width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; 
-      }
+      /* Aumentado o topo para dar respiro ao teto da linha */
+      .chart-container-block { position: relative; height: 165px; padding-top: 45px; box-sizing: border-box; width: 100%; }
+      .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
-      .bar-wrapper {
-        display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 1;
-      }
-      .bar-element {
-        width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px;
-      }
+      /* SVG OVERLAY - Z-INDEX: 1 (Fica atrás de tudo) */
+      .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+      
+      /* BAR WRAPPERS E BARRAS - Z-INDEX: 2 (Ficam na frente do SVG) */
+      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
+      .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
       .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual {
-        background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box;
-      }
+      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
       .bar-element.budget {
         background-color: transparent; border: 1px solid var(--color-budget); border-bottom: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
       }
       
-      .kpi-label { position: absolute; top: -20px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; }
-      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -22px; }
+      /* KPI LABEL - MÁSCARA MÁGICA: Fundo branco para cobrir a linha que passa atrás, Z-INDEX 3 */
+      .kpi-label { 
+        position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; 
+        background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3;
+      }
+      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; top: -24px; }
       
       .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
       .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
       .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
-
-      /* ==========================================================================
-         GRID INTEGRADO DE PERFORMANCE E INSIGHTS (OTIMIZADO)
-         ========================================================================== */
-      .insight-grid {
-        display: grid;
-        grid-template-columns: 1.2fr 1fr;
-        gap: 24px;
-        margin-top: auto;
-        padding-top: 16px;
-        border-top: 1px solid #e2e8f0;
-        flex-shrink: 0;
-        width: 100%;
+      
+      .variance-tag {
+        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); white-space: nowrap; border: 1px solid transparent; display: inline-block; position: relative; z-index: 4;
       }
+      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border-color: #ceead6; }
+      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border-color: #fad2cf; }
+
+      .insight-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-top: auto; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-shrink: 0; width: 100%; }
       @media (max-width: 768px) { .insight-grid { grid-template-columns: 1fr; gap: 16px; } }
 
-      .grid-column-finance {
-        display: flex;
-        flex-direction: column;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 14px 16px;
-      }
+      .grid-column-finance { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
 
-      .column-title-finance {
-        font-size: 11px;
-        font-weight: 700;
-        color: #4a5568;
-        text-transform: uppercase;
-        letter-spacing: 0.75px;
-        margin-bottom: 12px;
-        padding-bottom: 6px;
-        border-bottom: 2px solid #cbd5e0;
-      }
+      .column-title-finance { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
 
-      .panel-content-rows {
-        display: flex;
-        flex-direction: column;
-        gap: 1px;
-        background-color: #e2e8f0; 
-        border-radius: 4px;
-        overflow: hidden;
-      }
+      .panel-content-rows { display: flex; flex-direction: column; gap: 1px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; }
 
-      .data-row-item {
-        display: grid;
-        grid-template-columns: 1.8fr 1fr 1fr;
-        align-items: center;
-        background: #ffffff;
-        padding: 8px 12px;
-        font-size: calc(var(--font-size-labels) - 0.5px);
-        color: #2d3748;
-        gap: 8px;
-      }
+      .data-row-item { display: grid; grid-template-columns: 1.8fr 1fr 1fr; align-items: center; background: #ffffff; padding: 8px 12px; font-size: calc(var(--font-size-labels) - 0.5px); color: #2d3748; gap: 8px; }
 
-      .cell-label {
-        font-weight: 600;
-        color: #4a5568;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .cell-label::before {
-        content: ''; width: 4px; height: 12px; background: #cbd5e0; border-radius: 2px; display: inline-block; flex-shrink: 0;
-      }
+      .cell-label { font-weight: 600; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+      .cell-label::before { content: ''; width: 4px; height: 12px; background: #cbd5e0; border-radius: 2px; display: inline-block; flex-shrink: 0; }
       .row-m-style .cell-label::before { background: var(--color-actual); }
       .row-ytd-style .cell-label::before { background: #2b6cb0; }
 
-      .cell-value {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-        font-weight: 700;
-        color: #1e293b;
-        white-space: nowrap;
-      }
+      .cell-value { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1e293b; white-space: nowrap; }
 
-      .cell-status-wrapper {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-      }
+      .cell-status-wrapper { display: flex; justify-content: flex-end; align-items: center; }
 
-      .status-badge-finance {
-        font-size: 10px;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 4px;
-        text-align: center;
-        white-space: nowrap;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 75px;
-        box-sizing: border-box;
-      }
+      .status-badge-finance { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-width: 75px; box-sizing: border-box; }
       .status-badge-finance.success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
       .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; border: 1px solid #e8eaed; }
 
-      /* AREA DE HIGHLIGHTS DINÂMICOS */
-      .highlight-card-area {
-        display: flex;
-        flex-direction: column;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 14px 16px;
-      }
-      .highlight-title-box {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        font-weight: 700;
-        color: #1e293b;
-        text-transform: uppercase;
-        letter-spacing: 0.75px;
-        margin-bottom: 12px;
-        padding-bottom: 6px;
-        border-bottom: 2px solid #cbd5e0;
-      }
-      .highlight-icon-box {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
-      }
-      .highlight-content-text {
-        font-size: 11.5px;
-        line-height: 1.5;
-        color: #4a5568;
-        font-weight: 500;
-        text-align: justify;
-      }
+      .highlight-card-area { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
+      .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      .highlight-icon-box { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+      .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; text-align: justify; }
 
       .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
@@ -349,7 +169,9 @@
       <div class="main-visualization-layout">
         <div class="monthly-col visualization-column">
           <div class="chart-container-block">
-            <div class="chart-area" id="chartArea"></div>
+            <div class="chart-area" id="chartArea">
+              <svg class="svg-overlay" id="svgOverlay"></svg>
+            </div>
           </div>
           <div class="axis-x-block">
             <div class="axis-x" id="axisX"></div>
@@ -360,6 +182,7 @@
           <div class="ytd-chart-header-title">Evolução YTD Acumulada</div>
           <div class="chart-container-block">
             <div class="chart-area" id="ytdChartArea">
+              <svg class="svg-overlay" id="svgYtdOverlay"></svg>
               <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
               <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
               <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
@@ -434,6 +257,8 @@
         
         this._chartArea = this._shadowRoot.getElementById("chartArea");
         this._ytdChartArea = this._shadowRoot.getElementById("ytdChartArea");
+        this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
+        this._svgYtdOverlay = this._shadowRoot.getElementById("svgYtdOverlay");
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
@@ -531,6 +356,12 @@
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach(el => el.remove());
       this._axisX.textContent = "";
+
+      this._svgOverlay.querySelectorAll('path').forEach(el => el.remove());
+      this._svgOverlay.querySelectorAll('foreignObject').forEach(el => el.remove());
+      this._svgYtdOverlay.querySelectorAll('path').forEach(el => el.remove());
+      this._svgYtdOverlay.querySelectorAll('foreignObject').forEach(el => el.remove());
+
       this._insightGrid.style.display = "none";
     }
 
@@ -725,24 +556,104 @@
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.25 || 1;
+        const barElements = [];
 
         visibleSeriesData.forEach((d) => {
           const barWrapper = document.createElement("div"); barWrapper.className = "bar-wrapper";
           const barElement = document.createElement("div"); barElement.className = "bar-element";
           barElement.style.height = `${(d.value / maxVal) * 100}%`; barElement.classList.add(d.type);
           const kpiLabel = document.createElement("span"); kpiLabel.className = "kpi-label"; kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
-          barElement.appendChild(kpiLabel); barWrapper.appendChild(barElement); this._chartArea.appendChild(barWrapper);
+          barElement.appendChild(kpiLabel); barWrapper.appendChild(barElement); this._chartArea.appendChild(barWrapper); barElements.push(barElement);
           
           const axisLabel = document.createElement("div"); axisLabel.className = "axis-label"; axisLabel.textContent = d.label;
           if (d.type === "actual") axisLabel.classList.add("actual-month");
           this._axisX.appendChild(axisLabel);
         });
 
+        /* TIMEOUT DE SEGURANÇA: Garante que as linhas do SVG desenhem APÓS as larguras da tela estarem corretas */
+        setTimeout(() => {
+          this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
+          
+          const ytdBars = [this._miniBarPrev, this._miniBarAct, this._miniBarBud];
+          this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ytdBars, this._ytdSeriesMock, 1, "ytd");
+        }, 50);
+
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
       }
+    }
+
+    /* ==========================================================================
+       A SOLUÇÃO DO OVO DE COLOMBO: O SVG DESCE ATÉ O CHÃO E FICA ATRÁS DA BARRA
+       ========================================================================== */
+    _drawUnifiedFlatConnections(svg, container, barElements, dataArray, actualIndex, mode) {
+      if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
+      const containerHeight = container.offsetHeight; 
+      if (containerHeight === 0) return;
+      
+      const pairs = [];
+      if (mode === "monthly") {
+        if (actualIndex > 0) pairs.push({ from: actualIndex - 1, to: actualIndex });
+        if (actualIndex < barElements.length - 1) pairs.push({ from: actualIndex, to: actualIndex + 1 });
+      } else if (mode === "ytd") {
+        pairs.push({ from: 0, to: 1 });
+        pairs.push({ from: 1, to: 2 });
+      }
+
+      // Calcula apenas o eixo X (o centro da coluna)
+      const getCenterX = (idx) => {
+        const bar = barElements[idx]; if (!bar) return 0;
+        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
+      };
+
+      // Teto fixo (passa folgado acima dos números). O Chão é o final da div do gráfico.
+      const ceilingY = 16;
+      const floorY = containerHeight; 
+      
+      pairs.forEach((pair) => {
+        const xFrom = getCenterX(pair.from); 
+        const xTo = getCenterX(pair.to);
+        if (xFrom === 0 || xTo === 0) return;
+        
+        const val1 = dataArray[pair.from].value; 
+        const val2 = dataArray[pair.to].value;
+        const diff = val2 - val1; 
+        let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
+        
+        // Regra Contábil Correta: Gastar menos (<=0) é Verde (Saving)
+        const isCostSaving = diff <= 0;
+        
+        if (!isCostSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
+        else if (isCostSaving && variancePercent > 0) { variancePercent = -variancePercent; }
+        
+        const directionalArrow = isCostSaving ? "▼ " : "▲ ";
+        const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
+
+        // A MÁGICA: A linha faz um quadrado que desce até o chão (onde é escondida pelas barras)
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
+        path.setAttribute("stroke", "#cbd5e0"); 
+        path.setAttribute("stroke-width", "1.25"); 
+        path.setAttribute("fill", "none"); 
+        svg.appendChild(path);
+        
+        // Tag isolada flutuando na parte horizontal do quadrado
+        const midX = xFrom + (xTo - xFrom) / 2;
+        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        foreignObj.setAttribute("x", (midX - 35).toString()); 
+        foreignObj.setAttribute("y", (ceilingY - 11).toString()); 
+        foreignObj.setAttribute("width", "70"); 
+        foreignObj.setAttribute("height", "22");
+        
+        const div = document.createElement("div"); 
+        div.style.display = "flex"; div.style.justifyContent = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
+        const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
+        
+        if (isCostSaving) { span.classList.add("saving"); } else { span.classList.add("increase"); }
+        div.appendChild(span); foreignObj.appendChild(div); svg.appendChild(foreignObj);
+      });
     }
 
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
@@ -761,11 +672,13 @@
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
+      // 1. DADOS DO MÊS ATUAL
       this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
       this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
       this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
       this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
 
+      // 2. LÓGICA DO YTD
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
@@ -794,6 +707,7 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
+      // 3. GRÁFICO E MOCK YTD
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
@@ -806,14 +720,21 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
-      const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
+      this._ytdSeriesMock = [
+        { value: totalRealizadoYTDAntigo },
+        { value: totalRealizadoYTDAtual },
+        { value: totalBudgetYTDCompleto }
+      ];
 
+      // 4. TEXTO DINÂMICO
+      const monthStatusText = isMonthSaving ? "economia de custos" : "aumento de despesas";
+      const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
+      
       this._highlightContentText.innerHTML = `
         <ul style="margin: 0; padding-left: 16px; font-size: 11.5px; color: #4a5568; line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
-            <li><strong>Mês Corrente (${monthLabel}):</strong> Fechamento com ${monthStatusLabel} de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.</li>
-            <li><strong>Consumo Operacional:</strong> A absorção atingiu ${(consumptionMonthPercent).toFixed(1)}% do planejado para a competência.</li>
-            <li><strong>Posicionamento YTD:</strong> O acumulado consolidou um desvio ${ytdStatusLabel}, absorvendo ${(consumoBudgetPercent).toFixed(1)}% da meta anual.</li>
+            <li><strong>Mês Corrente (${monthLabel}):</strong> Fechamento com ${monthStatusText} de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.</li>
+            <li><strong>Consumo Operacional:</strong> A absorção atingiu ${(consumptionMonthPercent).toFixed(1)}% do orçamento da competência.</li>
+            <li><strong>Posicionamento YTD:</strong> Acumulado com desvio ${ytdStatusText}, consumindo ${(consumoBudgetPercent).toFixed(1)}% do ano.</li>
         </ul>
       `;
 
@@ -833,32 +754,17 @@
 })();
 
 /* ==========================================================================
-   PAINEL DE CONFIGURAÇÃO INTEGRADO (METODOLOGIA DE ARQUIVO ÚNICO)
+   PAINEL DE CONFIGURAÇÃO INTEGRADO
    ========================================================================== */
 (function () {
   const templateStyling = document.createElement("template");
   templateStyling.innerHTML = `
     <style>
-      #root {
-        padding: 14px;
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 11px;
-        color: #2c3e50;
-      }
+      #root { padding: 14px; font-family: system-ui, -apple-system, sans-serif; font-size: 11px; color: #2c3e50; }
       .control-group { margin-bottom: 12px; }
-      label {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      input[type="color"] {
-        display: block; width: 100%; height: 28px; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer; background: #ffffff;
-      }
-      input[type="number"] {
-        width: 100%; height: 26px; border: 1px solid #cbd5e0; border-radius: 4px; padding-left: 6px; box-sizing: border-box;
-      }
+      label { display: block; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+      input[type="color"] { display: block; width: 100%; height: 28px; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer; background: #ffffff; }
+      input[type="number"] { width: 100%; height: 26px; border: 1px solid #cbd5e0; border-radius: 4px; padding-left: 6px; box-sizing: border-box; }
     </style>
     <div id="root">
       <div class="control-group">
@@ -885,7 +791,6 @@
       super();
       this._shadowRoot = this.attachShadow({ mode: "open" });
       this._shadowRoot.appendChild(templateStyling.content.cloneNode(true));
-
       this._changeProperty = this._changeProperty.bind(this);
 
       this._shadowRoot.getElementById("cls-act").addEventListener("change", (e) => this._changeProperty("colorActualMonth", e.target.value));
