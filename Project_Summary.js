@@ -308,7 +308,16 @@
       .bar-tooltip-list { display: flex; flex-direction: column; gap: 6px; }
       .bar-tooltip-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; font-size: var(--ui-font-size); }
       .bar-tooltip-name { color: #334155; min-width: 0; word-break: break-word; }
+      .bar-tooltip-value-wrap { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
       .bar-tooltip-value { color: #0f172a; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .bar-tooltip-delta-tag {
+        display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 999px;
+        font-size: calc(var(--small-font-size) - 0.5px); font-weight: 700; white-space: nowrap; border: 1px solid transparent;
+      }
+      .bar-tooltip-delta-tag.up { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
+      .bar-tooltip-delta-tag.down { background: #e6f4ea; color: #137333; border-color: #ceead6; }
+      .bar-tooltip-delta-tag.flat,
+      .bar-tooltip-delta-tag.na { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
       .bar-tooltip-empty { font-size: var(--ui-font-size); color: #64748b; }
       :host([data-layout="stacked"]) .widget-header { align-items: flex-start; flex-direction: column; }
       :host([data-layout="stacked"]) .filter-container-finance { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
@@ -960,9 +969,13 @@
       map[name] = (map[name] || 0) + value;
     }
 
-    _buildTooltipItems(compositionMap) {
+    _buildTooltipItems(compositionMap, previousCompositionMap) {
       return Object.entries(compositionMap || {})
-        .map(([name, value]) => ({ name, value }))
+        .map(([name, value]) => ({
+          name,
+          value,
+          previousValue: previousCompositionMap && previousCompositionMap[name] !== undefined ? previousCompositionMap[name] : null
+        }))
         .filter(item => Math.abs(item.value) > 0)
         .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
     }
@@ -972,12 +985,34 @@
       return `${sign}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
     }
 
+    _getTooltipDelta(item) {
+      if (!item || item.previousValue === null || item.previousValue === undefined) {
+        return { label: "Sem base", className: "na" };
+      }
+      if (Math.abs(item.previousValue) < 0.00001) {
+        return { label: "Nova base", className: "na" };
+      }
+
+      const deltaPct = ((item.value - item.previousValue) / Math.abs(item.previousValue)) * 100;
+      if (Math.abs(deltaPct) < 0.05) {
+        return { label: "0.0%", className: "flat" };
+      }
+
+      return {
+        label: `${deltaPct > 0 ? "▲" : "▼"} ${Math.abs(deltaPct).toFixed(1)}%`,
+        className: deltaPct > 0 ? "up" : "down"
+      };
+    }
+
     _getTooltipPayload(seriesData) {
       if (!seriesData) return null;
       const compositionMap = seriesData.type === "budget"
         ? seriesData.compositionBudget
         : seriesData.compositionRealizado;
-      const items = this._buildTooltipItems(compositionMap);
+      const previousCompositionMap = seriesData.type === "budget"
+        ? (seriesData.previousSeriesData ? seriesData.previousSeriesData.compositionBudget : null)
+        : (seriesData.previousSeriesData ? seriesData.previousSeriesData.compositionRealizado : null);
+      const items = this._buildTooltipItems(compositionMap, previousCompositionMap);
       if (items.length === 0) return null;
 
       const scopeLabel = seriesData.type === "budget" ? "Orçado" : "Realizado";
@@ -990,9 +1025,10 @@
 
     _renderBarTooltip(payload) {
       if (!this._barTooltip || !payload) return;
-      const rows = payload.items.map(item => (
-        `<div class="bar-tooltip-row"><span class="bar-tooltip-name">${this._escapeHtml(item.name)}</span><span class="bar-tooltip-value">${this._escapeHtml(this._formatTooltipValue(item.value))}</span></div>`
-      )).join("");
+      const rows = payload.items.map(item => {
+        const delta = this._getTooltipDelta(item);
+        return `<div class="bar-tooltip-row"><span class="bar-tooltip-name">${this._escapeHtml(item.name)}</span><span class="bar-tooltip-value-wrap"><span class="bar-tooltip-delta-tag ${this._escapeHtml(delta.className)}">${this._escapeHtml(delta.label)}</span><span class="bar-tooltip-value">${this._escapeHtml(this._formatTooltipValue(item.value))}</span></span></div>`;
+      }).join("");
 
       this._barTooltip.innerHTML = `
         <div class="bar-tooltip-title">${this._escapeHtml(payload.title)}<span class="bar-tooltip-subtitle">${this._escapeHtml(payload.subtitle)}</span></div>
@@ -1026,7 +1062,7 @@
         return;
       }
 
-      const payloadKey = `${payload.title}|${payload.subtitle}|${payload.items.length}`;
+      const payloadKey = `${payload.title}|${payload.subtitle}|${payload.items.map(item => `${item.name}:${item.value}:${item.previousValue}`).join("|")}`;
       if (!this._activeTooltipPayload || this._activeTooltipPayload !== payloadKey) {
         this._renderBarTooltip(payload);
         this._activeTooltipPayload = payloadKey;
@@ -1368,6 +1404,13 @@
             return a.monthNum - b.monthNum;
           });
 
+          const periodMap = new Map(fullSeriesData.map(item => [`${item.yearValue}-${item.monthNum}`, item]));
+          fullSeriesData.forEach(item => {
+            const previousMonthNum = item.monthNum === 1 ? 12 : item.monthNum - 1;
+            const previousYearValue = item.monthNum === 1 ? item.yearValue - 1 : item.yearValue;
+            item.previousSeriesData = periodMap.get(`${previousYearValue}-${previousMonthNum}`) || null;
+          });
+
           let dynamicIdx = fullSeriesData.findIndex(d => d.yearValue === targetYearNum && d.monthNum === targetMonthNum);
           
           if (dynamicIdx !== -1) {
@@ -1463,7 +1506,7 @@
         if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
 
         visibleSeriesData.push({
-          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum, compositionBudget: targetBudgetSource.orcadoItems || {}
+          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`, value: calculatedBudget, type: "budget", yearValue: fullSeriesData[actualIndex].yearValue, monthNum: fullSeriesData[actualIndex].monthNum, compositionBudget: targetBudgetSource.orcadoItems || {}, previousSeriesData: fullSeriesData[actualIndex].previousSeriesData || null
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
