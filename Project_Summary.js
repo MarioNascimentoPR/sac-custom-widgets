@@ -1,893 +1,865 @@
 (function () {
   const template = document.createElement("template");
-
   template.innerHTML = `
-  <style>
-    :host{
-      --actual:#1f77b4;
-      --hist:#7f7f7f;
-      --budget:#aec7e8;
-      --font:12px;
-
-      display:block;
-      width:100%;
-      height:100%;
-      background:#fff;
-      box-sizing:border-box;
-      overflow:hidden;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-
-    *{
-      box-sizing:border-box;
-    }
-
-    #root{
-      display:flex;
-      flex-direction:column;
-      width:100%;
-      height:100%;
-      padding:14px 18px;
-      overflow:auto;
-      gap:14px;
-    }
-
-    .header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      border-bottom:1px solid #edf2f7;
-      padding-bottom:10px;
-      gap:12px;
-    }
-
-    .title{
-      font-size:13px;
-      font-weight:700;
-      color:#1e293b;
-    }
-
-    .subtitle{
-      font-size:10px;
-      color:#64748b;
-      margin-top:2px;
-    }
-
-    .dropdown{
-      position:relative;
-      min-width:150px;
-    }
-
-    .dropdown-btn{
-      width:100%;
-      padding:6px 28px 6px 10px;
-      border:1px solid #cbd5e1;
-      border-radius:6px;
-      background:#f8fafc;
-      font-size:11px;
-      font-weight:600;
-      cursor:pointer;
-      text-align:left;
-      overflow:hidden;
-      white-space:nowrap;
-      text-overflow:ellipsis;
-      position:relative;
-    }
-
-    .dropdown-btn:after{
-      content:"▼";
-      position:absolute;
-      right:8px;
-      top:50%;
-      transform:translateY(-50%);
-      font-size:9px;
-      color:#64748b;
-    }
-
-    .dropdown-menu{
-      position:absolute;
-      top:calc(100% + 4px);
-      right:0;
-      background:#fff;
-      border:1px solid #cbd5e1;
-      border-radius:8px;
-      min-width:180px;
-      max-height:260px;
-      overflow:auto;
-      display:none;
-      z-index:999;
-      box-shadow:0 8px 24px rgba(0,0,0,.08);
-    }
-
-    .dropdown-menu.show{
-      display:block;
-    }
-
-    .year{
-      padding:8px 10px;
-      font-size:11px;
-      font-weight:700;
-      background:#f8fafc;
-      border-bottom:1px solid #edf2f7;
-    }
-
-    .month{
-      padding:7px 12px;
-      font-size:11px;
-      cursor:pointer;
-      transition:.15s;
-    }
-
-    .month:hover{
-      background:#f1f5f9;
-    }
-
-    .month.selected{
-      background:#dbeafe;
-      color:#0f172a;
-      font-weight:700;
-    }
-
-    .legend{
-      display:flex;
-      gap:16px;
-      flex-wrap:wrap;
-      font-size:10px;
-      color:#475569;
-      font-weight:600;
-    }
-
-    .legend-item{
-      display:flex;
-      align-items:center;
-      gap:6px;
-    }
-
-    .dot{
-      width:10px;
-      height:10px;
-      border-radius:2px;
-    }
-
-    .dot.hist{
-      background:var(--hist);
-    }
-
-    .dot.actual{
-      background:var(--actual);
-    }
-
-    .dot.budget{
-      border:1px solid var(--budget);
-      background:
-      repeating-linear-gradient(
-        45deg,
-        rgba(174,199,232,.5),
-        rgba(174,199,232,.5) 2px,
-        transparent 2px,
-        transparent 4px
-      );
-    }
-
-    .layout{
-      display:grid;
-      grid-template-columns:1fr 260px;
-      gap:24px;
-      min-height:260px;
-    }
-
-    .chart-block{
-      display:flex;
-      flex-direction:column;
-    }
-
-    .chart-wrap{
-      position:relative;
-      height:220px;
-    }
-
-    .chart{
-      height:100%;
-      display:flex;
-      align-items:flex-end;
-      justify-content:center;
-      gap:18px;
-      position:relative;
-      padding-top:35px;
-    }
-
-    .svg{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      pointer-events:none;
-    }
-
-    .bar-col{
-      width:48px;
-      height:100%;
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-end;
-      align-items:center;
-      position:relative;
-    }
-
-    .bar{
-      width:100%;
-      border-radius:4px 4px 0 0;
-      position:relative;
-      transition:height .25s ease;
-    }
-
-    .bar.hist{
-      background:var(--hist);
-    }
-
-    .bar.actual{
-      background:var(--actual);
-      border:1px solid rgba(0,0,0,.1);
-      box-shadow:0 0 12px rgba(31,119,180,.25);
-    }
-
-    .bar.budget{
-      border:1px solid var(--budget);
-      background:
-      repeating-linear-gradient(
-        45deg,
-        rgba(174,199,232,.4),
-        rgba(174,199,232,.4) 4px,
-        transparent 4px,
-        transparent 8px
-      );
-    }
-
-    .value{
-      position:absolute;
-      top:-24px;
-      font-size:11px;
-      font-weight:700;
-      color:#1e293b;
-      white-space:nowrap;
-    }
-
-    .axis{
-      display:flex;
-      justify-content:center;
-      gap:18px;
-      border-top:1px solid #cbd5e1;
-      padding-top:8px;
-      min-height:32px;
-    }
-
-    .axis-label{
-      width:48px;
-      text-align:center;
-      font-size:10px;
-      font-weight:600;
-      color:#64748b;
-    }
-
-    .axis-label.actual{
-      color:var(--actual);
-      font-weight:700;
-    }
-
-    .side{
-      display:flex;
-      flex-direction:column;
-      gap:14px;
-    }
-
-    .card{
-      background:#f8fafc;
-      border:1px solid #e2e8f0;
-      border-radius:10px;
-      padding:14px;
-    }
-
-    .card-title{
-      font-size:11px;
-      font-weight:700;
-      text-transform:uppercase;
-      color:#475569;
-      margin-bottom:12px;
-      border-bottom:1px solid #cbd5e1;
-      padding-bottom:6px;
-    }
-
-    .metric{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:8px 0;
-      border-bottom:1px solid #edf2f7;
-      gap:12px;
-      font-size:11px;
-    }
-
-    .metric:last-child{
-      border-bottom:none;
-    }
-
-    .metric-name{
-      color:#475569;
-      font-weight:600;
-    }
-
-    .metric-value{
-      font-weight:700;
-      color:#0f172a;
-      white-space:nowrap;
-    }
-
-    .badge{
-      padding:2px 7px;
-      border-radius:4px;
-      font-size:10px;
-      font-weight:700;
-      white-space:nowrap;
-    }
-
-    .good{
-      background:#dcfce7;
-      color:#166534;
-    }
-
-    .bad{
-      background:#fee2e2;
-      color:#991b1b;
-    }
-
-    .highlight{
-      font-size:11px;
-      line-height:1.55;
-      color:#475569;
-      text-align:justify;
-    }
-
-    .placeholder{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      height:100%;
-      font-size:12px;
-      color:#64748b;
-      font-weight:600;
-    }
-
-    @media(max-width:900px){
-      .layout{
-        grid-template-columns:1fr;
+    <style>
+      :host {
+        --color-actual: #1f77b4;
+        --color-historical: #7f7f7f;
+        --color-budget: #aec7e8;
+        --font-size-labels: 12px;
+        
+        display: block;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        background: #ffffff;
       }
-    }
-  </style>
+      
+      #widget-wrapper {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        padding: 14px 18px;
+        box-sizing: border-box;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        position: relative;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
 
-  <div id="root">
+      .widget-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 8px;
+        flex-shrink: 0;
+        gap: 12px;
+      }
 
-    <div class="header">
-      <div>
-        <div class="title">Performance Mensal</div>
-        <div class="subtitle">Valores em milhões (M)</div>
+      .header-left-block {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .widget-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #2c3e50;
+      }
+
+      .filter-container-finance {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        z-index: 100;
+      }
+
+      .filter-label-finance {
+        font-size: 11px;
+        font-weight: 600;
+        color: #4a5568;
+      }
+
+      .tree-dropdown-trigger {
+        font-size: 11px;
+        font-weight: 700;
+        color: #2d3748;
+        background-color: #f8fafc;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        padding: 4px 28px 4px 10px;
+        cursor: pointer;
+        min-width: 120px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 12px;
+        user-select: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .tree-dropdown-content {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: #ffffff;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        max-height: 260px;
+        overflow-y: auto;
+        min-width: 160px;
+        padding: 6px 0;
+      }
+
+      .tree-dropdown-content.show { display: block; }
+
+      .tree-year-node {
+        font-weight: 700;
+        color: #2d3748;
+        padding: 6px 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        user-select: none;
+      }
+      .tree-year-node:hover { background-color: #edf2f7; }
+      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
+      .tree-year-node.expanded::before { transform: rotate(90deg); }
+
+      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
+      .tree-months-container.show { display: flex; }
+
+      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
+      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
+      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
+
+      .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
+
+      .widget-legend {
+        display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0;
+      }
+      .legend-item { display: flex; align-items: center; gap: 5px; }
+      .legend-color { width: 10px; height: 10px; border-radius: 2px; }
+      .legend-color.hist { background-color: var(--color-historical); }
+      .legend-color.act { background-color: var(--color-actual); }
+      .legend-color.bud { 
+        background-color: transparent; border: 1px solid var(--color-budget); box-sizing: border-box;
+        background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
+        background-size: 4px 4px;
+      }
+
+      .main-visualization-layout {
+        display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch;
+      }
+      .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
+      .visualization-column.monthly-col { flex: 3; }
+      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
+
+      /* CORREÇÃO DO TÍTULO YTD: Reduzido e elegante */
+      .ytd-chart-header-title {
+        font-size: 10px; 
+        font-weight: 700; 
+        color: #718096; 
+        text-transform: uppercase; 
+        padding-bottom: 4px; 
+        letter-spacing: 0.5px; 
+        margin-bottom: auto;
+      }
+      
+      /* CORREÇÃO DAS ALTURAS: Mais espaço no topo para o SVG não bater nas labels */
+      .chart-container-block {
+        position: relative; height: 175px; padding-top: 60px; box-sizing: border-box; width: 100%;
+      }
+      .chart-area {
+        width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; 
+      }
+      
+      /* SVG OVERLAY: Z-index 1 para ficar ATRÁS dos textos HTML */
+      .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+      
+      /* WRAPPERS: Z-index 2 para ficarem por cima do SVG */
+      .bar-wrapper {
+        display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2;
+      }
+      .bar-element {
+        width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px;
+      }
+      .bar-element.historical { background-color: var(--color-historical); }
+      .bar-element.actual {
+        background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box;
+      }
+      .bar-element.budget {
+        background-color: transparent; border: 1px solid var(--color-budget); border-bottom: 1px solid var(--color-budget); box-sizing: border-box;
+        background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
+        background-size: 6px 6px;
+      }
+      
+      /* RÓTULOS (EX: 63.94M): Z-index 10 garante que fiquem acima de qualquer linha */
+      .kpi-label { position: absolute; top: -20px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; z-index: 10;}
+      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -22px; }
+      
+      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
+      .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
+      .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
+      .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
+      
+      /* TAGS DE VARIAÇÃO: Fundo branco absoluto para não mostrar linha atrás */
+      .variance-tag {
+        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; background-color: #ffffff; z-index: 10;
+      }
+      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border-color: #ceead6; }
+      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border-color: #fad2cf; }
+
+      /* GRID OTIMIZADO DO USUÁRIO MANTIDO INTACTO */
+      .insight-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 24px;
+        margin-top: auto;
+        padding-top: 16px;
+        border-top: 1px solid #e2e8f0;
+        flex-shrink: 0;
+        width: 100%;
+      }
+      @media (max-width: 768px) { .insight-grid { grid-template-columns: 1fr; gap: 16px; } }
+
+      .grid-column-finance {
+        display: flex;
+        flex-direction: column;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px 16px;
+      }
+
+      .column-title-finance {
+        font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0;
+      }
+
+      .panel-content-rows { display: flex; flex-direction: column; gap: 1px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; }
+
+      .data-row-item {
+        display: grid; grid-template-columns: 1.8fr 1fr 1fr; align-items: center; background: #ffffff; padding: 8px 12px; font-size: calc(var(--font-size-labels) - 0.5px); color: #2d3748; gap: 8px;
+      }
+
+      .cell-label { font-weight: 600; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+      .cell-label::before { content: ''; width: 4px; height: 12px; background: #cbd5e0; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+      .row-m-style .cell-label::before { background: var(--color-actual); }
+      .row-ytd-style .cell-label::before { background: #2b6cb0; }
+
+      .cell-value { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1e293b; white-space: nowrap; }
+      .cell-status-wrapper { display: flex; justify-content: flex-end; align-items: center; }
+
+      .status-badge-finance {
+        font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-width: 75px; box-sizing: border-box;
+      }
+      .status-badge-finance.success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+      .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+      .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; border: 1px solid #e8eaed; }
+
+      .highlight-card-area { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
+      .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      .highlight-icon-box { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+      .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; text-align: left; }
+
+      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
+    </style>
+    
+    <div id="widget-wrapper">
+      <div class="widget-header">
+        <div class="header-left-block">
+          <div class="widget-title">Performance Mensal</div>
+          <div class="scale-tag">Valores em Milhões (M)</div>
+        </div>
+        <div class="filter-container-finance">
+          <span class="filter-label-finance">Corte:</span>
+          <div class="tree-dropdown-trigger" id="treeDropdownTrigger">Selecionar...</div>
+          <div class="tree-dropdown-content" id="treeDropdownContent"></div>
+        </div>
+      </div>
+      
+      <div class="widget-legend">
+        <div class="legend-item"><div class="legend-color hist"></div> Histórico (Realizado)</div>
+        <div class="legend-item"><div class="legend-color act"></div> Mês Atual (Realizado)</div>
+        <div class="legend-item"><div class="legend-color bud"></div> Orçado (Budget)</div>
       </div>
 
-      <div class="dropdown">
-        <button class="dropdown-btn" id="trigger">Selecionar</button>
-        <div class="dropdown-menu" id="menu"></div>
-      </div>
-    </div>
-
-    <div class="legend">
-      <div class="legend-item">
-        <div class="dot hist"></div> Histórico
-      </div>
-
-      <div class="legend-item">
-        <div class="dot actual"></div> Atual
-      </div>
-
-      <div class="legend-item">
-        <div class="dot budget"></div> Budget
-      </div>
-    </div>
-
-    <div class="layout">
-
-      <div class="chart-block">
-        <div class="chart-wrap">
-          <svg class="svg" id="svg"></svg>
-          <div class="chart" id="chart"></div>
+      <div class="main-visualization-layout">
+        <div class="monthly-col visualization-column">
+          <div class="chart-container-block">
+            <div class="chart-area" id="chartArea">
+              <svg class="svg-overlay" id="svgOverlay"></svg>
+            </div>
+          </div>
+          <div class="axis-x-block">
+            <div class="axis-x" id="axisX"></div>
+          </div>
         </div>
 
-        <div class="axis" id="axis"></div>
+        <div class="visualization-column ytd-col">
+          <div class="ytd-chart-header-title">Evolução YTD Acumulada</div>
+          <div class="chart-container-block">
+            <div class="chart-area" id="ytdChartArea">
+              <svg class="svg-overlay" id="svgYtdOverlay"></svg>
+              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
+            </div>
+          </div>
+          <div class="axis-x-block">
+            <div class="axis-x" id="ytdAxisX">
+              <div class="axis-label" id="ytd-axis-lbl-prev">Ano Ant.</div>
+              <div class="axis-label" id="ytd-axis-lbl-act">Ano Atual</div>
+              <div class="axis-label">Meta YTD</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="side">
-
-        <div class="card">
-          <div class="card-title">Indicadores</div>
-
-          <div class="metric">
-            <span class="metric-name">Desvio Mês</span>
-            <span class="metric-value" id="mDiff">-</span>
-          </div>
-
-          <div class="metric">
-            <span class="metric-name">% Desvio</span>
-            <span class="badge" id="mPct">-</span>
-          </div>
-
-          <div class="metric">
-            <span class="metric-name">Consumo Budget</span>
-            <span class="metric-value" id="mCons">-</span>
-          </div>
-
-          <div class="metric">
-            <span class="metric-name">YTD</span>
-            <span class="metric-value" id="ytd">-</span>
+      <div class="insight-grid" id="insightGrid" style="display: none;">
+        <div class="grid-column-finance">
+          <div class="column-title-finance">Acompanhamento de Metas Orçamentárias</div>
+          <div class="panel-content-rows">
+            <div class="data-row-item row-m-style">
+              <div class="cell-label">Desvio Mês (Real x Orçado)</div>
+              <div class="cell-value" id="val-diff-row">-</div>
+              <div class="cell-status-wrapper"><span class="status-badge-finance" id="val-pct-row">-</span></div>
+            </div>
+            <div class="data-row-item row-m-style">
+              <div class="cell-label">Consumo do Budget no Mês</div>
+              <div class="cell-value" id="val-pct-consumption-row">-</div>
+              <div class="cell-status-wrapper"><span class="status-badge-finance neutral">Mês</span></div>
+            </div>
+            <div class="data-row-item row-ytd-style">
+              <div class="cell-label">Desvio YTD (Real x Orçado)</div>
+              <div class="cell-value" id="ytd-diff-row">-</div>
+              <div class="cell-status-wrapper"><span class="status-badge-finance" id="ytd-diff-pct-badge">-</span></div>
+            </div>
+            <div class="data-row-item row-ytd-style">
+              <div class="cell-label">Consumo do Budget Período (YTD)</div>
+              <div class="cell-value" id="ytd-pct-row">-</div>
+              <div class="cell-status-wrapper"><span class="status-badge-finance neutral">YTD</span></div>
+            </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Highlights</div>
-          <div class="highlight" id="highlight">-</div>
+        <div class="highlight-card-area">
+          <div class="highlight-title-box">
+            <span class="highlight-icon-box">💡</span>
+            <span>Highlights Operacionais</span>
+          </div>
+          <div class="highlight-content-text" id="highlightContentText">-</div>
         </div>
-
       </div>
-
     </div>
-
-  </div>
   `;
 
-  class SacSummary extends HTMLElement {
-
-    constructor(){
+  class EvoSummaryWidget extends HTMLElement {
+    constructor() {
       super();
+      this._props = {};
+      this._currentData = null;
+      this._animationFrameId = null;
+      this._shadowRoot = null;
+      this._resizeTimeout = null;
+      
+      this._selectedCutoffId = null;
+      this._isTreeBuilt = false; 
+      this._isDropdownOpen = false; 
+    }
 
-      this.attachShadow({mode:"open"});
-      this.shadowRoot.appendChild(template.content.cloneNode(true));
+    connectedCallback() {
+      if (!this._shadowRoot) {
+        this._shadowRoot = this.attachShadow({ mode: "open" });
+        this._shadowRoot.appendChild(template.content.cloneNode(true));
+        
+        this._chartArea = this._shadowRoot.getElementById("chartArea");
+        this._ytdChartArea = this._shadowRoot.getElementById("ytdChartArea");
+        this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
+        this._svgYtdOverlay = this._shadowRoot.getElementById("svgYtdOverlay");
+        this._axisX = this._shadowRoot.getElementById("axisX");
+        this._insightGrid = this._shadowRoot.getElementById("insightGrid");
+        this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
+        this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
+        
+        this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
+        this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
+        this._valPctConsumptionRow = this._shadowRoot.getElementById("val-pct-consumption-row");
+        
+        this._ytdDiffRow = this._shadowRoot.getElementById("ytd-diff-row");
+        this._ytdDiffPctBadge = this._shadowRoot.getElementById("ytd-diff-pct-badge");
+        this._ytdPctRow = this._shadowRoot.getElementById("ytd-pct-row");
+        this._highlightContentText = this._shadowRoot.getElementById("highlightContentText");
 
-      this._data = null;
-      this._selected = null;
+        this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
+        this._miniBarAct = this._shadowRoot.getElementById("mini-bar-act");
+        this._miniBarBud = this._shadowRoot.getElementById("mini-bar-bud");
+        this._miniLblPrev = this._shadowRoot.getElementById("mini-lbl-prev");
+        this._miniLblAct = this._shadowRoot.getElementById("mini-lbl-act");
+        this._miniLblBud = this._shadowRoot.getElementById("mini-lbl-bud");
 
-      this.$ = (id)=>this.shadowRoot.getElementById(id);
+        this._treeDropdownTrigger.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this._isDropdownOpen = !this._isDropdownOpen;
+          this._toggleDropdownDOM();
+        });
 
-      this.chart = this.$("chart");
-      this.axis = this.$("axis");
-      this.svg = this.$("svg");
-      this.menu = this.$("menu");
-      this.trigger = this.$("trigger");
+        window.addEventListener("click", () => {
+          this._isDropdownOpen = false;
+          this._toggleDropdownDOM();
+        });
+      }
 
-      this.trigger.addEventListener("click",(e)=>{
-        e.stopPropagation();
-        this.menu.classList.toggle("show");
+      this._resizeObserver = new ResizeObserver(() => {
+        if (document.contains(this)) {
+          clearTimeout(this._resizeTimeout);
+          this._resizeTimeout = setTimeout(() => {
+            cancelAnimationFrame(this._animationFrameId);
+            this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+          }, 40);
+        }
       });
-
-      window.addEventListener("click",()=>{
-        this.menu.classList.remove("show");
-      });
-
-      this.resizeObserver = new ResizeObserver(()=>{
-        cancelAnimationFrame(this.raf);
-        this.raf=requestAnimationFrame(()=>this.render());
-      });
+      this._resizeObserver.observe(this._chartArea);
     }
 
-    connectedCallback(){
-      this.resizeObserver.observe(this);
+    disconnectedCallback() {
+      if (this._resizeObserver) this._resizeObserver.disconnect();
+      cancelAnimationFrame(this._animationFrameId);
+      clearTimeout(this._resizeTimeout);
     }
 
-    disconnectedCallback(){
-      this.resizeObserver.disconnect();
-    }
-
-    onCustomWidgetBeforeUpdate(props){
-      this._props={...this._props,...props};
-    }
-
-    onCustomWidgetAfterUpdate(props){
-
-      if(props.performanceCube){
-        this._data=props.performanceCube;
-        this._selected=null;
-      }
-
-      this.applyStyles();
-      this.render();
-    }
-
-    applyStyles(){
-
-      const s=this.style;
-
-      if(this._props?.colorActualMonth){
-        s.setProperty("--actual",this._props.colorActualMonth);
-      }
-
-      if(this._props?.colorHistorical){
-        s.setProperty("--hist",this._props.colorHistorical);
-      }
-
-      if(this._props?.colorBudget){
-        s.setProperty("--budget",this._props.colorBudget);
-      }
-
-      if(this._props?.fontSizeLabels){
-        s.setProperty("--font",this._props.fontSizeLabels+"px");
+    _toggleDropdownDOM() {
+      if (!this._treeDropdownContent) return;
+      if (this._isDropdownOpen) {
+        this._treeDropdownContent.classList.add("show");
+      } else {
+        this._treeDropdownContent.classList.remove("show");
       }
     }
 
-    parse(v){
-
-      if(typeof v==="number") return v;
-
-      return parseFloat(
-        String(v || 0)
-        .replace(/[^\d,.-]/g,"")
-        .replace(",",".")
-      ) || 0;
+    onCustomWidgetBeforeUpdate(changedProperties) {
+      this._props = { ...this._props, ...changedProperties };
     }
 
-    formatM(v){
-      return (v/1000000).toFixed(2)+"M";
+    onCustomWidgetAfterUpdate(changedProperties) {
+      this._updateStyles();
+      if ("performanceCube" in changedProperties && this.performanceCube) {
+        this._currentData = this.performanceCube;
+        this._selectedCutoffId = null;
+        this._isTreeBuilt = false; 
+        if (this._shadowRoot) {
+          this._treeDropdownContent.textContent = ""; 
+          cancelAnimationFrame(this._animationFrameId);
+          this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+        }
+      }
     }
 
-    render(){
+    _updateStyles() {
+      if (!this._shadowRoot) return;
+      const style = this.style;
+      if (this._props.colorActualMonth) style.setProperty("--color-actual", this._props.colorActualMonth);
+      if (this._props.colorHistorical) style.setProperty("--color-historical", this._props.colorHistorical);
+      if (this._props.colorBudget) style.setProperty("--color-budget", this._props.colorBudget);
+      if (this._props.fontSizeLabels) style.setProperty("--font-size-labels", `${this._props.fontSizeLabels}px`);
+    }
 
-      if(!this._data?.data?.length){
-        this.chart.innerHTML='<div class="placeholder">Aguardando dados...</div>';
+    _parseValue(val) {
+      if (typeof val === 'number') return val;
+      if (!val || val === "-") return 0;
+      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+    }
+
+    _clearDOM() {
+      const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
+      existingBars.forEach(el => el.remove());
+      this._axisX.textContent = "";
+
+      this._svgOverlay.querySelectorAll('path').forEach(el => el.remove());
+      this._svgOverlay.querySelectorAll('foreignObject').forEach(el => el.remove());
+      this._svgYtdOverlay.querySelectorAll('path').forEach(el => el.remove());
+      this._svgYtdOverlay.querySelectorAll('foreignObject').forEach(el => el.remove());
+
+      this._insightGrid.style.display = "none";
+    }
+
+    renderChart() {
+      if (!document.contains(this) || !this._shadowRoot) return;
+
+      const financialData = this._currentData;
+      if (!financialData || !financialData.data || financialData.data.length === 0) {
+        this._clearDOM();
+        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados estruturados...</div>";
         return;
       }
 
-      const metadata=this._data.metadata;
-      const dims=Object.keys(metadata.dimensions || {});
-      const meas=Object.keys(metadata.mainStructureMembers || {})[0];
+      try {
+        const metadata = financialData.metadata;
+        const dimensions = metadata.dimensions || {};
+        const mainStructureMembers = metadata.mainStructureMembers || {};
 
-      let timeDim=dims[0];
-      let versionDim=dims[1];
+        const dimKeys = Object.keys(dimensions);
+        const measureKeys = Object.keys(mainStructureMembers);
 
-      const map={};
+        if (dimKeys.length < 1 || measureKeys.length < 1) { this._clearDOM(); return; }
 
-      this._data.data.forEach(row=>{
+        const measId = measureKeys[0];
+        let tempoDimId = dimKeys[0];
+        let versaoDimId = dimKeys[1] || null;
 
-        const time=row[timeDim];
-        if(!time) return;
-
-        const id=time.id;
-        const label=time.label || id;
-
-        if(!map[id]){
-
-          map[id]={
-            id,
-            label,
-            actual:0,
-            budget:0,
-            current:false
-          };
+        if (dimKeys.length >= 2) {
+          const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
+          if (descFirst.includes("VERSÃO") || descFirst.includes("VERSION") || descFirst.includes("CENÁRIO")) {
+            tempoDimId = dimKeys[1]; versaoDimId = dimKeys[0];
+          }
         }
 
-        const value=this.parse(
-          row[meas]?.formattedValue ||
-          row[meas]?.raw ||
-          0
-        );
+        const timelineMap = {};
 
-        const version=row[versionDim];
+        financialData.data.forEach(row => {
+          const tempoObj = row[tempoDimId]; if (!tempoObj) return;
+          const tId = String(tempoObj.id); const tLabel = tempoObj.label || tempoObj.description || tId;
+          if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
 
-        const isBudget=
-          version &&
-          /budget|orç|orcado/i.test(
-            version.id + version.label
-          );
+          if (!timelineMap[tId]) {
+            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false, rowContext: row };
+          }
+          if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
+          if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
 
-        if(isBudget){
-          map[id].budget+=value;
-        }else{
-          map[id].actual+=value;
-        }
-
-        if(
-          time.properties?.isCurrent==="true" ||
-          row.versionContext?.isActualMonth
-        ){
-          map[id].current=true;
-        }
-
-      });
-
-      const months=Object.values(map)
-      .map(m=>{
-
-        const year=(m.id.match(/\d{4}/)||[])[0] || new Date().getFullYear();
-
-        const monthMap={
-          JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,
-          JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12
-        };
-
-        const mon=monthMap[
-          m.label.substring(0,3).toUpperCase()
-        ] || 1;
-
-        return{
-          ...m,
-          year:+year,
-          month:mon
-        };
-
-      })
-      .sort((a,b)=>
-        a.year-b.year ||
-        a.month-b.month
-      );
-
-      if(!months.length) return;
-
-      if(!this._selected){
-
-        const current=
-          months.find(m=>m.current);
-
-        this._selected=
-          current?.id ||
-          months.at(-1).id;
-      }
-
-      this.buildDropdown(months);
-
-      const idx=months.findIndex(
-        m=>m.id===this._selected
-      );
-
-      const current=months[idx];
-
-      const visible=[
-        ...months.slice(
-          Math.max(0,idx-12),
-          idx+1
-        ),
-        {
-          label:"Budget",
-          actual:current.budget || current.actual,
-          budget:0,
-          type:"budget"
-        }
-      ];
-
-      const max=Math.max(
-        ...visible.map(v=>v.actual)
-      ) * 1.2;
-
-      this.chart.innerHTML="";
-      this.axis.innerHTML="";
-      this.svg.innerHTML="";
-
-      const bars=[];
-
-      visible.forEach((m,i)=>{
-
-        const col=document.createElement("div");
-        col.className="bar-col";
-
-        const bar=document.createElement("div");
-
-        const type=
-          m.type ||
-          (i===visible.length-2
-            ? "actual"
-            : "hist");
-
-        bar.className=`bar ${type}`;
-
-        bar.style.height=
-          ((m.actual/max)*100)+"%";
-
-        const value=document.createElement("span");
-        value.className="value";
-        value.textContent=this.formatM(m.actual);
-
-        bar.appendChild(value);
-
-        col.appendChild(bar);
-
-        this.chart.appendChild(col);
-
-        bars.push(bar);
-
-        const axis=document.createElement("div");
-
-        axis.className=
-          "axis-label" +
-          (type==="actual" ? " actual":"");
-
-        axis.textContent=
-          m.label.split(" ")[0];
-
-        this.axis.appendChild(axis);
-
-      });
-
-      this.drawLine(
-        bars[visible.length-2],
-        bars[visible.length-1],
-        current.actual,
-        current.budget || current.actual
-      );
-
-      this.renderKPIs(months,idx,current);
-    }
-
-    buildDropdown(months){
-
-      this.menu.innerHTML="";
-
-      const years={};
-
-      months.forEach(m=>{
-
-        if(!years[m.year]){
-          years[m.year]=[];
-        }
-
-        years[m.year].push(m);
-
-      });
-
-      Object.entries(years).forEach(([year,list])=>{
-
-        const y=document.createElement("div");
-        y.className="year";
-        y.textContent=year;
-
-        this.menu.appendChild(y);
-
-        list.forEach(m=>{
-
-          const item=document.createElement("div");
-
-          item.className=
-            "month" +
-            (m.id===this._selected
-              ? " selected"
-              : "");
-
-          item.textContent=m.label;
-
-          item.onclick=(e)=>{
-
-            e.stopPropagation();
-
-            this._selected=m.id;
-
-            this.menu.classList.remove("show");
-
-            this.render();
-          };
-
-          this.menu.appendChild(item);
-
+          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
+          if (versaoDimId) {
+            const vObj = row[versaoDimId];
+            if (vObj) {
+              const vId = String(vObj.id).toUpperCase(); const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
+              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { timelineMap[tId].orcado += rawValue; }
+              else { timelineMap[tId].realizado += rawValue; }
+            }
+          } else { timelineMap[tId].realizado += rawValue; }
         });
 
+        const sortedMonths = Object.values(timelineMap);
+        if (sortedMonths.length === 0) { this._clearDOM(); return; }
+
+        const monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
+        const fullSeriesData = [];
+        let defaultActualIndex = -1;
+
+        sortedMonths.forEach((m) => {
+          let parsedYear = new Date().getFullYear();
+          const matches = m.id.match(/\d{4}/);
+          if (matches) {
+            parsedYear = parseInt(matches[0]);
+          } else {
+            const labelDigits = m.label.match(/\d{4}/);
+            if (labelDigits) parsedYear = parseInt(labelDigits[0]);
+          }
+
+          if (parsedYear < 2022 || parsedYear > 2028) return;
+
+          const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
+          const targetMonthIndex = monthOrderMap[cleanLabelUpper] || 1;
+          const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
+
+          fullSeriesData.push({ 
+            id: m.id, 
+            label: alignedLabel, 
+            value: m.realizado, 
+            type: m.isCurrentMonth ? "actual" : "historical", 
+            originalNode: m, 
+            yearValue: parsedYear, 
+            monthNum: targetMonthIndex, 
+            rawRow: m.rowContext 
+          });
+        });
+
+        fullSeriesData.sort((a, b) => {
+          if (a.yearValue !== b.yearValue) return a.yearValue - b.yearValue;
+          return a.monthNum - b.monthNum;
+        });
+
+        fullSeriesData.forEach((d, idx) => {
+          if (d.type === "actual") defaultActualIndex = idx;
+        });
+
+        if (defaultActualIndex === -1 && fullSeriesData.length > 0) {
+          defaultActualIndex = fullSeriesData.length - 1;
+        }
+
+        if (!this._isTreeBuilt && fullSeriesData.length > 0) {
+          this._treeDropdownContent.textContent = ""; 
+          const yearsMap = {};
+          
+          fullSeriesData.forEach(d => {
+            if (!yearsMap[d.yearValue]) {
+              const yearNode = document.createElement("div");
+              yearNode.className = "tree-year-node";
+              yearNode.textContent = `Ano ${d.yearValue}`;
+              
+              const monthsContainer = document.createElement("div");
+              monthsContainer.className = "tree-months-container";
+              
+              yearNode.addEventListener("click", (e) => {
+                e.stopPropagation();
+                yearNode.classList.toggle("expanded");
+                monthsContainer.classList.toggle("show");
+              });
+
+              this._treeDropdownContent.appendChild(yearNode);
+              this._treeDropdownContent.appendChild(monthsContainer);
+              yearsMap[d.yearValue] = monthsContainer;
+            }
+
+            const monthItem = document.createElement("div");
+            monthItem.className = "tree-month-item";
+            monthItem.textContent = d.label;
+            monthItem.setAttribute("data-id", d.id);
+            
+            monthItem.addEventListener("click", (e) => {
+              e.stopPropagation();
+              this._selectedCutoffId = d.id;
+              this._isDropdownOpen = false; 
+              this._toggleDropdownDOM();
+              this.renderChart();
+            });
+
+            yearsMap[d.yearValue].appendChild(monthItem);
+          });
+
+          if (!this._selectedCutoffId && fullSeriesData[defaultActualIndex]) {
+            this._selectedCutoffId = fullSeriesData[defaultActualIndex].id;
+          }
+          this._isTreeBuilt = true; 
+        }
+
+        let actualIndex = fullSeriesData.findIndex(d => d.id === this._selectedCutoffId);
+        if (actualIndex === -1) actualIndex = defaultActualIndex;
+
+        if (fullSeriesData[actualIndex]) {
+          this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
+        }
+
+        this._treeDropdownContent.querySelectorAll(".tree-month-item").forEach(item => {
+          if (item.getAttribute("data-id") === this._selectedCutoffId) {
+            item.classList.add("selected");
+          } else {
+            item.classList.remove("selected");
+          }
+        });
+
+        fullSeriesData.forEach((d, idx) => {
+          d.type = (idx === actualIndex) ? "actual" : "historical";
+        });
+
+        const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
+        const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
+
+        this._clearDOM();
+
+        const startIndex = Math.max(0, actualIndex - 12); 
+        const visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
+
+        let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
+        if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
+
+        visibleSeriesData.push({
+          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`,
+          value: calculatedBudget,
+          type: "budget",
+          yearValue: fullSeriesData[actualIndex].yearValue,
+          monthNum: fullSeriesData[actualIndex].monthNum
+        });
+
+        const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.25 || 1;
+        const barElements = [];
+
+        visibleSeriesData.forEach((d) => {
+          const barWrapper = document.createElement("div"); barWrapper.className = "bar-wrapper";
+          const barElement = document.createElement("div"); barElement.className = "bar-element";
+          barElement.style.height = `${(d.value / maxVal) * 100}%`; barElement.classList.add(d.type);
+          const kpiLabel = document.createElement("span"); kpiLabel.className = "kpi-label"; kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
+          barElement.appendChild(kpiLabel); barWrapper.appendChild(barElement); this._chartArea.appendChild(barWrapper); barElements.push(barElement);
+          
+          const axisLabel = document.createElement("div"); axisLabel.className = "axis-label"; axisLabel.textContent = d.label;
+          if (d.type === "actual") axisLabel.classList.add("actual-month");
+          this._axisX.appendChild(axisLabel);
+        });
+
+        // Execução síncrona/macrotask para desenhar as linhas isoladas (Corrigido para usar SVG com segurança geométrica)
+        setTimeout(() => {
+          const pairsM = [];
+          if (visibleActualIndex > 0) pairsM.push({ from: visibleActualIndex - 1, to: visibleActualIndex });
+          if (visibleActualIndex < barElements.length - 1) pairsM.push({ from: visibleActualIndex, to: visibleActualIndex + 1 });
+          
+          this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, pairsM);
+
+          const ytdBars = [this._miniBarPrev, this._miniBarAct, this._miniBarBud];
+          const pairsYTD = [{ from: 0, to: 1 }, { from: 1, to: 2 }];
+          
+          this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ytdBars, this._ytdMockData, pairsYTD);
+        }, 0);
+
+        this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
+
+      } catch (error) {
+        console.error("Erro interno no processamento visual:", error);
+      }
+    }
+
+    // Método Robusto de Desenho de Linhas e Tags: A prova de esmagamento
+    _drawUnifiedFlatConnections(svg, container, barElements, dataArray, pairs) {
+      if (!document.contains(this) || !this._shadowRoot) return;
+      const containerHeight = container.offsetHeight; 
+      if (containerHeight === 0) return;
+      
+      let maxBarHeight = 0; 
+      barElements.forEach(bar => { if (bar && bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight; });
+      
+      // Teto calculado: A linha passará SEMPRE 45 pixels acima da barra mais alta (espaço farto para a label de -22px).
+      // Mas não deixamos a linha subir além de 15px do topo absoluto do container.
+      const calculatedCeiling = containerHeight - maxBarHeight - 45;
+      const fixedCeilingY = Math.max(15, calculatedCeiling);
+      
+      pairs.forEach((pair) => {
+        const barFrom = barElements[pair.from];
+        const barTo = barElements[pair.to];
+        if (!barFrom || !barTo) return;
+
+        // O 'offsetLeft' do pai relativo captura a exata posição da coluna na esteira flexível
+        const xFrom = barFrom.parentElement.offsetLeft + barFrom.offsetLeft + (barFrom.offsetWidth / 2);
+        const yFrom = containerHeight - barFrom.offsetHeight;
+        
+        const xTo = barTo.parentElement.offsetLeft + barTo.offsetLeft + (barTo.offsetWidth / 2);
+        const yTo = containerHeight - barTo.offsetHeight;
+
+        const valFrom = dataArray[pair.from].value;
+        const valTo = dataArray[pair.to].value;
+        
+        const diff = valTo - valFrom;
+        const isSaving = diff <= 0; // Regra Financeira de Custos: Gastar menos (<=0) é Verde (Saving)
+        let pct = valFrom !== 0 ? Math.abs((diff / valFrom) * 100) : 0;
+        
+        const directionalArrow = isSaving ? "▼ " : "▲ ";
+        const varianceText = directionalArrow + pct.toFixed(2) + "%";
+        const lineStrokeColor = "#cbd5e0";
+
+        // Traça a linha garantindo que o gancho inferior (Y - 28) NUNCA toque no número (Y - 22)
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", `M ${xFrom} ${yFrom - 28} L ${xFrom} ${fixedCeilingY} L ${xTo} ${fixedCeilingY} L ${xTo} ${yTo - 28}`);
+        path.setAttribute("stroke", lineStrokeColor); 
+        path.setAttribute("stroke-width", "1.25"); 
+        path.setAttribute("fill", "none"); 
+        path.setAttribute("marker-end", "url(#arrow-neutral)");
+        svg.appendChild(path);
+        
+        // Posição central exata para a Tag
+        const midX = xFrom + (xTo - xFrom) / 2;
+        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        foreignObj.setAttribute("x", (midX - 35).toString()); 
+        foreignObj.setAttribute("y", (fixedCeilingY - 11).toString()); 
+        foreignObj.setAttribute("width", "70"); 
+        foreignObj.setAttribute("height", "22");
+        
+        const div = document.createElement("div"); 
+        div.style.display = "flex"; 
+        div.style.justifyContent = "center"; 
+        div.style.alignItems = "center"; 
+        div.style.width = "100%"; 
+        div.style.height = "100%";
+        
+        const span = document.createElement("span"); 
+        span.className = "variance-tag " + (isSaving ? "saving" : "increase"); 
+        span.textContent = varianceText;
+        
+        div.appendChild(span); 
+        foreignObj.appendChild(div); 
+        svg.appendChild(foreignObj);
       });
-
-      const selected=
-        months.find(m=>m.id===this._selected);
-
-      this.trigger.textContent=
-        selected?.label || "Selecionar";
     }
 
-    drawLine(from,to,v1,v2){
+    _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
+      const currentBarNode = fullSeriesData[actualIndex]; 
+      const actualVal = currentBarNode.value; 
+      const monthLabel = currentBarNode.label.split(' ')[0];
+      const currentYear = currentBarNode.yearValue; 
+      const previousYear = currentYear - 1;
 
-      const wrap=this.chart.getBoundingClientRect();
+      const diffNominal = actualVal - budgetVal;
+      const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
+      const consumptionMonthPercent = budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0;
+      
+      const isMonthSaving = diffNominal <= 0;
+      
+      const formatM = (v) => (v / 1000000).toFixed(2) + "M";
+      const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
-      const a=from.getBoundingClientRect();
-      const b=to.getBoundingClientRect();
+      this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
+      this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
+      this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
+      this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
 
-      const x1=a.left-wrap.left+a.width/2;
-      const x2=b.left-wrap.left+b.width/2;
+      let totalRealizadoYTDAtual = 0;
+      let totalRealizadoYTDAntigo = 0;
+      let totalBudgetYTDCompleto = 0;
 
-      const y=18;
-
-      const path=document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "path"
-      );
-
-      path.setAttribute(
-        "d",
-        `M${x1},${a.top-wrap.top}
-         L${x1},${y}
-         L${x2},${y}
-         L${x2},${b.top-wrap.top}`
-      );
-
-      path.setAttribute("fill","none");
-      path.setAttribute("stroke","#64748b");
-      path.setAttribute("stroke-width","1.3");
-
-      this.svg.appendChild(path);
-
-      const diff=((v2-v1)/v1)*100;
-
-      const tag=document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "foreignObject"
-      );
-
-      tag.setAttribute("x",(x1+x2)/2-35);
-      tag.setAttribute("y",2);
-      tag.setAttribute("width",70);
-      tag.setAttribute("height",24);
-
-      const div=document.createElement("div");
-
-      div.style.display="flex";
-      div.style.justifyContent="center";
-
-      div.innerHTML=`
-        <span class="badge ${diff > 0 ? "bad":"good"}">
-          ${diff > 0 ? "▼":"▲"} ${Math.abs(diff).toFixed(1)}%
-        </span>
-      `;
-
-      tag.appendChild(div);
-
-      this.svg.appendChild(tag);
-    }
-
-    renderKPIs(months,idx,current){
-
-      const budget=current.budget || current.actual;
-
-      const diff=current.actual-budget;
-
-      const pct=(diff/budget)*100;
-
-      this.$("mDiff").textContent=
-        (diff >=0 ? "+" : "") +
-        this.formatM(diff);
-
-      const badge=this.$("mPct");
-
-      badge.textContent=
-        (pct >=0 ? "▼ ":"▲ ") +
-        Math.abs(pct).toFixed(2)+"%";
-
-      badge.className=
-        "badge " +
-        (diff > 0 ? "bad":"good");
-
-      this.$("mCons").textContent=
-        ((current.actual/budget)*100).toFixed(1)+"%";
-
-      let ytd=0;
-
-      months.forEach((m,i)=>{
-        if(i<=idx && m.year===current.year){
-          ytd+=m.actual;
+      fullSeriesData.forEach((d, idx) => {
+        if (idx <= actualIndex) {
+          if (d.yearValue === currentYear) {
+            totalRealizadoYTDAtual += d.value;
+            totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value;
+          }
+        }
+        if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
+          totalRealizadoYTDAntigo += d.value;
         }
       });
 
-      this.$("ytd").textContent=
-        this.formatM(ytd);
+      if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
 
-      const status=
-        diff > 0
-        ? "acima do orçamento"
-        : "abaixo do orçamento";
+      const diffYtdNominal = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
+      const diffYtdPercent = totalBudgetYTDCompleto !== 0 ? (diffYtdNominal / totalBudgetYTDCompleto) * 100 : 0;
+      const consumoBudgetPercent = (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100;
+      const isYtdSaving = diffYtdNominal <= 0;
 
-      this.$("highlight").textContent=
-        `O mês de ${current.label} encerrou ${status}, com desvio de ${this.formatM(Math.abs(diff))}. O consumo do budget ficou em ${((current.actual/budget)*100).toFixed(1)}%, enquanto o acumulado do ano atingiu ${this.formatM(ytd)}.`;
+      this._ytdDiffRow.textContent = (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal);
+      this._ytdDiffPctBadge.textContent = formatPercent(diffYtdPercent, isYtdSaving);
+      this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
+      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
+
+      // Mock injetado de forma segura na instância global do componente para os conectores do YTD
+      this._ytdMockData = [
+        { value: totalRealizadoYTDAntigo },
+        { value: totalRealizadoYTDAtual },
+        { value: totalBudgetYTDCompleto }
+      ];
+
+      const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
+      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
+      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
+      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
+
+      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
+      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
+      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
+
+      this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
+      this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
+
+      // INJEÇÃO DA LISTA DE HIGHLIGHTS TÓPICOS ESCANEÁVEIS
+      const monthStatusLabel = isMonthSaving ? "economia" : "estouro";
+      const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário" : "acima da meta estabelecida";
+
+      this._highlightContentText.innerHTML = `
+        <ul style="margin: 0; padding-left: 16px; font-size: 11.5px; color: #4a5568; line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
+            <li><strong>Mês Corrente (${monthLabel}):</strong> Fechamento com ${monthStatusLabel} de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.</li>
+            <li><strong>Consumo Operacional:</strong> A absorção atingiu ${(consumptionMonthPercent).toFixed(1)}% do planejado para a competência.</li>
+            <li><strong>Posicionamento YTD:</strong> O acumulado consolidou um desvio ${ytdStatusLabel}, absorvendo ${(consumoBudgetPercent).toFixed(1)}% da meta anual.</li>
+        </ul>
+      `;
+
+      this._insightGrid.style.display = "grid";
     }
 
+    getColorActualMonth() { return this._props.colorActualMonth; }
+    setColorActualMonth(val) { this._props.colorActualMonth = val; }
+    getColorHistorical() { return this._props.colorHistorical; }
+    setColorHistorical(val) { this._props.colorHistorical = val; }
+    getColorBudget() { return this._props.colorBudget; }
+    setColorBudget(val) { this._props.colorBudget = val; }
+    getFontSizeLabels() { return this._props.fontSizeLabels; }
+    setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
   }
-
-  if(!customElements.get("sac-summary")){
-    customElements.define("sac-summary",SacSummary);
-  }
-
+  if (!customElements.get("sac-summary")) { customElements.define("sac-summary", EvoSummaryWidget); }
 })();
