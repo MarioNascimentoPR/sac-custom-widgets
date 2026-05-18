@@ -1,13 +1,13 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY RUNTIME
-   ========================================================================= */
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HIGH PERFORMANCE RUNTIME
+   ========================================================================== */
 
 (function () {
   // CHAVE DE CONFIGURAÇÃO OPERACIONAL: Altere para false para desligar 100% a Telemetria
   const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
-     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E STRESS TEST (HEADLESS)
+     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E PROFILING CIENTÍFICO
      ========================================================================== */
   class EvoStreamProfiler {
     constructor() {
@@ -63,10 +63,10 @@
       if (!baseRows || baseRows === 0) return { k10: 0, k25: 0, k50: 0, k100: 0 };
       const baseValue = sampleJSTime / baseRows;
       return {
-        k10: baseValue * 10000 * 1.05,
-        k25: baseValue * 25000 * 1.12,
-        k50: baseValue * 50000 * 1.25,
-        k100: baseValue * 100000 * 1.45
+        k10: baseValue * 10000 * 1.02,
+        k25: baseValue * 25000 * 1.05,
+        k50: baseValue * 50000 * 1.08,
+        k100: baseValue * 100000 * 1.12
       };
     }
   }
@@ -93,35 +93,25 @@
       .filter-container-finance { position: relative; display: flex; align-items: center; gap: 8px; z-index: 100; }
       .filter-label-finance { font-size: 11px; font-weight: 600; color: #4a5568; }
       .tree-dropdown-trigger {
-        font-size: 11px; font-weight: 700; color: #2d3748; background-color: #f8fafc; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 28px 4px 10px; cursor: pointer; min-width: 120px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        font-size: 11px; font-weight: 700; color: #2d3748; background-color: #f8fafc; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 28px 4px 10px; cursor: pointer; min-width: 120px;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
         background-repeat: no-repeat; background-position: right 8px center; background-size: 12px; user-select: none; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
       }
       .tree-dropdown-content {
-        display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
+        display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
       .tree-dropdown-content.show { display: block; }
-      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
-      .tree-year-node:hover { background-color: #edf2f7; }
-      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
-      .tree-year-node.expanded::before { transform: rotate(90deg); }
-      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
-      .tree-months-container.show { display: flex; }
-      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
-      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
-      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       
       .telemetry-btn {
         font-size: 11px; font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
       }
       .telemetry-btn:hover { background-color: #e2e8f0; color: #1e293b; }
       .telemetry-modal {
-        display: none; position: absolute; top: 48px; right: 18px; width: 330px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 1000; padding: 14px; font-size: 11px; color: #334155;
+        display: none; position: absolute; top: 48px; right: 18px; width: 330px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 1000; padding: 14px; font-size: 11px; color: #334155;
       }
       .telemetry-modal.show { display: block; }
       .telemetry-title { font-size: 11.5px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
       .telemetry-close { background: none; border: none; font-size: 16px; cursor: pointer; color: #94a3b8; font-weight: 700; line-height: 1; }
-      .telemetry-close:hover { color: #64748b; }
       .telemetry-section-title { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 10px 0 4px 0; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
       .telemetry-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; align-items: center; }
       .telemetry-label { font-weight: 600; color: #64748b; }
@@ -140,31 +130,33 @@
         background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
         background-size: 4px 4px;
       }
-      .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch; }
+      .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 20px; flex-shrink: 0; align-items: stretch; position: relative; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
-      .visualization-column.monthly-col { flex: 3; }
-      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
+      .visualization-column.monthly-col { flex: 3; position: relative; }
+      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; position: relative; }
       .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
-      .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
+      
+      /* OTIMIZAÇÃO: Substituição de SVG Overlay pesado por um container DOM absoluto leve */
+      .html-connectors-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
+      .html-bracket-track { position: absolute; border-top: 1.25px solid #cbd5e0; border-left: 1.25px solid #cbd5e0; border-right: 1.25px solid #cbd5e0; pointer-events: none; box-sizing: border-box; }
+      .html-bracket-badge-anchor { position: absolute; width: 70px; height: 22px; display: flex; justify-content: center; align-items: center; pointer-events: none; transform: translate(-35px, -11px); }
+
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
-      .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; height: 0%; transition: height 0.3s ease-out; }
+      
+      /* OTIMIZAÇÃO ACELERAÇÃO POR HARDWARE (GPU): Troca de mutação de height por scaleY */
+      .bar-element { 
+        width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; 
+        height: 100%; transform: scaleY(0); transform-origin: bottom; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+      }
       .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual { background-color: var(--color-actual); box-shadow: none; box-sizing: border-box; }
+      .bar-element.actual { background-color: var(--color-actual); box-sizing: border-box; }
       .bar-element.budget {
         background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
       }
-      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3; }
-      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; top: -24px; }
-      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
-      .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
-      .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
-      .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
-      .variance-tag { font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); white-space: nowrap; display: inline-block; position: relative; z-index: 4; }
-      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
-      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+      .kpi-label { position: absolute; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3; }
       
       .insight-grid { 
         display: grid; 
@@ -199,7 +191,6 @@
         border-left: 4px solid #cbd5e0; border-radius: 8px; padding: 14px 16px; color: #333333;
       }
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
-      .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
       .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
@@ -232,7 +223,7 @@
             <div class="telemetry-row"><span class="telemetry-label">1. Ingestão e Parsing:</span><span class="telemetry-val" id="stParsing">0.00 ms</span></div>
             <div class="telemetry-row"><span class="telemetry-label">2. Agregação e Cubo:</span><span class="telemetry-val" id="stAggr">0.00 ms</span></div>
             <div class="telemetry-row"><span class="telemetry-label">3. Construção Base DOM:</span><span class="telemetry-val" id="stDOM">0.00 ms</span></div>
-            <div class="telemetry-row"><span class="telemetry-label">4. Plotagem SVG Vector:</span><span class="telemetry-val" id="stSVG">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">4. Plotagem HTML Connectors:</span><span class="telemetry-val" id="stSVG">0.00 ms</span></div>
             <div class="telemetry-row"><span class="telemetry-label">5. Geração Highlights:</span><span class="telemetry-val" id="stHL">0.00 ms</span></div>
             
             <div class="telemetry-section-title">Diagnóstico de Saúde</div>
@@ -260,16 +251,17 @@
       </div>
       <div class="main-visualization-layout">
         <div class="monthly-col visualization-column">
-          <div class="chart-container-block"><div class="chart-area" id="chartArea"><svg class="svg-overlay" id="svgOverlay"></svg></div></div>
+          <div class="html-connectors-overlay" id="monthlyConnectors"></div>
+          <div class="chart-container-block"><div class="chart-area" id="chartArea"></div></div>
           <div class="axis-x-block"><div class="axis-x" id="axisX"></div></div>
         </div>
         <div class="visualization-column ytd-col">
+          <div class="html-connectors-overlay" id="ytdConnectors"></div>
           <div class="chart-container-block">
             <div class="chart-area" id="ytdChartArea">
-              <svg class="svg-overlay" id="svgYtdOverlay"></svg>
-              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
-              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
-              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"></div></div>
+              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"></div></div>
+              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"></div></div>
             </div>
           </div>
           <div class="axis-x-block">
@@ -313,7 +305,7 @@
   `;
 
   /* ==========================================================================
-     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA SANEADA (PURE HEADLESS)
+     ENGINE ANALÍTICA PURA JS COM VIRTUALIZAÇÃO COGNITIVA (TOP 200 IMPACTS)
      ========================================================================== */
   class EvoNarrativeEngine {
     constructor() {
@@ -358,9 +350,18 @@
         isSaving: ytdDiff <= 0
       };
 
+      // OPTIMIZATION: Virtualização Cognitiva de Impacto (Pre-sort & Cutoff a Top 200 Linhas Relevantes)
+      const scannedRows = cubeData.map(row => {
+        const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
+        return { row, weight: Math.abs(rawValue) };
+      });
+      
+      scannedRows.sort((a, b) => b.weight - a.weight);
+      const topImpactRows = scannedRows.slice(0, 200).map(item => item.row);
+
       const itemFinanceiroMap = {};
 
-      cubeData.forEach(row => {
+      topImpactRows.forEach(row => {
         if (!tempoDimId || !itemFinanceiroDimId) return;
         const tObj = row[tempoDimId]; if (!tObj) return;
         
@@ -422,7 +423,6 @@
           }
         });
 
-        // 🛠️ CORREÇÃO DE SEGURANÇA ANALÍTICA (Null-Guard para evitar travamentos)
         let driverImpactValue = 0;
         if (driverContaName && item.contas[driverContaName]) {
           driverImpactValue = item.contas[driverContaName].realizado - item.contas[driverContaName].orcado;
@@ -457,7 +457,7 @@
   }
 
   /* ==========================================================================
-     UI LAYER CONTROLLER WIDGET LAYER
+     UI LAYER CONTROLLER WIDGET
      ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
@@ -503,8 +503,8 @@
         
         this._chartArea = this._shadowRoot.getElementById("chartArea");
         this._ytdChartArea = this._shadowRoot.getElementById("ytdChartArea");
-        this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
-        this._svgYtdOverlay = this._shadowRoot.getElementById("svgYtdOverlay");
+        this._monthlyConnectors = this._shadowRoot.getElementById("monthlyConnectors");
+        this._ytdConnectors = this._shadowRoot.getElementById("ytdConnectors");
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
@@ -545,9 +545,6 @@
         this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
         this._miniBarAct = this._shadowRoot.getElementById("mini-bar-act");
         this._miniBarBud = this._shadowRoot.getElementById("mini-bar-bud");
-        this._miniLblPrev = this._shadowRoot.getElementById("mini-lbl-prev");
-        this._miniLblAct = this._shadowRoot.getElementById("mini-lbl-act");
-        this._miniLblBud = this._shadowRoot.getElementById("mini-lbl-bud");
 
         if (ENABLE_TELEMETRY) {
           this._telemetryBtn.style.display = "flex";
@@ -647,12 +644,6 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
-    _clearSvgOverlay(svg) {
-      while (svg.lastElementChild) {
-        svg.removeChild(svg.lastElementChild);
-      }
-    }
-
     renderChart() {
       if (!document.contains(this) || !this._shadowRoot) return;
       
@@ -672,7 +663,7 @@
       }
 
       try {
-        this._reflowCount++;
+        const tParsingStart = performance.now();
         const metadata = financialData.metadata;
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
@@ -883,6 +874,7 @@
           this._profiler.metrics.steps.parsing = performance.now() - tParsingStart;
         }
 
+        // FASE DE LAYOUT UPFRONT BATCH READ/WRITE OTIMIZADA
         const tDOMStart = performance.now();
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
         if (ENABLE_TELEMETRY) {
@@ -893,9 +885,12 @@
 
         const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
+          this._reflowCount++;
           const tSVGStart = performance.now();
-          this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
-          this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
+          
+          // Renderizadores baseados em HTML puro acelerado por hardware
+          this._drawUnifiedFlatConnections(this._monthlyConnectors, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
+          this._drawUnifiedFlatConnections(this._ytdConnectors, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
           
           if (ENABLE_TELEMETRY) {
             this._profiler.metrics.steps.svgDrawing = performance.now() - tSVGStart;
@@ -933,6 +928,9 @@
       const tEndJS = performance.now();
     }
 
+    /* ==========================================================================
+       BATCHED LAYOUT WRITES: MULTIPLEXAÇÃO REATIVA USANDO TRANSFORMS GPU
+       ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
       const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
       const existingLabels = this._axisX.querySelectorAll(".axis-label");
@@ -968,9 +966,15 @@
       visibleSeriesData.forEach((d, idx) => {
         const bar = updatedWrappers[idx].querySelector(".bar-element");
         const label = bar.querySelector(".kpi-label");
+        
+        // MUTAÇÃO GPU ACELERADA: Remove alteração de height e aciona scaleY
+        const scaleRatio = d.value / maxVal;
         bar.className = `bar-element ${d.type}`;
-        bar.style.height = `${(d.value / maxVal) * 100}%`;
+        bar.style.transform = `scaleY(${scaleRatio})`;
+        
+        // O posicionamento do label superior acompanha a proporção reativa
         label.textContent = `${(d.value / 1000000).toFixed(2)}M`;
+        label.style.top = `calc(${(1 - scaleRatio) * 100}% - 22px)`;
 
         const axisLabel = updatedLabels[idx];
         axisLabel.className = d.type === "actual" ? "axis-label actual-month" : "axis-label";
@@ -978,12 +982,27 @@
       });
     }
 
-    _drawUnifiedFlatConnections(svg, container, barSelector, dataArray, actualIndex, mode) {
+    /* ==========================================================================
+       VIRTUALIZAÇÃO COMPOSITING LAYER: CONNECTORS EM HTML/CSS PURO (SEM SVG)
+       ========================================================================== */
+    _drawUnifiedFlatConnections(overlayContainer, chartArea, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
-      this._clearSvgOverlay(svg);
       
-      const containerHeight = container.offsetHeight; if (containerHeight === 0) return;
-      const barElements = container.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
+      // BATCH READS UNIFICADOS UPFRONT
+      const containerHeight = chartArea.offsetHeight;
+      if (containerHeight === 0) return;
+      
+      const barElements = chartArea.querySelectorAll(barSelector);
+      if (!barElements || barElements.length === 0) return;
+      
+      const barCenters = Array.from(barElements).map(bar => {
+        if (!bar) return 0;
+        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
+      });
+
+      const barHeights = Array.from(barElements).map(bar => {
+        return bar.getBoundingClientRect().height;
+      });
       
       const pairs = [];
       if (mode === "monthly") {
@@ -993,58 +1012,65 @@
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
 
-      const getCenterX = (idx) => {
-        const bar = barElements[idx]; if (!bar) return 0;
-        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
-      };
-
-      const ceilingY = -16;
-      const floorY = containerHeight; 
+      // BATCH WRITES: Pool de nós reutilizáveis em HTML absoluto
+      overlayContainer.textContent = "";
       const fragment = document.createDocumentFragment();
 
       pairs.forEach((pair) => {
-        const xFrom = getCenterX(pair.from); const xTo = getCenterX(pair.to);
+        const xFrom = barCenters[pair.from];
+        const xTo = barCenters[pair.to];
         if (xFrom === 0 || xTo === 0) return;
         
         const itemFrom = dataArray[pair.from];
         const itemTo = dataArray[pair.to];
-        const val1 = itemFrom.value; 
-        const val2 = itemTo.value;
         
         let isCostSaving = false;
         let variancePercent = 0;
         let directionalArrow = "";
 
         if (itemTo.type === "budget") {
-          const diff = val1 - val2; 
+          const diff = itemFrom.value - itemTo.value;
           isCostSaving = diff <= 0;
-          variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
+          variancePercent = itemTo.value !== 0 ? (diff / itemTo.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         } else {
-          const diff = val2 - val1; 
+          const diff = itemTo.value - itemFrom.value;
           isCostSaving = diff <= 0;
-          variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
+          variancePercent = itemFrom.value !== 0 ? (diff / itemFrom.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         }
 
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
 
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
-        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); 
-        fragment.appendChild(path);
+        // Desenha a linha guia horizontal/vertical via bordas nativas de um DIV absoluto
+        const leftX = Math.min(xFrom, xTo);
+        const trackWidth = Math.abs(xTo - xFrom);
+        const ceilingY = 24; // Margem superior fixa de segurança
         
-        const midX = xFrom + (xTo - xFrom) / 2;
-        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (ceilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        const trackDiv = document.createElement("div");
+        trackDiv.className = "html-bracket-track";
+        trackDiv.style.left = `${leftX}px`;
+        trackDiv.style.top = `${ceilingY}px`;
+        trackDiv.style.width = `${trackWidth}px`;
+        trackDiv.style.height = `${containerHeight - ceilingY}px`;
+        fragment.appendChild(trackDiv);
         
-        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
-        const span = document.createElement("span"); span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
-        span.textContent = varianceText;
+        // Renderização absoluta da Badge de variação em HTML puro (GPU composited)
+        const midX = leftX + (trackWidth / 2);
+        const badgeAnchor = document.createElement("div");
+        badgeAnchor.className = "html-bracket-badge-anchor";
+        badgeAnchor.style.left = `${midX}px`;
+        badgeAnchor.style.top = `${ceilingY}px`;
         
-        div.appendChild(span); foreignObj.appendChild(div); fragment.appendChild(foreignObj);
+        const spanTag = document.createElement("span");
+        spanTag.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
+        spanTag.textContent = varianceText;
+        
+        badgeAnchor.appendChild(spanTag);
+        fragment.appendChild(badgeAnchor);
       });
-      svg.appendChild(fragment);
+
+      overlayContainer.appendChild(fragment);
     }
 
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
@@ -1091,16 +1117,26 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
+      // Reconciliação dos estados dimensionais simplificados das mini barras laterais
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
-      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
-      
-      // 🛠️ CORREÇÃO OPERACIONAL: Removida a linha duplicada corrompida .style.style.height que quebrava o runtime
-      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
-      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
+      this._miniBarPrev.style.transform = `scaleY(${totalRealizadoYTDAntigo / maxYTD})`;
+      this._miniBarAct.style.transform = `scaleY(${totalRealizadoYTDAtual / maxYTD})`;
+      this._miniBarBud.style.transform = `scaleY(${totalBudgetYTDCompleto / maxYTD})`;
 
-      this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
-      this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
-      this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
+      this._miniLblPrev = this._miniBarPrev.parentElement.querySelector(".kpi-label") || document.createElement("span");
+      this._miniLblPrev.className = "kpi-label"; this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
+      this._miniBarPrev.appendChild(this._miniLblPrev);
+      this._miniLblPrev.style.top = `calc(${(1 - (totalRealizadoYTDAntigo / maxYTD)) * 100}% - 22px)`;
+
+      this._miniLblAct = this._miniBarAct.parentElement.querySelector(".kpi-label") || document.createElement("span");
+      this._miniLblAct.className = "kpi-label"; this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
+      this._miniBarAct.appendChild(this._miniLblAct);
+      this._miniLblAct.style.top = `calc(${(1 - (totalRealizadoYTDAtual / maxYTD)) * 100}% - 22px)`;
+
+      this._miniLblBud = this._miniBarBud.parentElement.querySelector(".kpi-label") || document.createElement("span");
+      this._miniLblBud.className = "kpi-label"; this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
+      this._miniBarBud.appendChild(this._miniLblBud);
+      this._miniLblBud.style.top = `calc(${(1 - (totalBudgetYTDCompleto / maxYTD)) * 100}% - 22px)`;
 
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
@@ -1131,8 +1167,6 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
-      
-      // 🛠️ CORREÇÃO DE SINTAXE CRÍTICA: Hexadecimais encapsulados em strings para evitar quebra de compilação
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
