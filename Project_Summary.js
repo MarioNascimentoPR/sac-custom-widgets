@@ -144,17 +144,17 @@
         padding-bottom: 6px;
       }
       
-      /* CONTAINER DO GRÁFICO: Respiro fixado para as varreduras dinâmicas */
+      /* AREA DO GRAFICO ELEVADA PARA SINALIZAÇÃO DE DESVIOS */
       .chart-container-block { 
         position: relative; 
-        height: 185px; 
-        padding-top: 55px; 
+        height: 195px; 
+        padding-top: 65px; 
         box-sizing: border-box; 
         width: 100%; 
       }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; z-index: 2; }
       
-      /* OVERLAY DO SVG: Ocupa toda a área e roda estritamente por trás dos textos */
+      /* CAMADA SVG BLINDADA ATRÁS DOS NÚMEROS E TAGS */
       .svg-overlay { 
         position: absolute; 
         top: 0; 
@@ -175,7 +175,7 @@
         background-size: 6px 6px;
       }
       
-      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 1px); font-weight: 700; color: #2d3748; white-space: nowrap; }
+      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 1px); font-weight: 700; color: #2d3748; white-space: nowrap; z-index: 10; }
       .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -24px; }
       
       .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
@@ -184,7 +184,7 @@
       .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
       
       .variance-tag {
-        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; background-color: #ffffff;
+        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; background-color: #ffffff; z-index: 10;
       }
       .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
       .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
@@ -757,8 +757,11 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        // Chamada dos novos métodos de desenho baseados estritamente na API getBoundingClientRect()
-        this._renderBoundingConnectors(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
+        // Executa o cálculo de bounding box sincronizado no próximo ciclo do navegador
+        setTimeout(() => {
+          this._renderBoundingConnectors(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
+        }, 0);
+
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
@@ -767,7 +770,7 @@
     }
 
     /* ==========================================================================
-       SOLUÇÃO CIRÚRGICA: CÁLCULO DE POSIÇÃO ABSOLUTA VIA getBoundingClientRect
+       SOLUÇÃO DE ALTISSIMA PRECISÃO VIA API BoundingBox DINÂMICA
        ========================================================================== */
     _renderBoundingConnectors(svg, chartAreaContainer, barElements, seriesData, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
@@ -784,7 +787,7 @@
         pairs.push({ from: 1, to: 2 });
       }
 
-      // Função matemática pura que mapeia o centro geométrico real em pixels relativo ao pai Shadow
+      // Procura o centro horizontal exato de cada barra calculada em tempo real na tela [cite: 126, 127]
       const getRealCenterAndTopX = (idx) => {
         const bar = barElements[idx];
         if (!bar) return { x: 0, y: 0 };
@@ -794,8 +797,8 @@
         return { x: centerX, y: topY };
       };
 
-      // Teto fixado no topo absoluto do container (16px), bem acima das labels textuais de dados R$ M
-      const fixedCeilingY = 16;
+      // FIX ABSOLUTO: Teto fixado em 20px no topo do canvas, garantindo pista livre total acima das labels
+      const fixedCeilingY = 20;
 
       pairs.forEach((pair) => {
         const coordFrom = getRealCenterAndTopX(pair.from);
@@ -807,7 +810,7 @@
         const diff = val2 - val1;
         let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
 
-        // Regra Contábil de Custos: Negativo = Economia (Verde), Positivo = Estouro (Vermelho)
+        // Regra semântica rígida: Gastar menos é Verde (Sucesso), gastar mais é Vermelho (Estouro) [cite: 124]
         const isSaving = diff <= 0;
         if (!isSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
         else if (isSaving && variancePercent > 0) { variancePercent = -variancePercent; }
@@ -815,17 +818,16 @@
         const directionalArrow = isSaving ? "▼ " : "▲ ";
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
 
-        // Criação dinâmica do Path SVG garantindo o traçado por trás dos rótulos
+        // Conector sólido elegante acoplado de forma limpa por trás do texto numérico
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        // Ancoramos o gancho vertical ligeiramente acima da barra para não colidir com o número
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y - 2} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 5}`);
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y - 28} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 28}`);
         path.setAttribute("stroke", "var(--color-border-axis)");
         path.setAttribute("stroke-width", "1.25");
         path.setAttribute("fill", "none");
         path.setAttribute("marker-end", "url(#arrow-neutral)");
         svg.appendChild(path);
 
-        // Injeção limpa da Tag Centralizada na Pista Livre Superior do Gráfico
+        // Caixa de texto HTML absoluta injetada na pista superior do SVG
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
         foreignObj.setAttribute("x", (midX - 35).toString());
@@ -918,14 +920,16 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      // RECONSTRUTOR DO GRÁFICO YTD VIA API DE BOUNDING BOX
+      // RE-INJEÇÃO RESPONSIVA DAS LINHAS YTD VIA API BOUNDING BOX (Evita encolhimento de tela)
       const ytdBarElements = [this._miniBarPrev, this._miniBarAct, this._miniBarBud];
       const ytdSeriesMock = [
         { value: totalRealizadoYTDAntigo },
         { value: totalRealizadoYTDAtual },
         { value: totalBudgetYTDCompleto }
       ];
-      this._renderBoundingConnectors(this._svgYtdOverlay, this._ytdChartArea, ytdBarElements, ytdSeriesMock, 1, "ytd");
+      setTimeout(() => {
+        this._renderBoundingConnectors(this._svgYtdOverlay, this._ytdChartArea, ytdBarElements, ytdSeriesMock, 1, "ytd");
+      }, 0);
 
       const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
       const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
