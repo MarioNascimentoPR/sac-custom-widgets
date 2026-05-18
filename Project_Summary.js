@@ -1,13 +1,13 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - CORE RUNTIME (PRODUCTION READY)
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HIGH PERFORMANCE BATCHED RUNTIME
    ========================================================================== */
 
 (function () {
-  // CHAVE DE DESATIVAÇÃO OPERACIONAL: Mude para false para desligar 100% a Telemetria
+  // CONFIGURAÇÃO CORPORATIVA: Altere para false para desligar 100% a Telemetria
   const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
-     SUBSISTEMA ENCAPSULADO DE PROFILING E TELEMETRIA CIENTÍFICA
+     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E STRESS TEST (HEADLESS)
      ========================================================================== */
   class EvoStreamProfiler {
     constructor() {
@@ -111,7 +111,6 @@
       .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
       .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       
-      /* UI DESIGN DO PAINEL DE TELEMETRIA AVANÇADA */
       .telemetry-btn {
         font-size: 11px; font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
       }
@@ -202,6 +201,7 @@
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
+      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -451,7 +451,7 @@
   }
 
   /* ==========================================================================
-     UI CONTROLLER WIDGET LAYER
+     UI LAYER CONTROLLER WIDGET LAYER
      ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
@@ -476,6 +476,7 @@
       this._itemFinanceiroDimId = null;
       this._contaContabilDimId = null;
       this._extraDimIds = [];
+      this._reflowCount = 0;
 
       this._boundWindowClick = (e) => {
         const path = e.composedPath();
@@ -588,13 +589,6 @@
         this.renderChart();
         this._updateQueued = false;
       });
-    }
-
-    _initStaticHighlightsDOM() {
-      this._hlUl = document.createElement("ul");
-      this._hlUl.className = "ul-highlight";
-      this._highlightContentText.textContent = "";
-      this._highlightContentText.appendChild(this._hlUl);
     }
 
     _toggleDropdownDOM() {
@@ -880,6 +874,7 @@
 
         const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
+          this._reflowCount++;
           const tSVGStart = performance.now();
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
           this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
@@ -892,7 +887,6 @@
             const jsTotalTime = tEndJS - tArrivalData;
             const domTotalTime = tFinalPaint - tDOMPaintStart;
 
-            // Injeção de Telemetria e Projeções sem flickering
             this._lblTotal.textContent = `${(tFinalPaint - tArrivalData).toFixed(2)} ms`;
             this._lblJS.textContent = `${jsTotalTime.toFixed(2)} ms`;
             this._lblDOM.textContent = `${domTotalTime.toFixed(2)} ms`;
@@ -966,12 +960,23 @@
       });
     }
 
+    /* ==========================================================================
+       VIRTUALIZAÇÃO E PERFORMANCE: SEGREGAÇÃO BATCH READS E POOL REUSE (SVG)
+       ========================================================================== */
     _drawUnifiedFlatConnections(svg, container, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
-      this._clearSvgOverlay(svg);
       
-      const containerHeight = container.offsetHeight; if (containerHeight === 0) return;
-      const barElements = container.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
+      // BATCH READ: Fase única de leitura síncrona de layout geométrico
+      const containerHeight = container.offsetHeight;
+      if (containerHeight === 0) return;
+      
+      const barElements = container.querySelectorAll(barSelector);
+      if (!barElements || barElements.length === 0) return;
+      
+      const barCenters = Array.from(barElements).map(bar => {
+        if (!bar) return 0;
+        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
+      });
       
       const pairs = [];
       if (mode === "monthly") {
@@ -981,58 +986,72 @@
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
 
-      const getCenterX = (idx) => {
-        const bar = barElements[idx]; if (!bar) return 0;
-        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
-      };
-
       const ceilingY = -16;
-      const floorY = containerHeight; 
-      const fragment = document.createDocumentFragment();
+      const floorY = containerHeight;
 
-      pairs.forEach((pair) => {
-        const xFrom = getCenterX(pair.from); const xTo = getCenterX(pair.to);
-        if (xFrom === 0 || xTo === 0) return;
+      // BATCH WRITE: Reutilização incremental do pool sem limpeza destrutiva
+      let existingGroups = svg.querySelectorAll(".connector-group");
+
+      while (existingGroups.length < pairs.length) {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "connector-group");
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none");
+        
+        const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        fo.setAttribute("width", "70"); fo.setAttribute("height", "22");
+        
+        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
+        const span = document.createElement("span"); span.className = "variance-tag";
+        
+        div.appendChild(span); fo.appendChild(div); g.appendChild(path); g.appendChild(fo); svg.appendChild(g);
+        existingGroups = svg.querySelectorAll(".connector-group");
+      }
+
+      for (let i = pairs.length; i < existingGroups.length; i++) {
+        existingGroups[i].style.display = "none";
+      }
+
+      pairs.forEach((pair, idx) => {
+        const g = existingGroups[idx];
+        g.style.display = "block";
+        
+        const xFrom = barCenters[pair.from];
+        const xTo = barCenters[pair.to];
         
         const itemFrom = dataArray[pair.from];
         const itemTo = dataArray[pair.to];
-        const val1 = itemFrom.value; 
-        const val2 = itemTo.value;
         
         let isCostSaving = false;
         let variancePercent = 0;
         let directionalArrow = "";
 
         if (itemTo.type === "budget") {
-          const diff = val1 - val2; 
+          const diff = itemFrom.value - itemTo.value;
           isCostSaving = diff <= 0;
-          variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
+          variancePercent = itemTo.value !== 0 ? (diff / itemTo.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         } else {
-          const diff = val2 - val1; 
+          const diff = itemTo.value - itemFrom.value;
           isCostSaving = diff <= 0;
-          variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
+          variancePercent = itemFrom.value !== 0 ? (diff / itemFrom.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         }
 
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
-        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); 
-        fragment.appendChild(path);
         
+        g.querySelector("path").setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
+        
+        const fo = g.querySelector("foreignObject");
         const midX = xFrom + (xTo - xFrom) / 2;
-        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (ceilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        fo.setAttribute("x", (midX - 35).toString());
+        fo.setAttribute("y", (ceilingY - 11).toString());
         
-        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
-        const span = document.createElement("span"); span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
+        const span = g.querySelector(".variance-tag");
+        span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
         span.textContent = varianceText;
-        
-        div.appendChild(span); foreignObj.appendChild(div); fragment.appendChild(foreignObj);
       });
-      svg.appendChild(fragment);
     }
 
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
@@ -1040,18 +1059,10 @@
       const monthLabel = currentBarNode.label.split(' ')[0];
       const currentYear = currentBarNode.yearValue; const previousYear = currentYear - 1;
 
-      const diffNominal = actualVal - budgetVal;
-      const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
-      const consumptionMonthPercent = budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0;
-      const isMonthSaving = diffNominal <= 0;
-      
-      const formatM = (v) => (v / 1000000).toFixed(2) + "M";
-      const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
-
-      this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
-      this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
-      this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
-      this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
+      this._valDiffRow.textContent = (actualVal - budgetVal >= 0 ? "+" : "") + formatM(actualVal - budgetVal);
+      this._valPctRow.textContent = formatPercent(budgetVal !== 0 ? ((actualVal - budgetVal) / budgetVal) * 100 : 0, actualVal - budgetVal <= 0);
+      this._valPctRow.className = "status-badge-finance " + (actualVal - budgetVal <= 0 ? "success" : "warning");
+      this._valPctConsumptionRow.textContent = (budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0).toFixed(2) + "%";
 
       let totalRealizadoYTDAtual = 0; let totalRealizadoYTDAntigo = 0; let totalBudgetYTDCompleto = 0;
 
@@ -1084,9 +1095,9 @@
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
       this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
-      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
-      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
-      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
+      this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
+      this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
+      this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
 
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
@@ -1116,10 +1127,8 @@
 
       this._hlUl.textContent = "";
 
-      const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
-      
-      // SINTAXE CORRIGIDA: Strings com aspas explícitas para evitar quebra de compilação
-      const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
+      const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
+      const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
       const liMonth = document.createElement("li");
