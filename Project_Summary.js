@@ -1,18 +1,18 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - ADVANCED PROFILER ENGINES
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - CORE RUNTIME (PRODUCTION READY)
    ========================================================================== */
 
 (function () {
-  // CONFIGURAÇÃO CORPORATIVA: Altere para false para desligar 100% da Telemetria
+  // CHAVE DE DESATIVAÇÃO OPERACIONAL: Mude para false para desligar 100% a Telemetria
   const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
-     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E STRESS TEST (HEADLESS)
+     SUBSISTEMA ENCAPSULADO DE PROFILING E TELEMETRIA CIENTÍFICA
      ========================================================================== */
   class EvoStreamProfiler {
     constructor() {
       this.metrics = {
-        totalCycle: 0, jsTime: 0, domTime: 0, paintTime: 0, fps: 60,
+        totalCycle: 0, jsTime: 0, domTime: 0, fps: 60,
         steps: { parsing: 0, aggregation: 0, domCreation: 0, svgDrawing: 0, highlights: 0 },
         memory: 0, redundantRenders: 0, dataVolume: 0
       };
@@ -24,7 +24,7 @@
     verifyRedundancy(cubeData) {
       if (!ENABLE_TELEMETRY || !cubeData) return false;
       try {
-        const signature = JSON.stringify(cubeData.slice(0, 10).map(r => r.id || ""));
+        const signature = JSON.stringify(cubeData.slice(0, 5).map(r => r.id || ""));
         if (this._lastDataSignature === signature) {
           this.metrics.redundantRenders++;
           return true;
@@ -45,14 +45,14 @@
           this.metrics.fps = Math.round((this._fpsFrameCount * 1000) / (now - this._fpsLastTime));
           this._fpsFrameCount = 0;
           this._fpsLastTime = now;
-        } else if (this._fpsFrameCount < 100) {
+        } else if (this._fpsFrameCount < 60) {
           requestAnimationFrame(run);
         }
       };
       requestAnimationFrame(run);
     }
 
-    collectSystemMemory() {
+    collectMemory() {
       if (!ENABLE_TELEMETRY) return;
       if (window.performance && performance.memory) {
         this.metrics.memory = performance.memory.usedJSHeapSize;
@@ -60,7 +60,7 @@
     }
 
     runStressProjection(baseRows, sampleJSTime) {
-      if (!baseRows || baseRows === 0) return { "10k": 0, "25k": 0, "50k": 0, "100k": 0 };
+      if (!baseRows || baseRows === 0) return { k10: 0, k25: 0, k50: 0, k100: 0 };
       const baseValue = sampleJSTime / baseRows;
       return {
         k10: baseValue * 10000 * 1.05,
@@ -101,6 +101,15 @@
         display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
       .tree-dropdown-content.show { display: block; }
+      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
+      .tree-year-node:hover { background-color: #edf2f7; }
+      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
+      .tree-year-node.expanded::before { transform: rotate(90deg); }
+      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
+      .tree-months-container.show { display: flex; }
+      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
+      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
+      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       
       /* UI DESIGN DO PAINEL DE TELEMETRIA AVANÇADA */
       .telemetry-btn {
@@ -113,6 +122,7 @@
       .telemetry-modal.show { display: block; }
       .telemetry-title { font-size: 11.5px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
       .telemetry-close { background: none; border: none; font-size: 16px; cursor: pointer; color: #94a3b8; font-weight: 700; line-height: 1; }
+      .telemetry-close:hover { color: #64748b; }
       .telemetry-section-title { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 10px 0 4px 0; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
       .telemetry-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; align-items: center; }
       .telemetry-label { font-weight: 600; color: #64748b; }
@@ -303,7 +313,7 @@
   `;
 
   /* ==========================================================================
-     ENGINE ANALÍTICA PURA JS (HEADLESS ENGINE)
+     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA SANEADA (PURE HEADLESS)
      ========================================================================== */
   class EvoNarrativeEngine {
     constructor() {
@@ -441,7 +451,7 @@
   }
 
   /* ==========================================================================
-     UI LAYER MANAGEMENT WITH REQUESTUPDATE REACTION
+     UI CONTROLLER WIDGET LAYER
      ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
@@ -495,7 +505,6 @@
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
-        // ELEMENTOS DE MAQUEAMENTO DA TELEMETRIA
         this._telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
         this._telemetryModal = this._shadowRoot.getElementById("telemetryModal");
         this._closeTelemetry = this._shadowRoot.getElementById("closeTelemetry");
@@ -512,7 +521,6 @@
         this._lblRedund = this._shadowRoot.getElementById("tmRedund");
         this._lblVol = this._shadowRoot.getElementById("tmVol");
         
-        // TABELA PREDICTIVE STRESS
         this._st10k = this._shadowRoot.getElementById("st10k");
         this._st25k = this._shadowRoot.getElementById("st25k");
         this._st50k = this._shadowRoot.getElementById("st50k");
@@ -582,6 +590,13 @@
       });
     }
 
+    _initStaticHighlightsDOM() {
+      this._hlUl = document.createElement("ul");
+      this._hlUl.className = "ul-highlight";
+      this._highlightContentText.textContent = "";
+      this._highlightContentText.appendChild(this._hlUl);
+    }
+
     _toggleDropdownDOM() {
       if (this._treeDropdownContent) {
         this._treeDropdownContent.classList.toggle("show", this._isDropdownOpen);
@@ -595,8 +610,6 @@
     onCustomWidgetAfterUpdate(changedProperties) {
       this._updateStyles();
       if ("performanceCube" in changedProperties && this.performanceCube) {
-        
-        // DETECTOR DE RE-RENDERS REDUNDANTES
         if (this._profiler.verifyRedundancy(this.performanceCube.data)) {
           if (ENABLE_TELEMETRY) this._lblRedund.textContent = this._profiler.metrics.redundantRenders;
           return; 
@@ -857,7 +870,6 @@
           this._profiler.metrics.steps.parsing = performance.now() - tParsingStart;
         }
 
-        // TELEMETRIA ESTÁGIO 3: DOM Creation
         const tDOMStart = performance.now();
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
         if (ENABLE_TELEMETRY) {
@@ -866,7 +878,6 @@
 
         this._renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, calculatedBudget);
 
-        // TELEMETRIA ESTÁGIO 4 & PAINT: Conexões de Linhas e Render Final
         const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
           const tSVGStart = performance.now();
@@ -875,13 +886,13 @@
           
           if (ENABLE_TELEMETRY) {
             this._profiler.metrics.steps.svgDrawing = performance.now() - tSVGStart;
-            this._profiler.collectSystemMemory();
+            this._profiler.collectMemory();
 
             const tFinalPaint = performance.now();
             const jsTotalTime = tEndJS - tArrivalData;
             const domTotalTime = tFinalPaint - tDOMPaintStart;
 
-            // Injeção de Telemetria no Pop-up em Tempo de Execução
+            // Injeção de Telemetria e Projeções sem flickering
             this._lblTotal.textContent = `${(tFinalPaint - tArrivalData).toFixed(2)} ms`;
             this._lblJS.textContent = `${jsTotalTime.toFixed(2)} ms`;
             this._lblDOM.textContent = `${domTotalTime.toFixed(2)} ms`;
@@ -896,7 +907,6 @@
             this._lblMem.textContent = `${(this._profiler.metrics.memory / 1024 / 1024).toFixed(2)} MB`;
             this._lblVol.textContent = `${financialData.data.length} rows`;
 
-            // Execução das Projeções de Estresse Analíticas
             const stressProjections = this._profiler.runStressProjection(financialData.data.length, jsTotalTime);
             this._st10k.textContent = `${stressProjections.k10.toFixed(2)} ms`;
             this._st25k.textContent = `${stressProjections.k25.toFixed(2)} ms`;
@@ -1107,6 +1117,8 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
+      
+      // SINTAXE CORRIGIDA: Strings com aspas explícitas para evitar quebra de compilação
       const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
@@ -1123,7 +1135,6 @@
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
       this._hlUl.appendChild(liCons);
 
-      // TELEMETRIA ESTÁGIO 5: Monitor de Highlights por Item Financeiro
       const tHLStart = performance.now();
       const analysis = this._analyticsEngine.analyze(
         this._currentData.data, currentBarNode, currentYear, previousYear,
