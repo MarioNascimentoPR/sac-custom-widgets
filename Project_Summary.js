@@ -1,13 +1,13 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY RUNTIME
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY UNIT
    ========================================================================== */
 
 (function () {
-  // CHAVE DE DESATIVAÇÃO OPERACIONAL: Altere para false para desligar 100% a Telemetria
+  // CONFIGURAÇÃO CORPORATIVA: Altere para false para desligar 100% a Telemetria
   const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
-     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E PROFILING CIENTÍFICO (HEADLESS)
+     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E STRESS TEST (HEADLESS)
      ========================================================================== */
   class EvoStreamProfiler {
     constructor() {
@@ -101,15 +101,6 @@
         display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
       }
       .tree-dropdown-content.show { display: block; }
-      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
-      .tree-year-node:hover { background-color: #edf2f7; }
-      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
-      .tree-year-node.expanded::before { transform: rotate(90deg); }
-      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
-      .tree-months-container.show { display: flex; }
-      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
-      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
-      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
       
       .telemetry-btn {
         font-size: 11px; font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
@@ -121,7 +112,6 @@
       .telemetry-modal.show { display: block; }
       .telemetry-title { font-size: 11.5px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
       .telemetry-close { background: none; border: none; font-size: 16px; cursor: pointer; color: #94a3b8; font-weight: 700; line-height: 1; }
-      .telemetry-close:hover { color: #64748b; }
       .telemetry-section-title { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 10px 0 4px 0; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
       .telemetry-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; align-items: center; }
       .telemetry-label { font-weight: 600; color: #64748b; }
@@ -145,35 +135,28 @@
       .visualization-column.monthly-col { flex: 3; }
       .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
       
-      /* CANVA REESTRUTURADO: Garante que os conectores flutuem estritamente dentro da área do gráfico */
-      .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; }
+      .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; border-bottom: 1px solid #cbd5e0; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
       .html-connectors-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
       .html-bracket-track { position: absolute; border-top: 1.25px solid #cbd5e0; border-left: 1.25px solid #cbd5e0; border-right: 1.25px solid #cbd5e0; pointer-events: none; box-sizing: border-box; }
       .html-bracket-badge-anchor { position: absolute; width: 70px; height: 22px; display: flex; justify-content: center; align-items: center; pointer-events: none; transform: translate(-35px, -11px); }
 
-      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
-      
-      /* TIPOGRAFIA BLINDADA: Rótulos com tamanhos fixos e imunes a distorções geométricas */
-      .bar-element { width: 100%; max-width: 46px; height: 0%; position: relative; display: flex; justify-content: center; transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-      .bar-element.historical { background-color: var(--color-historical); border-radius: 3px 3px 0 0; }
-      .bar-element.actual { background-color: var(--color-actual); border-radius: 3px 3px 0 0; box-sizing: border-box; }
+      /* NOVO MODELO DE COLUNA: Sincronia horizontal absoluta e imune a quebras */
+      .bar-column { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 46px; height: 100%; position: relative; gap: 6px; }
+      .bar-element { width: 100%; max-width: 46px; height: 0%; position: relative; border-radius: 3px 3px 0 0; transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1); flex-shrink: 0; }
+      .bar-element.historical { background-color: var(--color-historical); }
+      .bar-element.actual { background-color: var(--color-actual); }
       .bar-element.budget {
-        background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box; border-radius: 3px 3px 0 0;
+        background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
       }
-      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; background: #ffffff; padding: 1px 4px; border-radius: 4px; z-index: 3; }
-      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; top: -24px; }
       
-      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
-      .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
-      .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
-      .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
-      .variance-tag { font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: none; white-space: nowrap; display: inline-block; position: relative; z-index: 4; }
-      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
-      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+      .kpi-label { position: absolute; top: -22px; width: 100%; text-align: center; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap; z-index: 3; }
+      .bar-column.actual-month-col .kpi-label { color: #1a202c; font-weight: 800; }
+      .axis-label { width: 100%; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; margin-top: 2px; }
+      .bar-column.actual-month-col .axis-label { color: var(--color-actual); font-weight: 700; }
       
       .insight-grid { 
         display: grid; 
@@ -208,6 +191,7 @@
         border-left: 4px solid #cbd5e0; border-radius: 8px; padding: 14px 16px; color: #333333;
       }
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
     </style>
     <div id="widget-wrapper">
@@ -271,23 +255,11 @@
             <div class="html-connectors-overlay" id="monthlyConnectors"></div>
             <div class="chart-area" id="chartArea"></div>
           </div>
-          <div class="axis-x-block"><div class="axis-x" id="axisX"></div></div>
         </div>
         <div class="visualization-column ytd-col">
           <div class="chart-container-block">
             <div class="html-connectors-overlay" id="ytdConnectors"></div>
-            <div class="chart-area" id="ytdChartArea">
-              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label">-</span></div></div>
-              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label">-</span></div></div>
-              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label">-</span></div></div>
-            </div>
-          </div>
-          <div class="axis-x-block">
-            <div class="axis-x" id="ytdAxisX">
-              <div class="axis-label" id="ytd-axis-lbl-prev">Ano Ant.</div>
-              <div class="axis-label" id="ytd-axis-lbl-act">Ano Atual</div>
-              <div class="axis-label">Meta YTD</div>
-            </div>
+            <div class="chart-area" id="ytdChartArea"></div>
           </div>
         </div>
       </div>
@@ -368,7 +340,6 @@
         isSaving: ytdDiff <= 0
       };
 
-      // VIRTUALIZAÇÃO COGNITIVA: Pre-sort à volumetria limite para estabilidade computacional linear
       const scannedRows = cubeData.map(row => {
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
         return { row, weight: Math.abs(rawValue) };
@@ -441,7 +412,6 @@
           }
         });
 
-        // BLINDAGEM CONTRA EXCEÇÕES: Validação de driver nulo
         let driverImpactValue = 0;
         if (driverContaName && item.contas[driverContaName]) {
           driverImpactValue = item.contas[driverContaName].realizado - item.contas[driverContaName].orcado;
@@ -476,7 +446,7 @@
   }
 
   /* ==========================================================================
-     UI LAYER CONTROLLER WIDGET LAYER (REQUESTUPDATE COMPLIANT)
+     UI LAYER CONTROLLER WIDGET LAYER
      ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
@@ -611,6 +581,13 @@
         this.renderChart();
         this._updateQueued = false;
       });
+    }
+
+    _initStaticHighlightsDOM() {
+      this._hlUl = document.createElement("ul");
+      this._hlUl.className = "ul-highlight";
+      this._highlightContentText.textContent = "";
+      this._highlightContentText.appendChild(this._hlUl);
     }
 
     _toggleDropdownDOM() {
@@ -896,6 +873,7 @@
 
         const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
+          this._reflowCount++;
           const tSVGStart = performance.now();
           
           this._drawUnifiedFlatConnections(this._monthlyConnectors, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
@@ -938,75 +916,58 @@
     }
 
     /* ==========================================================================
-       CONSTRUÇÃO DO DOM EM LOTE: FIX DE ALINHAMENTO PIXEL PERFECT
+       GRÁFICO BLINDADO POR COLUNAS: TRAVA O ALINHAMENTO DO EIXO X NATURALMENTE
        ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
-      const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
-      const existingLabels = this._axisX.querySelectorAll(".axis-label");
-      const targetLength = visibleSeriesData.length;
+      this._chartArea.textContent = ""; 
+      const fragment = document.createDocumentFragment();
 
-      if (existingWrappers.length < targetLength) {
-        for (let i = existingWrappers.length; i < targetLength; i++) {
-          const wrapper = document.createElement("div"); wrapper.className = "bar-wrapper";
-          const bar = document.createElement("div"); bar.className = "bar-element";
-          const label = document.createElement("span"); label.className = "kpi-label";
-          bar.appendChild(label); wrapper.appendChild(bar); this._chartArea.appendChild(wrapper);
-        }
-      } else if (existingWrappers.length > targetLength) {
-        for (let i = existingWrappers.length - 1; i >= targetLength; i--) {
-          existingWrappers[i].remove();
-        }
-      }
+      visibleSeriesData.forEach((d) => {
+        const column = document.createElement("div");
+        column.className = d.type === "actual" ? "bar-column actual-month-col" : "bar-column";
 
-      if (existingLabels.length < targetLength) {
-        for (let i = existingLabels.length; i < targetLength; i++) {
-          const axisLabel = document.createElement("div"); axisLabel.className = "axis-label";
-          this._axisX.appendChild(axisLabel);
-        }
-      } else if (existingLabels.length > targetLength) {
-        for (let i = existingLabels.length - 1; i >= targetLength; i--) {
-          existingLabels[i].remove();
-        }
-      }
-
-      const updatedWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
-      const updatedLabels = this._axisX.querySelectorAll(".axis-label");
-
-      visibleSeriesData.forEach((d, idx) => {
-        const bar = updatedWrappers[idx].querySelector(".bar-element");
-        const label = bar.querySelector(".kpi-label");
-        
-        // REESTRUTURAÇÃO: Ajuste de proporção via propriedade nativa de altura ( height % )
-        const heightRatio = (d.value / maxVal) * 100;
+        const bar = document.createElement("div");
         bar.className = `bar-element ${d.type}`;
-        bar.style.height = `${heightRatio}%`;
         
-        label.textContent = `${(d.value / 1000000).toFixed(2)}M`;
+        // Atribuição via propriedade geométrica real controlada por loops reativos
+        const heightRatio = (d.value / maxVal) * 100;
+        bar.style.height = `${heightRatio}%`;
 
-        const axisLabel = updatedLabels[idx];
-        axisLabel.className = d.type === "actual" ? "axis-label actual-month" : "axis-label";
+        const kpi = document.createElement("span");
+        kpi.className = "kpi-label";
+        kpi.textContent = `${(d.value / 1000000).toFixed(2)}M`;
+
+        const axisLabel = document.createElement("div");
+        axisLabel.className = "axis-label";
         axisLabel.textContent = d.label;
+
+        bar.appendChild(kpi);
+        column.appendChild(bar);
+        column.appendChild(axisLabel);
+        fragment.appendChild(column);
       });
+
+      this._chartArea.appendChild(fragment);
     }
 
     /* ==========================================================================
-       VIRTUALIZAÇÃO COMPOSITING LAYER: CONNECTORS EM HTML/CSS PURO RELATIVO ANCORADO
+       VIRTUALIZAÇÃO COMPOSITING LAYER: CONECTORES REATIVOS EM DIVS ABSOLUTOS
        ========================================================================== */
     _drawUnifiedFlatConnections(overlayContainer, chartArea, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
       
       const containerHeight = chartArea.offsetHeight; if (containerHeight === 0) return;
-      const barElements = chartArea.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
+      const barColumns = chartArea.querySelectorAll(".bar-column"); if (!barColumns || barColumns.length === 0) return;
       
-      const barCenters = Array.from(barElements).map(bar => {
-        if (!bar) return 0;
-        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
+      const barCenters = Array.from(barColumns).map(col => {
+        if (!col) return 0;
+        return col.offsetLeft + (col.offsetWidth / 2);
       });
       
       const pairs = [];
       if (mode === "monthly") {
         if (actualIndex > 0) pairs.push({ from: actualIndex - 1, to: actualIndex });
-        if (actualIndex < barElements.length - 1) pairs.push({ from: actualIndex, to: actualIndex + 1 });
+        if (actualIndex < barColumns.length - 1) pairs.push({ from: actualIndex, to: actualIndex + 1 });
       } else if (mode === "ytd") {
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
@@ -1042,8 +1003,6 @@
 
         const leftX = Math.min(xFrom, xTo);
         const trackWidth = Math.abs(xTo - xFrom);
-        
-        // ARQUITETURA GEOMÉTRICA: Ancoragem fixa no topo (24px) para criar a ponte sem empurrar o Eixo X
         const ceilingY = 24;
         
         const trackDiv = document.createElement("div");
@@ -1051,7 +1010,7 @@
         trackDiv.style.left = `${leftX}px`;
         trackDiv.style.top = `${ceilingY}px`;
         trackDiv.style.width = `${trackWidth}px`;
-        trackDiv.style.height = `${containerHeight - ceilingY}px`;
+        trackDiv.style.height = `${containerHeight - ceilingY - 24}px`; // Margem de segurança de colisão do eixo X
         fragment.appendChild(trackDiv);
         
         const midX = leftX + (trackWidth / 2);
@@ -1115,25 +1074,41 @@
       this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
       this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
 
+      // Remontagem dinâmica limpa das 3 mini-colunas YTD
+      this._ytdChartArea.textContent = "";
+      const ytdFragment = document.createDocumentFragment();
+      const miniSeriesData = [
+        { label: `Ant. (${previousYear})`, value: totalRealizadoYTDAntigo, type: "historical" },
+        { label: `Atual (${currentYear})`, value: totalRealizadoYTDAtual, type: "actual" },
+        { label: "Meta YTD", value: totalBudgetYTDCompleto, type: "budget" }
+      ];
+
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
-      
-      // Sincronização e recalque reativo de altura das mini barras YTD
-      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
-      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
-      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
-      this._miniBarPrev.querySelector(".kpi-label").textContent = formatM(totalRealizadoYTDAntigo);
-      this._miniBarAct.querySelector(".kpi-label").textContent = formatM(totalRealizadoYTDAtual);
-      this._miniBarBud.querySelector(".kpi-label").textContent = formatM(totalBudgetYTDCompleto);
+      miniSeriesData.forEach(m => {
+        const column = document.createElement("div");
+        column.className = m.type === "actual" ? "bar-column actual-month-col" : "bar-column";
 
-      this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
-      this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
+        const bar = document.createElement("div");
+        bar.className = `bar-element ${m.type}`;
+        bar.style.height = `${(m.value / maxYTD) * 100}%`;
+
+        const kpi = document.createElement("span");
+        kpi.className = "kpi-label";
+        kpi.textContent = formatM(m.value);
+
+        const axisLabel = document.createElement("div");
+        axisLabel.className = "axis-label";
+        axisLabel.textContent = m.label;
+
+        bar.appendChild(kpi);
+        column.appendChild(bar);
+        column.appendChild(axisLabel);
+        ytdFragment.appendChild(column);
+      });
+      this._ytdChartArea.appendChild(ytdFragment);
 
       this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
-
-      if (this._highlightCardArea) {
-        this._highlightCardArea.style.borderLeft = isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
-      }
 
       if (this._periodSummaryBanner) {
         this._periodSummaryBanner.style.display = "block";
@@ -1213,6 +1188,7 @@
         this._profiler.metrics.steps.highlights = performance.now() - tHLStart;
       }
 
+      // Blinda a renderização ativando a visibilidade de toda a malha inferior de KPIs e Destaques
       this._insightGrid.style.display = "grid";
     }
 
