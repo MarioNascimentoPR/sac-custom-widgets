@@ -122,7 +122,7 @@
       }
 
       .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 24px; flex-shrink: 0; align-items: stretch; }
-      .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
+      .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
       .visualization-column.monthly-col { flex: 3; }
       
       .visualization-column.ytd-col { 
@@ -134,7 +134,6 @@
         justify-content: space-between;
       }
 
-      /* FIX DO TÍTULO YTD: Reduzido e alinhado perfeitamente ao topo */
       .ytd-chart-header-title { 
         font-size: 11px; 
         font-weight: 700; 
@@ -145,21 +144,50 @@
         padding-bottom: 6px;
       }
       
-      /* FIX DE ALTURA OPERACIONAL: Aumentamos o respiro para 65px para acomodar os ganchos */
+      /* CONTAINER DO GRÁFICO: Ajustado para acomodar a pista de desvio estática */
       .chart-container-block { 
         position: relative; 
         height: 185px; 
-        padding-top: 65px; 
+        padding-top: 55px; 
         box-sizing: border-box; 
         width: 100%; 
       }
-      .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
-      /* BLINDAGEM DE Z-INDEX: O SVG overlay é forçado estritamente para trás (camada 1) */
-      .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+      /* PISTA DE DESVIO FIXA: Cria as linhas estruturais sem depender de cálculos JS de pixels */
+      .variance-track-container {
+        position: absolute;
+        top: 14px;
+        left: 0;
+        width: 100%;
+        height: 35px;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        z-index: 2;
+      }
       
-      /* BARRAS NO TOPO: As barras e os wrappers sobem de nível para a camada 2 */
-      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
+      /* ESTRUTURA DOS CONECTORES NATIVOS: Alinhamento garantido por CSS */
+      .variance-connector-group {
+        display: flex;
+        position: relative;
+        align-items: flex-start;
+      }
+      
+      .connector-stem {
+        position: absolute;
+        border-top: 1.25px solid var(--color-border-axis);
+        border-left: 1.25px solid var(--color-border-axis);
+        border-right: 1.25px solid var(--color-border-axis);
+        top: 0;
+        height: 25px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+      }
+      
+      .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; z-index: 1; }
+      
+      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; }
       .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
       .bar-element.historical { background-color: var(--color-historical); }
       .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
@@ -169,8 +197,8 @@
         background-size: 6px 6px;
       }
       
-      /* RÓTULOS DOS VALORES (M): Fixados na camada 3 para máxima prioridade visual */
-      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 1px); font-weight: 700; color: #2d3748; white-space: nowrap; z-index: 3; }
+      /* RÓTULOS DE DADOS DA COLUNA: Mantidos travados em cima da respectiva barra */
+      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 1px); font-weight: 700; color: #2d3748; white-space: nowrap; }
       .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -24px; }
       
       .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
@@ -178,9 +206,8 @@
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
       .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
       
-      /* TAGS DE VARIAÇÃO PERCENTUAL: Isoladas no topo absoluto do SVG (camada 3) */
       .variance-tag {
-        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; z-index: 3;
+        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; margin-top: -10px; background-color: #ffffff;
       }
       .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
       .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
@@ -326,16 +353,9 @@
 
       <div class="main-visualization-layout">
         <div class="monthly-col visualization-column">
+          <div class="variance-track-container" id="monthlyTrack"></div>
           <div class="chart-container-block">
-            <div class="chart-area" id="chartArea">
-              <svg class="svg-overlay" id="svgOverlay">
-                <defs>
-                  <marker id="arrow-neutral" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#cbd5e0"/>
-                  </marker>
-                </defs>
-              </svg>
-            </div>
+            <div class="chart-area" id="chartArea"></div>
           </div>
           <div class="axis-x-block">
             <div class="axis-x" id="axisX"></div>
@@ -344,9 +364,9 @@
 
         <div class="visualization-column ytd-col">
           <div class="ytd-chart-header-title" id="ytd-chart-header-title">Evolução YTD Acumulada</div>
+          <div class="variance-track-container" id="ytdTrack"></div>
           <div class="chart-container-block">
             <div class="chart-area" id="ytdChartArea">
-              <svg class="svg-overlay" id="svgYtdOverlay"></svg>
               <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
               <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
               <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
@@ -434,8 +454,8 @@
         
         this._chartArea = this._shadowRoot.getElementById("chartArea");
         this._ytdChartArea = this._shadowRoot.getElementById("ytdChartArea");
-        this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
-        this._svgYtdOverlay = this._shadowRoot.getElementById("svgYtdOverlay");
+        this._monthlyTrack = this._shadowRoot.getElementById("monthlyTrack");
+        this._ytdTrack = this._shadowRoot.getElementById("ytdTrack");
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
@@ -539,10 +559,8 @@
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach(el => el.remove());
       this._axisX.textContent = "";
-
-      this._svgOverlay.textContent = "";
-      this._svgYtdOverlay.textContent = "";
-
+      this._monthlyTrack.textContent = "";
+      this._ytdTrack.textContent = "";
       this._insightGrid.style.display = "none";
     }
 
@@ -751,7 +769,7 @@
           this._axisX.appendChild(axisLabel);
         });
 
-        this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
+        this._renderCSSBasedConnectors(visibleSeriesData, visibleActualIndex);
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
@@ -759,64 +777,56 @@
       }
     }
 
-    _drawUnifiedFlatConnections(svg, container, barElements, visibleSeriesData, visibleActualIndex, operationalMode) {
-      if (!document.contains(this) || !this._shadowRoot || visibleActualIndex === -1) return;
-      const containerHeight = container.offsetHeight; if (containerHeight === 0) return;
-      
-      const pairsToConnect = [];
-      if (operationalMode === "monthly") {
-        if (visibleActualIndex > 0) pairsToConnect.push({ from: visibleActualIndex - 1, to: visibleActualIndex, type: "monthly" });
-        if (visibleActualIndex < barElements.length - 1) pairsToConnect.push({ from: visibleActualIndex, to: visibleActualIndex + 1, type: "budget" });
-      } else if (operationalMode === "ytd") {
-        pairsToConnect.push({ from: 0, to: 1, type: "ytd-yoy" });
-        pairsToConnect.push({ from: 1, to: 2, type: "ytd-budget" });
+    /* ==========================================================================
+       SOLUÇÃO DEFINITIVA CONTRA DESCASED: CONECTORES ZERADOS VIA GRID/CSS 
+       ========================================================================== */
+    _renderCSSBasedConnectors(visibleSeriesData, visibleActualIndex) {
+      // 1. Conector Gráfico Mensal (Ancorado estruturalmente nas últimas 3 colunas)
+      const numTotalBars = visibleSeriesData.length;
+      if (numTotalBars >= 3 && visibleActualIndex !== -1) {
+        const idxPrev = numTotalBars - 3;
+        const idxAct = numTotalBars - 2;
+        const idxBud = numTotalBars - 1;
+
+        const valPrev = visibleSeriesData[idxPrev].value;
+        const valAct = visibleSeriesData[idxAct].value;
+        const valBud = visibleSeriesData[idxBud].value;
+
+        // Cálculo de Variação Mensal (Histórico vs Atual)
+        const diffM = valAct - valPrev;
+        const pctM = valPrev !== 0 ? (diffM / valPrev) * 100 : 0;
+        const isSavingM = diffM <= 0;
+        const tagClassM = isSavingM ? "saving" : "increase";
+        const textM = (isSavingM ? "▼ " : "▲ ") + Math.abs(pctM).toFixed(2) + "%";
+
+        // Cálculo de Variação Budget (Atual vs Orçado)
+        const diffB = valBud - valAct;
+        const pctB = valAct !== 0 ? (diffB / valAct) * 100 : 0;
+        const isSavingB = diffB >= 0; // Se o orçado for maior que o real, é positivo (saving)
+        const tagClassB = isSavingB ? "saving" : "increase";
+        const textB = (isSavingB ? "▼ " : "▲ ") + Math.abs(pctB).toFixed(2) + "%";
+
+        // Montagem estrutural via CSS Grid combinando perfeitamente com os gaps nativos de 20px
+        this._monthlyTrack.style.display = "grid";
+        this._monthlyTrack.style.gridTemplateColumns = `repeat(${numTotalBars - 3}, 46px) 46px 46px 46px`;
+        this._monthlyTrack.style.gap = "20px";
+
+        this._monthlyTrack.innerHTML = `
+          <div style="grid-column: 1 / span ${numTotalBars - 3};"></div>
+          <div class="variance-connector-group" style="grid-column: span 2; width: 112px;">
+            <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
+            <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
+              <span class="variance-tag ${tagClassM}">${textM}</span>
+            </div>
+          </div>
+          <div class="variance-connector-group" style="grid-column: span 2; width: 112px; margin-left: -46px;">
+            <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
+            <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
+              <span class="variance-tag ${tagClassB}">${textB}</span>
+            </div>
+          </div>
+        `;
       }
-
-      const getBarCenterAndTop = (idx) => {
-        const bar = barElements[idx]; if (!bar) return { x: 0, y: 0 };
-        return { x: bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2), y: containerHeight - bar.offsetHeight };
-      };
-
-      /* FIX GEOMÉTRICO ABSOLUTO: Travamos a linha no topo definitivo (14px).
-         Como alteramos o z-index no CSS, a linha é desenhada estritamente por trás dos números.
-         O cálculo 'coordY - 55' força os ganchos verticais a subirem sem trombar nos rótulos de dados. */
-      const fixedCeilingY = 14;
-      
-      pairsToConnect.forEach((pair) => {
-        const coordFrom = getBarCenterAndTop(pair.from); const coordTo = getBarCenterAndTop(pair.to);
-        if (coordFrom.x === 0 && coordTo.x === 0) return;
-        
-        const val1 = visibleSeriesData[pair.from].value; const val2 = visibleSeriesData[pair.to].value;
-        const diff = val2 - val1; let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
-        
-        const isCostSaving = diff <= 0;
-        
-        if (!isCostSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
-        else if (isCostSaving && variancePercent > 0) { variancePercent = -variancePercent; }
-        
-        const directionalArrow = isCostSaving ? "▼ " : "▲ ";
-        const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
-        const markerId = "url(#arrow-neutral)";
-        const lineStrokeColor = "var(--color-border-axis)";
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y - 55} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 55}`);
-        path.setAttribute("stroke", lineStrokeColor); 
-        path.setAttribute("stroke-width", "1.25"); 
-        path.setAttribute("fill", "none"); 
-        path.setAttribute("marker-end", markerId);
-        svg.appendChild(path);
-        
-        const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
-        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (fixedCeilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
-        
-        const div = document.createElement("div"); div.style.display = "flex"; div.style.justifyContent = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
-        const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
-        
-        if (isCostSaving) { span.classList.add("saving"); } else { span.classList.add("increase"); }
-        div.appendChild(span); foreignObj.appendChild(div); svg.appendChild(foreignObj);
-      });
     }
 
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
@@ -887,13 +897,30 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      const ytdBarElements = [this._miniBarPrev, this._miniBarAct, this._miniBarBud];
-      const ytdSeriesMock = [
-        { value: totalRealizadoYTDAntigo },
-        { value: totalRealizadoYTDAtual },
-        { value: totalBudgetYTDCompleto }
-      ];
-      this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ytdBarElements, ytdSeriesMock, 1, "ytd");
+      // 2. Conector Gráfico YTD (Fixo em 3 colunas estruturais)
+      const diffYTD_YoY = totalRealizadoYTDAtual - totalRealizadoYTDAntigo;
+      const pctYTD_YoY = totalRealizadoYTDAntigo !== 0 ? (diffYTD_YoY / totalRealizadoYTDAntigo) * 100 : 0;
+      const isSavingYTD_YoY = diffYTD_YoY <= 0;
+      const tagClassYTD_M = isSavingYTD_YoY ? "saving" : "increase";
+      const textYTD_M = (isSavingYTD_YoY ? "▼ " : "▲ ") + Math.abs(pctYTD_YoY).toFixed(2) + "%";
+
+      this._ytdTrack.style.display = "grid";
+      this._ytdTrack.style.gridTemplateColumns = "46px 46px 46px";
+      this._ytdTrack.style.gap = "20px";
+      this._ytdTrack.innerHTML = `
+        <div class="variance-connector-group" style="grid-column: span 2; width: 112px;">
+          <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
+          <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
+            <span class="variance-tag ${tagClassYTD_M}">${textYTD_M}</span>
+          </div>
+        </div>
+        <div class="variance-connector-group" style="grid-column: span 2; width: 112px; margin-left: -46px;">
+          <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
+          <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
+            <span class="variance-tag ${isYtdSaving ? "saving" : "increase"}">${formatPercent(diffYtdPercent, isYtdSaving)}</span>
+          </div>
+        </div>
+      `;
 
       const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
       const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
