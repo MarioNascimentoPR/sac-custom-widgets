@@ -609,7 +609,7 @@
       };
 
       // Teto fixo (passa folgado acima dos números). O Chão é o final da div do gráfico.
-      const ceilingY = 22;
+      const ceilingY = 10;
       const floorY = containerHeight; 
       
       pairs.forEach((pair) => {
