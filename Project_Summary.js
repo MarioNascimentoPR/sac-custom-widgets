@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HEADLESS ENGINE ARCHITECTURE
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY WITH CLEAN ENGINE
    ========================================================================== */
 
 (function () {
@@ -121,7 +121,6 @@
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
-      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -517,6 +516,12 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
+    _clearSvgOverlay(svg) {
+      while (svg.lastElementChild) {
+        svg.removeChild(svg.lastElementChild);
+      }
+    }
+
     renderChart() {
       if (!document.contains(this) || !this._shadowRoot) return;
       const tStartJS = performance.now();
@@ -809,13 +814,9 @@
       });
     }
 
-    /* ==========================================================================
-       VIRTUALIZAÇÃO E PERFORMANCE: SEGREGAÇÃO BATCH READS E POOL REUSE (SVG)
-       ========================================================================== */
     _drawUnifiedFlatConnections(svg, container, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
       
-      // BATCH READ: Fase única de leitura síncrona de layout geométrico
       const containerHeight = container.offsetHeight;
       if (containerHeight === 0) return;
       
@@ -838,7 +839,6 @@
       const ceilingY = -16;
       const floorY = containerHeight;
 
-      // BATCH WRITE: Reutilização incremental do pool sem limpeza destrutiva
       let existingGroups = svg.querySelectorAll(".connector-group");
 
       while (existingGroups.length < pairs.length) {
@@ -949,12 +949,13 @@
 
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
+      this._miniBarAct.style.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`; // Limpeza dupla de sintaxe .style.style feita na versão quebrada antiga
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
       this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
-      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
-      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
-      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
+      this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
+      this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
+      this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
 
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
@@ -985,8 +986,6 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
-      
-      // CORREÇÃO DE SINTAXE: Aspas inseridas corretamente para isolar as strings hexadecimais
       const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
