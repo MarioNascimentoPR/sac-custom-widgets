@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - TELEMETRY COMPLIANT VERSION
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HEADLESS ENGINE ARCHITECTURE
    ========================================================================== */
 
 (function () {
@@ -34,7 +34,6 @@
       }
       .tree-dropdown-content.show { display: block; }
       
-      /* ESTILIZAÇÃO DO BOTÃO E POP-UP DE TELEMETRIA */
       .telemetry-btn {
         font-size: 11px; font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
       }
@@ -122,6 +121,7 @@
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
+      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -219,12 +219,144 @@
     </div>
   `;
 
+  /* ==========================================================================
+     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA SANEADA (PURE HEADLESS)
+     ========================================================================== */
+  class EvoNarrativeEngine {
+    constructor() {
+      this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
+    }
+
+    analyze(cubeData, targetNode, currentYear, previousYear, tempoDimId, versaoDimId, itemFinanceiroDimId, contaContabilDimId, measId, fullSeriesData) {
+      const varianceTable = { month: {}, ytd: {} };
+      const driverTable = [];
+      const outlierTable = [];
+      const rankingTable = [];
+
+      let monthActual = targetNode.value;
+      let monthBudget = targetNode.originalNode.orcado > 0 ? targetNode.originalNode.orcado : targetNode.originalNode.realizado;
+      let monthDiff = monthActual - monthBudget;
+
+      varianceTable.month = {
+        actual: monthActual, budget: monthBudget, diffNominal: monthDiff,
+        pctVar: monthBudget !== 0 ? (monthDiff / monthBudget) * 100 : 0,
+        consumption: monthBudget !== 0 ? (monthActual / monthBudget) * 100 : 0,
+        isSaving: monthDiff <= 0
+      };
+
+      let totalRealizadoYTDAtual = 0; let totalRealizadoYTDAntigo = 0; let totalBudgetYTDCompleto = 0;
+      fullSeriesData.forEach(d => {
+        if (d.yearValue === currentYear && d.monthNum <= targetNode.monthNum) {
+          totalRealizadoYTDAtual += d.value;
+          totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
+        }
+        if (d.yearValue === previousYear && d.monthNum <= targetNode.monthNum) {
+          totalRealizadoYTDAntigo += d.value;
+        }
+      });
+      if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
+      let ytdDiff = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
+
+      varianceTable.ytd = {
+        actual: totalRealizadoYTDAtual, budget: totalBudgetYTDCompleto, previous: totalRealizadoYTDAntigo,
+        diffNominal: ytdDiff, pctVar: totalBudgetYTDCompleto !== 0 ? (ytdDiff / totalBudgetYTDCompleto) * 100 : 0,
+        consumption: totalBudgetYTDCompleto !== 0 ? (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100 : 0,
+        isSaving: ytdDiff <= 0
+      };
+
+      const itemFinanceiroMap = {};
+
+      cubeData.forEach(row => {
+        if (!tempoDimId || !itemFinanceiroDimId) return;
+        const tObj = row[tempoDimId]; if (!tObj) return;
+        
+        const rowMonthNode = fullSeriesData.find(d => d.id === String(tObj.id));
+        if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > targetNode.monthNum) return;
+
+        const itemObj = row[itemFinanceiroDimId];
+        const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
+        const itemUpper = itemName.toUpperCase();
+
+        if (
+          itemUpper.includes("TOTAL") || itemUpper.includes("ALL_MEMBERS") || 
+          itemUpper.includes("(ALL)") || itemUpper === "OUTROS" || 
+          itemUpper.includes("RATEIO") || itemUpper.includes("LIQUIDA")
+        ) return;
+
+        let contaName = "Geral";
+        if (contaContabilDimId && row[contaContabilDimId]) {
+          contaName = row[contaContabilDimId].label || row[contaContabilDimId].description || row[contaContabilDimId].id || "Geral";
+        }
+        const contaUpper = contaName.toUpperCase();
+        if (contaUpper.includes("RATEIO") || contaUpper.includes("LIQUIDA")) return;
+
+        if (!itemFinanceiroMap[itemName]) {
+          itemFinanceiroMap[itemName] = { realizado: 0, orcado: 0, contas: {} };
+        }
+
+        const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
+        let isBudget = false;
+        if (versaoDimId && row[versaoDimId]) {
+          const vId = String(row[versaoDimId].id).toUpperCase();
+          const vLabel = String(row[versaoDimId].label || row[versaoDimId].description || "").toUpperCase();
+          if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
+            isBudget = true;
+          }
+        }
+
+        if (isBudget) { itemFinanceiroMap[itemName].orcado += rawValue; } 
+        else { itemFinanceiroMap[itemName].realizado += rawValue; }
+
+        if (!itemFinanceiroMap[itemName].contas[contaName]) {
+          itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
+        }
+        if (isBudget) { itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue; } 
+        else { itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue; }
+      });
+
+      Object.keys(itemFinanceiroMap).forEach(name => {
+        const item = itemFinanceiroMap[name];
+        const desvioNominal = item.realizado - item.orcado;
+        const variancePct = item.orcado !== 0 ? (desvioNominal / item.orcado) * 100 : 0;
+
+        let driverContaName = ""; let maxContaImpact = -1;
+        Object.keys(item.contas).forEach(cName => {
+          const cImpact = item.contas[cName].realizado - item.contas[cName].orcado;
+          if (Math.abs(cImpact) > maxContaImpact) {
+            maxContaImpact = Math.abs(cImpact);
+            driverContaName = cName;
+          }
+        });
+
+        const featureRow = {
+          itemName: name, realizado: item.realizado, budget: item.orcado,
+          desvio: desvioNominal, pctVar: variancePct, isSaving: desvioNominal <= 0,
+          driverConta: driverContaName, driverImpact: item.contas[driverContaName] ? (item.contas[driverContaName].realizado - item.contas[driverContaName].orcado) : 0,
+          score: Math.abs(desvioNominal)
+        };
+
+        driverTable.push(featureRow);
+        if (Math.abs(desvioNominal) > 1000) { outlierTable.push(featureRow); }
+      });
+
+      rankingTable.push(...outlierTable);
+      rankingTable.sort((a, b) => b.score - a.score);
+
+      return { varianceTable, driverTable, outlierTable: rankingTable, rankingTable };
+    }
+
+    _parseRawValue(val) {
+      if (typeof val === 'number') return val;
+      if (!val || val === "-") return 0;
+      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+    }
+  }
+
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
       this._props = {};
       this._currentData = null;
-      this._animationFrameId = null;
       this._shadowRoot = null;
       this._resizeTimeout = null;
       this._selectedCutoffId = null;
@@ -233,25 +365,23 @@
       this._yearRegex = /\d{4}/;
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
       this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
+      
+      this._updateQueued = false;
+      this._analyticsEngine = new EvoNarrativeEngine();
 
       this._tempoDimId = null;
       this._versaoDimId = null;
       this._itemFinanceiroDimId = null;
       this._contaContabilDimId = null;
       this._extraDimIds = [];
-      
-      // Contadores estáticos de Telemetria
       this._reflowCount = 0;
 
       this._boundWindowClick = (e) => {
         const path = e.composedPath();
-        
-        // Controle de Fechamento do Dropdown de Meses
         if (this._isDropdownOpen && !path.includes(this._treeDropdownTrigger) && !path.includes(this._treeDropdownContent)) {
           this._isDropdownOpen = false;
           this._toggleDropdownDOM();
         }
-        // Controle de Fechamento do Pop-up de Telemetria ao clicar fora
         if (this._telemetryModal && this._telemetryModal.classList.contains("show") && !path.includes(this._telemetryBtn) && !path.includes(this._telemetryModal)) {
           this._telemetryModal.classList.remove("show");
         }
@@ -274,7 +404,6 @@
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
-        // Mapeamento dos elementos de Telemetria no DOM do Shadow
         this._telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
         this._telemetryModal = this._shadowRoot.getElementById("telemetryModal");
         this._closeTelemetry = this._shadowRoot.getElementById("closeTelemetry");
@@ -299,7 +428,6 @@
         this._miniLblAct = this._shadowRoot.getElementById("mini-lbl-act");
         this._miniLblBud = this._shadowRoot.getElementById("mini-lbl-bud");
 
-        // Eventos de Abertura/Fechamento do Pop-up de Telemetria
         this._telemetryBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           this._telemetryModal.classList.toggle("show");
@@ -323,8 +451,7 @@
         if (!document.contains(this)) return;
         clearTimeout(this._resizeTimeout);
         this._resizeTimeout = setTimeout(() => {
-          cancelAnimationFrame(this._animationFrameId);
-          this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+          this.requestUpdate();
         }, 40);
       });
       this._resizeObserver.observe(this._chartArea);
@@ -333,8 +460,16 @@
     disconnectedCallback() {
       if (this._resizeObserver) this._resizeObserver.disconnect();
       window.removeEventListener("click", this._boundWindowClick);
-      cancelAnimationFrame(this._animationFrameId);
       clearTimeout(this._resizeTimeout);
+    }
+
+    requestUpdate() {
+      if (this._updateQueued) return;
+      this._updateQueued = true;
+      requestAnimationFrame(() => {
+        this.renderChart();
+        this._updateQueued = false;
+      });
     }
 
     _initStaticHighlightsDOM() {
@@ -362,8 +497,7 @@
         this._isTreeBuilt = false; 
         if (this._shadowRoot) {
           this._treeDropdownContent.textContent = ""; 
-          cancelAnimationFrame(this._animationFrameId);
-          this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+          this.requestUpdate();
         }
       }
     }
@@ -383,16 +517,8 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
-    _clearSvgOverlay(svg) {
-      while (svg.lastElementChild) {
-        svg.removeChild(svg.lastElementChild);
-      }
-    }
-
     renderChart() {
       if (!document.contains(this) || !this._shadowRoot) return;
-
-      // TELEMETRIA: Início da Captação de Processamento JS
       const tStartJS = performance.now();
 
       const residualPlaceholder = this._axisX.querySelector(".placeholder-text");
@@ -409,7 +535,7 @@
       }
 
       try {
-        this._reflowCount++; // Incrementa contador de ciclos de repintura estrutural
+        this._reflowCount++;
         const metadata = financialData.metadata;
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
@@ -573,7 +699,7 @@
               this._selectedCutoffId = d.id;
               this._isDropdownOpen = false; 
               this._toggleDropdownDOM();
-              this.renderChart();
+              this.requestUpdate();
             });
 
             yearsMap[d.yearValue].appendChild(monthItem);
@@ -592,7 +718,6 @@
           this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
         }
 
-        // CORREÇÃO: Varredura correta executando o loop na NodeList nativa
         const dropdownItems = this._treeDropdownContent.querySelectorAll(".tree-month-item");
         dropdownItems.forEach(item => {
           item.classList.toggle("selected", item.getAttribute("data-id") === this._selectedCutoffId);
@@ -617,7 +742,6 @@
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
 
-        // Fim do Processamento de Dados / Início da Renderização no DOM
         const tEndJS = performance.now();
         const tStartDOM = performance.now();
 
@@ -628,12 +752,11 @@
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
           this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
           
-          // TELEMETRIA: Consolidação final dos tempos salvos e postados na UI do Pop-up
           const tEndDOM = performance.now();
           this._lblJS.textContent = `${(tEndJS - tStartJS).toFixed(2)} ms`;
           this._lblDOM.textContent = `${(tEndDOM - tStartDOM).toFixed(2)} ms`;
-          this._lblReflow.textContent = `${this._reflowCount} ciclos`;
-          this._lblVol.textContent = `${financialData.data.length} tuplas`;
+          this._lblReflow.textContent = `${this._reflowCount} passes`;
+          this._lblVol.textContent = `${financialData.data.length} rows`;
         });
 
       } catch (error) {
@@ -686,12 +809,23 @@
       });
     }
 
+    /* ==========================================================================
+       VIRTUALIZAÇÃO E PERFORMANCE: SEGREGAÇÃO BATCH READS E POOL REUSE (SVG)
+       ========================================================================== */
     _drawUnifiedFlatConnections(svg, container, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
-      this._clearSvgOverlay(svg);
       
-      const containerHeight = container.offsetHeight; if (containerHeight === 0) return;
-      const barElements = container.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
+      // BATCH READ: Fase única de leitura síncrona de layout geométrico
+      const containerHeight = container.offsetHeight;
+      if (containerHeight === 0) return;
+      
+      const barElements = container.querySelectorAll(barSelector);
+      if (!barElements || barElements.length === 0) return;
+      
+      const barCenters = Array.from(barElements).map(bar => {
+        if (!bar) return 0;
+        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
+      });
       
       const pairs = [];
       if (mode === "monthly") {
@@ -701,58 +835,72 @@
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
 
-      const getCenterX = (idx) => {
-        const bar = barElements[idx]; if (!bar) return 0;
-        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
-      };
-
       const ceilingY = -16;
-      const floorY = containerHeight; 
-      const fragment = document.createDocumentFragment();
+      const floorY = containerHeight;
 
-      pairs.forEach((pair) => {
-        const xFrom = getCenterX(pair.from); const xTo = getCenterX(pair.to);
-        if (xFrom === 0 || xTo === 0) return;
+      // BATCH WRITE: Reutilização incremental do pool sem limpeza destrutiva
+      let existingGroups = svg.querySelectorAll(".connector-group");
+
+      while (existingGroups.length < pairs.length) {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "connector-group");
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none");
+        
+        const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        fo.setAttribute("width", "70"); fo.setAttribute("height", "22");
+        
+        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
+        const span = document.createElement("span"); span.className = "variance-tag";
+        
+        div.appendChild(span); fo.appendChild(div); g.appendChild(path); g.appendChild(fo); svg.appendChild(g);
+        existingGroups = svg.querySelectorAll(".connector-group");
+      }
+
+      for (let i = pairs.length; i < existingGroups.length; i++) {
+        existingGroups[i].style.display = "none";
+      }
+
+      pairs.forEach((pair, idx) => {
+        const g = existingGroups[idx];
+        g.style.display = "block";
+        
+        const xFrom = barCenters[pair.from];
+        const xTo = barCenters[pair.to];
         
         const itemFrom = dataArray[pair.from];
         const itemTo = dataArray[pair.to];
-        const val1 = itemFrom.value; 
-        const val2 = itemTo.value;
         
         let isCostSaving = false;
         let variancePercent = 0;
         let directionalArrow = "";
 
         if (itemTo.type === "budget") {
-          const diff = val1 - val2; 
+          const diff = itemFrom.value - itemTo.value;
           isCostSaving = diff <= 0;
-          variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
+          variancePercent = itemTo.value !== 0 ? (diff / itemTo.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         } else {
-          const diff = val2 - val1; 
+          const diff = itemTo.value - itemFrom.value;
           isCostSaving = diff <= 0;
-          variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
+          variancePercent = itemFrom.value !== 0 ? (diff / itemFrom.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         }
 
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
-        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); 
-        fragment.appendChild(path);
         
+        g.querySelector("path").setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
+        
+        const fo = g.querySelector("foreignObject");
         const midX = xFrom + (xTo - xFrom) / 2;
-        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (ceilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        fo.setAttribute("x", (midX - 35).toString());
+        fo.setAttribute("y", (ceilingY - 11).toString());
         
-        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
-        const span = document.createElement("span"); span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
+        const span = g.querySelector(".variance-tag");
+        span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
         span.textContent = varianceText;
-        
-        div.appendChild(span); foreignObj.appendChild(div); fragment.appendChild(foreignObj);
       });
-      svg.appendChild(fragment);
     }
 
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
@@ -805,7 +953,6 @@
       this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
       this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
-      // CORREÇÃO: Limpeza e remoção da injeção textual crua que desconfigurava a barra vertical azul
       this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
       this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
 
@@ -838,6 +985,8 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
+      
+      // CORREÇÃO DE SINTAXE: Aspas inseridas corretamente para isolar as strings hexadecimais
       const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
@@ -854,7 +1003,6 @@
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
       this._hlUl.appendChild(liCons);
 
-      // Invocação limpa e isolada do pipeline da Engine pura em memória
       const analysis = this._analyticsEngine.analyze(
         this._currentData.data, currentBarNode, currentYear, previousYear,
         this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData
