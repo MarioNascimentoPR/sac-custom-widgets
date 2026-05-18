@@ -66,7 +66,7 @@
       .legend-color.hist { background-color: var(--color-historical); }
       .legend-color.act { background-color: var(--color-actual); }
       .legend-color.bud { 
-        background-color: transparent; border: 1px solid var(--color-budget); box-sizing: border-box;
+        background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
         background-size: 4px 4px;
       }
@@ -75,8 +75,10 @@
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; }
       .visualization-column.monthly-col { flex: 3; }
       .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; }
+
+      .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; padding-bottom: 4px; letter-spacing: 0.5px; margin-bottom: auto; }
       
-      .chart-container-block { position: relative; height: 165px; padding-top: 50px; box-sizing: border-box; width: 100%; }
+      .chart-container-block { position: relative; height: 155px; padding-top: 45px; box-sizing: border-box; width: 100%; }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
@@ -86,7 +88,7 @@
       .bar-element.historical { background-color: var(--color-historical); }
       .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
       .bar-element.budget {
-        background-color: transparent; border: 1px solid var(--color-budget); border-bottom: 1px solid var(--color-budget); box-sizing: border-box;
+        background-color: #ffffff; border: 1px solid var(--color-budget); border-bottom: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
       }
@@ -593,7 +595,7 @@
         return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
       };
 
-      const ceilingY = -13;
+      const ceilingY = -16;
       const floorY = containerHeight; 
       
       pairs.forEach((pair) => {
