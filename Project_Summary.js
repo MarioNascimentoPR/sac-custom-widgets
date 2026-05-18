@@ -1,3 +1,7 @@
+/* ==========================================================================
+   EVOSTREAM SUMMARY WIDGET - ARQUIVO ÚNICO DE ALTA PERFORMANCE
+   ========================================================================== */
+
 (function () {
   const template = document.createElement("template");
   template.innerHTML = `
@@ -84,7 +88,7 @@
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
       
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
-      .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
+      .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; height: 0%; transition: height 0.3s ease-out; }
       .bar-element.historical { background-color: var(--color-historical); }
       .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
       .bar-element.budget {
@@ -138,6 +142,7 @@
       .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; text-align: justify; }
 
       .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
+      .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #4a5568; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
     </style>
     
     <div id="widget-wrapper">
@@ -222,7 +227,7 @@
             <span class="highlight-icon-box">💡</span>
             <span>Highlights</span>
           </div>
-          <div class="highlight-content-text" id="highlightContentText">-</div>
+          <div class="highlight-content-text" id="highlightContentText"></div>
         </div>
       </div>
     </div>
@@ -240,11 +245,25 @@
       this._selectedCutoffId = null;
       this._isTreeBuilt = false; 
       this._isDropdownOpen = false; 
+
+      this._yearRegex = /\d{4}/;
+      this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
+
+      // Defesa de Escopo Anti-Memory-Leak[cite: 2]
+      this._boundWindowClick = (e) => {
+        if (this._isDropdownOpen) {
+          const path = e.composedPath();
+          if (!path.includes(this._treeDropdownTrigger) && !path.includes(this._treeDropdownContent)) {
+            this._isDropdownOpen = false;
+            this._toggleDropdownDOM();
+          }
+        }
+      };
     }
 
     connectedCallback() {
       if (!this._shadowRoot) {
-        this._shadowRoot = this.attachShadow({ mode: "open" });
+        this._shadowRoot = this.attachShadow({ mode: "open" });[cite: 2]
         this._shadowRoot.appendChild(template.content.cloneNode(true));
         
         this._chartArea = this._shadowRoot.getElementById("chartArea");
@@ -278,11 +297,10 @@
           this._toggleDropdownDOM();
         });
 
-        window.addEventListener("click", () => {
-          this._isDropdownOpen = false;
-          this._toggleDropdownDOM();
-        });
+        this._initStaticHighlightsDOM();
       }
+
+      window.addEventListener("click", this._boundWindowClick);
 
       this._resizeObserver = new ResizeObserver(() => {
         if (document.contains(this)) {
@@ -298,17 +316,30 @@
 
     disconnectedCallback() {
       if (this._resizeObserver) this._resizeObserver.disconnect();
+      window.removeEventListener("click", this._boundWindowClick);
       cancelAnimationFrame(this._animationFrameId);
       clearTimeout(this._resizeTimeout);
     }
 
+    _initStaticHighlightsDOM() {
+      const ul = document.createElement("ul");
+      ul.className = "ul-highlight";
+      
+      this._hlMonthLi = document.createElement("li");
+      this._hlConsLi = document.createElement("li");
+      this._hlYtdLi = document.createElement("li");
+      
+      ul.appendChild(this._hlMonthLi);
+      ul.appendChild(this._hlConsLi);
+      ul.appendChild(this._hlYtdLi);
+      
+      this._highlightContentText.textContent = "";
+      this._highlightContentText.appendChild(ul);
+    }
+
     _toggleDropdownDOM() {
       if (!this._treeDropdownContent) return;
-      if (this._isDropdownOpen) {
-        this._treeDropdownContent.classList.add("show");
-      } else {
-        this._treeDropdownContent.classList.remove("show");
-      }
+      this._treeDropdownContent.classList.toggle("show", this._isDropdownOpen);
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
@@ -344,17 +375,12 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
-    _clearDOM() {
-      const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
-      existingBars.forEach(el => el.remove());
-      this._axisX.textContent = "";
-
-      this._svgOverlay.querySelectorAll('path').forEach(el => el.remove());
-      this._svgOverlay.querySelectorAll('foreignObject').forEach(el => el.remove());
-      this._svgYtdOverlay.querySelectorAll('path').forEach(el => el.remove());
-      this._svgYtdOverlay.querySelectorAll('foreignObject').forEach(el => el.remove());
-
-      this._insightGrid.style.display = "none";
+    _clearSvgOverlay(svg) {
+      let child = svg.lastElementChild;
+      while (child) {
+        svg.removeChild(child);
+        child = svg.lastElementChild;
+      }
     }
 
     renderChart() {
@@ -362,7 +388,7 @@
 
       const financialData = this._currentData;
       if (!financialData || !financialData.data || financialData.data.length === 0) {
-        this._clearDOM();
+        this._axisX.textContent = "";
         const placeholder = document.createElement("div");
         placeholder.className = "placeholder-text";
         placeholder.textContent = "Aguardando dados estruturados...";
@@ -378,7 +404,7 @@
         const dimKeys = Object.keys(dimensions);
         const measureKeys = Object.keys(mainStructureMembers);
 
-        if (dimKeys.length < 1 || measureKeys.length < 1) { this._clearDOM(); return; }
+        if (dimKeys.length < 1 || measureKeys.length < 1) { return; }
 
         const measId = measureKeys[0];
         let tempoDimId = dimKeys[0];
@@ -392,11 +418,15 @@
         }
 
         const timelineMap = {};
+        const currentYearRuntime = new Date().getFullYear();
 
         financialData.data.forEach(row => {
           const tempoObj = row[tempoDimId]; if (!tempoObj) return;
-          const tId = String(tempoObj.id); const tLabel = tempoObj.label || tempoObj.description || tId;
-          if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
+          const tId = String(tempoObj.id); 
+          if (tId.toLowerCase().includes("(all)")) return;
+          
+          const tLabel = tempoObj.label || tempoObj.description || tId;
+          if (tLabel.toLowerCase().includes("(all)")) return;
 
           if (!timelineMap[tId]) {
             timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false, rowContext: row };
@@ -408,34 +438,37 @@
           if (versaoDimId) {
             const vObj = row[versaoDimId];
             if (vObj) {
-              const vId = String(vObj.id).toUpperCase(); const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
-              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { timelineMap[tId].orcado += rawValue; }
-              else { timelineMap[tId].realizado += rawValue; }
+              const vId = String(vObj.id).toUpperCase(); 
+              const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
+              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { 
+                timelineMap[tId].orcado += rawValue; 
+              } else { 
+                timelineMap[tId].realizado += rawValue; 
+              }
             }
           } else { timelineMap[tId].realizado += rawValue; }
         });
 
         const sortedMonths = Object.values(timelineMap);
-        if (sortedMonths.length === 0) { this._clearDOM(); return; }
+        if (sortedMonths.length === 0) { return; }
 
-        const monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
         const fullSeriesData = [];
         let defaultActualIndex = -1;
 
         sortedMonths.forEach((m) => {
-          let parsedYear = new Date().getFullYear();
-          const matches = m.id.match(/\d{4}/);
+          let parsedYear = currentYearRuntime;
+          const matches = m.id.match(this._yearRegex);
           if (matches) {
             parsedYear = parseInt(matches[0]);
           } else {
-            const labelDigits = m.label.match(/\d{4}/);
+            const labelDigits = m.label.match(this._yearRegex);
             if (labelDigits) parsedYear = parseInt(labelDigits[0]);
           }
 
           if (parsedYear < 2022 || parsedYear > 2028) return;
 
           const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
-          const targetMonthIndex = monthOrderMap[cleanLabelUpper] || 1;
+          const targetMonthIndex = this._monthOrderMap[cleanLabelUpper] || 1;
           const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
 
           fullSeriesData.push({ 
@@ -516,12 +549,9 @@
           this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
         }
 
-        this._treeDropdownContent.querySelectorAll(".tree-month-item").forEach(item => {
-          if (item.getAttribute("data-id") === this._selectedCutoffId) {
-            item.classList.add("selected");
-          } else {
-            item.classList.remove("selected");
-          }
+        const dropdownItems = this._treeDropdownContent.querySelectorAll(".tree-month-item");
+        dropdownItems.forEach(item => {
+          item.classList.toggle("selected", item.getAttribute("data-id") === this._selectedCutoffId);
         });
 
         fullSeriesData.forEach((d, idx) => {
@@ -530,8 +560,6 @@
 
         const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
         const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
-
-        this._clearDOM();
 
         const startIndex = Math.max(0, actualIndex - 12); 
         const visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
@@ -548,38 +576,84 @@
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
-        const barElements = [];
 
-        visibleSeriesData.forEach((d) => {
-          const barWrapper = document.createElement("div"); barWrapper.className = "bar-wrapper";
-          const barElement = document.createElement("div"); barElement.className = "bar-element";
-          barElement.style.height = `${(d.value / maxVal) * 100}%`; barElement.classList.add(d.type);
-          const kpiLabel = document.createElement("span"); kpiLabel.className = "kpi-label"; kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
-          barElement.appendChild(kpiLabel); barWrapper.appendChild(barElement); this._chartArea.appendChild(barWrapper); barElements.push(barElement);
-          
-          const axisLabel = document.createElement("div"); axisLabel.className = "axis-label"; axisLabel.textContent = d.label;
-          if (d.type === "actual") axisLabel.classList.add("actual-month");
-          this._axisX.appendChild(axisLabel);
-        });
-
-        setTimeout(() => {
-          this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, barElements, visibleSeriesData, visibleActualIndex, "monthly");
-          
-          const ytdBars = [this._miniBarPrev, this._miniBarAct, this._miniBarBud];
-          this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ytdBars, this._ytdSeriesMock, 1, "ytd");
-        }, 50);
+        // Reconciliação do DOM (Eliminação de Churn de Layout)
+        this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
 
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
+
+        // Correção de Seletor Escopado Inteligente (Batching Geométrico via RAF Consecutivo)
+        requestAnimationFrame(() => {
+          this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
+          this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
+        });
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
       }
     }
 
-    _drawUnifiedFlatConnections(svg, container, barElements, dataArray, actualIndex, mode) {
+    _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
+      const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
+      const existingLabels = this._axisX.querySelectorAll(".axis-label");
+      const targetLength = visibleSeriesData.length;
+
+      if (existingWrappers.length < targetLength) {
+        for (let i = existingWrappers.length; i < targetLength; i++) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "bar-wrapper";
+          const bar = document.createElement("div");
+          bar.className = "bar-element";
+          const label = document.createElement("span");
+          label.className = "kpi-label";
+          bar.appendChild(label);
+          wrapper.appendChild(bar);
+          this._chartArea.appendChild(wrapper);
+        }
+      } else if (existingWrappers.length > targetLength) {
+        for (let i = existingWrappers.length - 1; i >= targetLength; i--) {
+          existingWrappers[i].remove();
+        }
+      }
+
+      if (existingLabels.length < targetLength) {
+        for (let i = existingLabels.length; i < targetLength; i++) {
+          const axisLabel = document.createElement("div");
+          axisLabel.className = "axis-label";
+          this._axisX.appendChild(axisLabel);
+        }
+      } else if (existingLabels.length > targetLength) {
+        for (let i = existingLabels.length - 1; i >= targetLength; i--) {
+          existingLabels[i].remove();
+        }
+      }
+
+      const updatedWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
+      const updatedLabels = this._axisX.querySelectorAll(".axis-label");
+
+      visibleSeriesData.forEach((d, idx) => {
+        const bar = updatedWrappers[idx].querySelector(".bar-element");
+        const label = bar.querySelector(".kpi-label");
+        
+        bar.className = `bar-element ${d.type}`;
+        bar.style.height = `${(d.value / maxVal) * 100}%`;
+        label.textContent = `${(d.value / 1000000).toFixed(2)}M`;
+
+        const axisLabel = updatedLabels[idx];
+        axisLabel.className = d.type === "actual" ? "axis-label actual-month" : "axis-label";
+        axisLabel.textContent = d.label;
+      });
+    }
+
+    _drawUnifiedFlatConnections(svg, container, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
+      
+      this._clearSvgOverlay(svg);
       const containerHeight = container.offsetHeight; 
       if (containerHeight === 0) return;
+      
+      const barElements = container.querySelectorAll(barSelector);
+      if (!barElements || barElements.length === 0) return; // Cláusula defensiva estrita
       
       const pairs = [];
       if (mode === "monthly") {
@@ -597,7 +671,8 @@
 
       const ceilingY = -16;
       const floorY = containerHeight; 
-      
+      const fragment = document.createDocumentFragment();
+
       pairs.forEach((pair) => {
         const xFrom = getCenterX(pair.from); 
         const xTo = getCenterX(pair.to);
@@ -609,7 +684,6 @@
         let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
         
         const isCostSaving = diff <= 0;
-        
         if (!isCostSaving && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
         else if (isCostSaving && variancePercent > 0) { variancePercent = -variancePercent; }
         
@@ -621,7 +695,7 @@
         path.setAttribute("stroke", "#cbd5e0"); 
         path.setAttribute("stroke-width", "1.25"); 
         path.setAttribute("fill", "none"); 
-        svg.appendChild(path);
+        fragment.appendChild(path);
         
         const midX = xFrom + (xTo - xFrom) / 2;
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
@@ -631,12 +705,18 @@
         foreignObj.setAttribute("height", "22");
         
         const div = document.createElement("div"); 
-        div.style.display = "flex"; div.style.justifyContent = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
-        const span = document.createElement("span"); span.className = "variance-tag"; span.textContent = varianceText;
+        div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
         
-        if (isCostSaving) { span.classList.add("saving"); } else { span.classList.add("increase"); }
-        div.appendChild(span); foreignObj.appendChild(div); svg.appendChild(foreignObj);
+        const span = document.createElement("span"); 
+        span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
+        span.textContent = varianceText;
+        
+        div.appendChild(span); 
+        foreignObj.appendChild(div); 
+        fragment.appendChild(foreignObj);
       });
+
+      svg.appendChild(fragment);
     }
 
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
@@ -651,7 +731,6 @@
       const consumptionMonthPercent = budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0;
       
       const isMonthSaving = diffNominal <= 0;
-      
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
@@ -709,13 +788,21 @@
       const monthStatusText = isMonthSaving ? "economia de custos" : "aumento de despesas";
       const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
       
-      this._highlightContentText.innerHTML = `
-        <ul style="margin: 0; padding-left: 16px; font-size: 11.5px; color: #4a5568; line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
-            <li><strong>Mês Corrente (${monthLabel}):</strong> Fechamento com ${monthStatusText} de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.</li>
-            <li><strong>Consumo Operacional:</strong> A absorção atingiu ${(consumptionMonthPercent).toFixed(1)}% do orçamento da competência.</li>
-            <li><strong>Posicionamento YTD:</strong> Acumulado com desvio ${ytdStatusText}, consumindo ${(consumoBudgetPercent).toFixed(1)}% do ano.</li>
-        </ul>
-      `;
+      // Proteção Estrita Contra Vulnerabilidades Cross-Site Scripting (XSS)[cite: 2]
+      this._hlMonthLi.textContent = "";
+      const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}):`;
+      this._hlMonthLi.appendChild(s1);
+      this._hlMonthLi.appendChild(document.createTextNode(` Fechamento com ${monthStatusText} de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+
+      this._hlConsLi.textContent = "";
+      const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional:";
+      this._hlConsLi.appendChild(s2);
+      this._hlConsLi.appendChild(document.createTextNode(` A absorção atingiu ${(consumptionMonthPercent).toFixed(1)}% do orçamento da competência.`));
+
+      this._hlYtdLi.textContent = "";
+      const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD:";
+      this._hlYtdLi.appendChild(s3);
+      this._hlYtdLi.appendChild(document.createTextNode(` Acumulado com desvio ${ytdStatusText}, consumindo ${(consumoBudgetPercent).toFixed(1)}% do ano.`));
 
       this._insightGrid.style.display = "grid";
     }
@@ -729,12 +816,14 @@
     getFontSizeLabels() { return this._props.fontSizeLabels; }
     setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
   }
+  
   if (!customElements.get("sac-summary")) { customElements.define("sac-summary", EvoSummaryWidget); }
 })();
 
 /* ==========================================================================
-   PAINEL DE CONFIGURAÇÃO INTEGRADO
+   PAINEL DE CONFIGURAÇÃO LATERAL (BUILDER PANEL COMPILADO)
    ========================================================================== */
+
 (function () {
   const templateStyling = document.createElement("template");
   templateStyling.innerHTML = `
@@ -768,7 +857,7 @@
   class EvoSummaryWidgetStyling extends HTMLElement {
     constructor() {
       super();
-      this._shadowRoot = this.attachShadow({ mode: "open" });
+      this._shadowRoot = this.attachShadow({ mode: "open" });[cite: 2]
       this._shadowRoot.appendChild(templateStyling.content.cloneNode(true));
       this._changeProperty = this._changeProperty.bind(this);
 
@@ -781,7 +870,7 @@
     _changeProperty(name, value) {
       this.dispatchEvent(new CustomEvent("propertiesChanged", {
         detail: { properties: { [name]: value } }
-      }));
+      }));[cite: 2]
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
