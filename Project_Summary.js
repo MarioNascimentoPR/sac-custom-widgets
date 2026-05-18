@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DIAGNOSTIC MULTI-DIMENSIONAL VERSION
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - OUTLIER ENGINE DRILL-DOWN
    ========================================================================== */
 
 (function () {
@@ -186,9 +186,11 @@
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
       this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
 
-      // Identificadores globais estáveis para as dimensões do cubo
+      // Escopo estável global de dimensões
       this._tempoDimId = null;
       this._versaoDimId = null;
+      this._itemFinanceiroDimId = null;
+      this._contaContabilDimId = null;
       this._extraDimIds = [];
 
       this._boundWindowClick = (e) => {
@@ -266,12 +268,14 @@
       this._hlMonthLi = document.createElement("li");
       this._hlConsLi = document.createElement("li");
       this._hlYtdLi = document.createElement("li");
-      this._hlOffenderLi = document.createElement("li"); 
+      this._hlExtraLi1 = document.createElement("li"); // Bullet dinâmico do Item Financeiro (Ofensor)
+      this._hlExtraLi2 = document.createElement("li"); // Bullet dinâmico do Item Financeiro (Eficiência)
       
       ul.appendChild(this._hlMonthLi);
       ul.appendChild(this._hlConsLi);
       ul.appendChild(this._hlYtdLi);
-      ul.appendChild(this._hlOffenderLi);
+      ul.appendChild(this._hlExtraLi1);
+      ul.appendChild(this._hlExtraLi2);
       
       this._highlightContentText.textContent = "";
       this._highlightContentText.appendChild(ul);
@@ -350,9 +354,11 @@
 
         this._measId = measureKeys[0];
         
-        // CORREÇÃO CRÍTICA DE ESCOPO: Salvando as chaves dinâmicas diretamente no escopo global do objeto (this)
+        // CORREÇÃO E FIXAÇÃO DE ESCOPO: Vinculando as chaves dinamicamente à instância (this) de forma perene
         this._tempoDimId = null;
         this._versaoDimId = null;
+        this._itemFinanceiroDimId = null;
+        this._contaContabilDimId = null;
 
         dimKeys.forEach(key => {
           const desc = String(dimensions[key].description || "").toUpperCase();
@@ -362,6 +368,10 @@
             this._versaoDimId = key;
           } else if (desc.includes("TEMPO") || desc.includes("MÊS") || desc.includes("MES") || desc.includes("ANO") || desc.includes("DATE") || id.includes("TIME") || id.includes("CALENDAR")) {
             this._tempoDimId = key;
+          } else if (desc.includes("ITEM") || id.includes("ITEM") || desc.includes("FINANCEIRO")) {
+            this._itemFinanceiroDimId = key;
+          } else if (desc.includes("CONTA") || id.includes("ACCOUNT") || desc.includes("CONTÁBIL") || desc.includes("CONTABIL")) {
+            this._contaContabilDimId = key;
           }
         });
 
@@ -369,6 +379,8 @@
         if (!this._versaoDimId) this._versaoDimId = dimKeys[1] || null;
 
         this._extraDimIds = dimKeys.filter(key => key !== this._tempoDimId && key !== this._versaoDimId);
+        if (!this._itemFinanceiroDimId) this._itemFinanceiroDimId = this._extraDimIds[0] || null;
+        if (!this._contaContabilDimId) this._contaContabilDimId = this._extraDimIds[1] || null;
 
         const timelineMap = {};
         const currentYearRuntime = new Date().getFullYear();
@@ -660,6 +672,9 @@
       svg.appendChild(fragment);
     }
 
+    /* ==========================================================================
+       ENGINE DE HIGHLIGHTS MULTIDIMENSIONAL PERMANENTE & COGNITIVA
+       ========================================================================== */
     _renderDoubleFinancePanel(fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
@@ -728,160 +743,134 @@
       const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
-      // ==========================================================================
-      // ENGINE DE NARRATIVAS MULTIDIMENSIONAL (CORREÇÃO DE PONTEIROS DE ESCOPO)
-      // ==========================================================================
-      const breakdownMap = {};
+      // População estática e segura dos três primeiros eixos
+      this._hlMonthLi.textContent = "";
+      const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
+      const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
+      this._hlMonthLi.appendChild(s1); this._hlMonthLi.appendChild(document.createTextNode("Fechamento com ")); this._hlMonthLi.appendChild(statusSpan1); this._hlMonthLi.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+
+      this._hlConsLi.textContent = "";
+      const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
+      const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
+      this._hlConsLi.appendChild(s2); this._hlConsLi.appendChild(document.createTextNode("A absorção atingiu ")); this._hlConsLi.appendChild(statusSpan2); this._hlConsLi.appendChild(document.createTextNode(" do orçamento da competência."));
+
+      this._hlYtdLi.textContent = "";
+      const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD: ";
+      const statusSpan3 = document.createElement("span"); statusSpan3.textContent = ytdStatusText; statusSpan3.style.color = semanticColorYTD; statusSpan3.style.fontWeight = "700";
+      const valueSpan3 = document.createElement("span"); valueSpan3.textContent = `${consumoBudgetPercent.toFixed(1)}%`; valueSpan3.style.fontWeight = "700";
+      this._hlYtdLi.appendChild(s3); this._hlYtdLi.appendChild(document.createTextNode("Acumulado com desvio ")); this._hlYtdLi.appendChild(statusSpan3); this._hlYtdLi.appendChild(document.createTextNode(", consumindo ")); this._hlYtdLi.appendChild(valueSpan3); this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
+
+      // MÓDULO DE DESTAQUES ENRIQUECIDOS POR ITEM FINANCEIRO E CONTA CONTÁBIL (YTD PERÍODO ACUMULADO)
+      const itemFinanceiroMap = {};
       const financialData = this._currentData;
 
-      let scannedRowCount = 0;
-
       financialData.data.forEach(row => {
-        // Validação defensiva robusta baseada no ponteiro global estável da instância
-        if (!this._tempoDimId) return;
+        if (!this._tempoDimId || !this._itemFinanceiroDimId) return;
+        
         const tempoObj = row[this._tempoDimId];
-        if (!tempoObj || String(tempoObj.id) !== currentBarNode.id) return;
+        if (!tempoObj) return;
+        
+        // Isola e agrupa estritamente as linhas pertencentes ao período YTD acumulado do ano selecionado
+        const rowMonthNode = fullSeriesData.find(d => d.id === String(tempoObj.id));
+        if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > currentBarNode.monthNum) return;
 
-        scannedRowCount++;
+        const itemObj = row[this._itemFinanceiroDimId];
+        const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
 
-        let labelParts = [];
-        if (this._extraDimIds && this._extraDimIds.length > 0) {
-          this._extraDimIds.forEach(dimId => {
-            if (row[dimId]) {
-              labelParts.push(row[dimId].label || row[dimId].description || row[dimId].id || "");
-            }
-          });
-        }
-        const key = labelParts.join(" ➔ ") || "Outros";
+        // Filtro defensivo contra nós agregadores inflados nativos do SAC (all_members)
+        const itemUpper = itemName.toUpperCase();
+        if (itemUpper.includes("TOTAL") || itemUpper.includes("ALL_MEMBERS") || itemUpper.includes("(ALL)")) return;
 
-        if (!breakdownMap[key]) {
-          breakdownMap[key] = { realizado: 0, orcado: 0 };
+        if (!itemFinanceiroMap[itemName]) {
+          itemFinanceiroMap[itemName] = { realizado: 0, orcado: 0, contas: {} };
         }
 
         const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
         
+        let isBudget = false;
         if (this._versaoDimId && row[this._versaoDimId]) {
           const vId = String(row[this._versaoDimId].id).toUpperCase();
           const vLabel = String(row[this._versaoDimId].label || row[this._versaoDimId].description || "").toUpperCase();
           if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
-            breakdownMap[key].orcado += rawValue;
-          } else {
-            breakdownMap[key].realizado += rawValue;
+            isBudget = true;
           }
+        }
+
+        if (isBudget) {
+          itemFinanceiroMap[itemName].orcado += rawValue;
         } else {
-          breakdownMap[key].realizado += rawValue;
+          itemFinanceiroMap[itemName].realizado += rawValue;
         }
-      });
 
-      // Extração bidirecional baseada nas dimensões adicionais (Item / Conta Contábil)
-      let topOffenderName = "";
-      let topOffenderValue = 0;
-      let topSaverName = "";
-      let topSaverValue = 0;
-
-      Object.keys(breakdownMap).forEach(key => {
-        const d = breakdownMap[key];
-        const desvio = d.realizado - d.orcado;
-        if (desvio > 0) {
-          if (desvio > topOffenderValue) {
-            topOffenderValue = desvio;
-            topOffenderName = key;
+        // Mapeia e segmenta a Conta Contábil correlacionada interna daquele Item Financeiro
+        if (this._contaContabilDimId && row[this._contaContabilDimId]) {
+          const contaName = row[this._contaContabilDimId].label || row[this._contaContabilDimId].description || row[this._contaContabilDimId].id || "Geral";
+          if (!itemFinanceiroMap[itemName].contas[contaName]) {
+            itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
           }
-        } else if (desvio < 0) {
-          if (Math.abs(desvio) > topSaverValue) {
-            topSaverValue = Math.abs(desvio);
-            topSaverName = key;
+          if (isBudget) {
+            itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue;
+          } else {
+            itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue;
           }
         }
       });
 
-      // Alimentação atômica dos bullets base do card (Imunização XSS)
-      this._hlMonthLi.textContent = "";
-      const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
-      const statusSpan1 = document.createElement("span"); 
-      statusSpan1.textContent = monthStatusText; 
-      statusSpan1.style.color = semanticColorMonth; 
-      statusSpan1.style.fontWeight = "700";
-      this._hlMonthLi.appendChild(s1);
-      this._hlMonthLi.appendChild(document.createTextNode("Fechamento com "));
-      this._hlMonthLi.appendChild(statusSpan1);
-      this._hlMonthLi.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+      // Algoritmo de Extração de Outliers Operacionais (Ofensor Absoluto e Eficiência Máxima)
+      let maxOutlierOffender = ""; let maxOffenderVal = 0; let maxOffenderConta = "";
+      let maxOutlierSaver = ""; let maxSaverVal = 0; let maxSaverConta = "";
 
-      this._hlConsLi.textContent = "";
-      const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
-      const statusSpan2 = document.createElement("span");
-      statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`;
-      statusSpan2.style.color = semanticColorCons;
-      statusSpan2.style.fontWeight = "700";
-      this._hlConsLi.appendChild(s2);
-      this._hlConsLi.appendChild(document.createTextNode("A absorção atingiu "));
-      this._hlConsLi.appendChild(statusSpan2);
-      this._hlConsLi.appendChild(document.createTextNode(" do orçamento da competência."));
+      Object.keys(itemFinanceiroMap).forEach(itemName => {
+        const metrics = itemFinanceiroMap[itemName];
+        const desvioItem = metrics.realizado - metrics.orcado;
 
-      this._hlYtdLi.textContent = "";
-      const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD: ";
-      const statusSpan3 = document.createElement("span");
-      statusSpan3.textContent = ytdStatusText;
-      statusSpan3.style.color = semanticColorYTD;
-      statusSpan3.style.fontWeight = "700";
-      const valueSpan3 = document.createElement("span");
-      valueSpan3.textContent = `${consumoBudgetPercent.toFixed(1)}%`;
-      valueSpan3.style.fontWeight = "700";
-      this._hlYtdLi.appendChild(s3);
-      this._hlYtdLi.appendChild(document.createTextNode("Acumulado com desvio "));
-      this._hlYtdLi.appendChild(statusSpan3);
-      this._hlYtdLi.appendChild(document.createTextNode(", consumindo "));
-      this._hlYtdLi.appendChild(valueSpan3);
-      this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
+        if (desvioItem > 0 && desvioItem > maxOffenderVal) {
+          maxOffenderVal = desvioItem; maxOutlierOffender = itemName;
+          let topContaVal = 0;
+          Object.keys(metrics.contas).forEach(cName => {
+            const cDesvio = metrics.contas[cName].realizado - metrics.contas[cName].orcado;
+            if (cDesvio > topContaVal) { topContaVal = cDesvio; maxOffenderConta = cName; }
+          });
+        } else if (desvioItem < 0 && Math.abs(desvioItem) > maxSaverVal) {
+          maxSaverVal = Math.abs(desvioItem); maxOutlierSaver = itemName;
+          let topContaSave = 0;
+          Object.keys(metrics.contas).forEach(cName => {
+            const cDesvio = metrics.contas[cName].orcado - metrics.contas[cName].realizado;
+            if (cDesvio > topContaSave) { topContaSave = cDesvio; maxSaverConta = cName; }
+          });
+        }
+      });
 
-      // ==========================================================================
-      // BULLET 4: BLOCO COGNITIVO DE VALIDAÇÃO E TELEMETRIA DIMENSIONAL (PASSO A PASSO)
-      // ==========================================================================
-      this._hlOffenderLi.textContent = "";
-      this._hlOffenderLi.style.display = "block";
+      // REIDRATAÇÃO VISUAL SELETIVA DO DOM (DESIGN POR EXCEÇÃO)
+      // Bullet 4: Maior Outlier de Estouro do Período
+      this._hlExtraLi1.textContent = "";
+      if (maxOutlierOffender) {
+        this._hlExtraLi1.style.display = "block";
+        const b4 = document.createElement("strong"); b4.textContent = "Outlier de Despesa do Período: ";
+        const itemSpan = document.createElement("span"); itemSpan.textContent = maxOutlierOffender; itemSpan.style.color = "#D32F2F"; itemSpan.style.fontWeight = "700";
+        this._hlExtraLi1.appendChild(b4); this._hlExtraLi1.appendChild(document.createTextNode("No período acumulado, a linha de ")); this._hlExtraLi1.appendChild(itemSpan);
+        this._hlExtraLi1.appendChild(document.createTextNode(` consolidou o maior estouro orçamentário do projeto, gerando um desvio adverso de R$ ${formatM(maxOffenderVal)}`));
+        if (maxOffenderConta) {
+          const cSpan = document.createElement("span"); cSpan.textContent = maxOffenderConta; cSpan.style.fontWeight = "700";
+          this._hlExtraLi1.appendChild(document.createTextNode(" impulsionado pela conta contábil de ")); this._hlExtraLi1.appendChild(cSpan);
+        }
+        this._hlExtraLi1.appendChild(document.createTextNode("."));
+      } else { this._hlExtraLi1.style.display = "none"; }
 
-      if (scannedRowCount === 0) {
-        // Alerta de Incompatibilidade de Filtro/Mês
-        const badSpan = document.createElement("span");
-        badSpan.textContent = "ALERTA DE TELEMETRIA OPERACIONAL";
-        badSpan.style.color = "#EF6C00";
-        badSpan.style.fontWeight = "700";
-        this._hlOffenderLi.appendChild(badSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`: O cubo retornou dados, mas nenhuma linha corresponde à chave de tempo ativa (${currentBarNode.id}). Scan de chaves: Tempo=[${this._tempoDimId}], Versão=[${this._versaoDimId}], Extras=[${this._extraDimIds.join(', ')}]. Linhas totais no cubo: ${financialData.data.length}.`));
-      
-      } else if (Object.keys(breakdownMap).length <= 1 && Object.keys(breakdownMap)[0] === "Outros") {
-        // Alerta de Ausência de Vinculação de Dimensões Extras no Builder Panel
-        const badSpan = document.createElement("span");
-        badSpan.textContent = "AVISO DE ENRIQUECIMENTO SEGUIDO";
-        badSpan.style.color = "#EF6C00";
-        badSpan.style.fontWeight = "700";
-        this._hlOffenderLi.appendChild(badSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`: Engine ativada para o mês ${monthLabel} (${scannedRowCount} tuplas), mas chaves extras não retornaram membros. Verifique se as dimensões de "Item Financeiro" e "Conta" foram soltas no container de dimensões do Builder Panel.`));
-      
-      } else if (topOffenderValue > 0) {
-        // Fluxo de Ofensor Crítico Mapeado
-        const s4 = document.createElement("strong"); s4.textContent = "Detalhamento Crítico: ";
-        const offenderSpan = document.createElement("span");
-        offenderSpan.textContent = topOffenderName;
-        offenderSpan.style.color = "#D32F2F"; 
-        offenderSpan.style.fontWeight = "700";
-        this._hlOffenderLi.appendChild(s4);
-        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta desvio adverso na linha de "));
-        this._hlOffenderLi.appendChild(offenderSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`, com estouro orçamentário de R$ ${formatM(topOffenderValue)}.`));
-      
-      } else if (topSaverValue > 0) {
-        // Fluxo de Eficiência Operacional Mapeado (Ex: Caso de Março com economia geral)
-        const s4 = document.createElement("strong"); s4.textContent = "Detalhamento de Eficiência: ";
-        const saverSpan = document.createElement("span");
-        saverSpan.textContent = topSaverName;
-        saverSpan.style.color = "#2E7D32"; 
-        saverSpan.style.fontWeight = "700";
-        this._hlOffenderLi.appendChild(s4);
-        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta excelente performance na combinação "));
-        this._hlOffenderLi.appendChild(saverSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`, liderando a otimização com economia de R$ ${formatM(topSaverValue)} contra a meta.`));
-      }
+      // Bullet 5: Maior Outlier de Economia/Saving do Período
+      this._hlExtraLi2.textContent = "";
+      if (maxOutlierSaver) {
+        this._hlExtraLi2.style.display = "block";
+        const b5 = document.createElement("strong"); b5.textContent = "Outlier de Eficiência do Período: ";
+        const saverSpan = document.createElement("span"); saverSpan.textContent = maxOutlierSaver; saverSpan.style.color = "#2E7D32"; saverSpan.style.fontWeight = "700";
+        this._hlExtraLi2.appendChild(b5); this._hlExtraLi2.appendChild(document.createTextNode("O maior vetor de otimização mapeado foi o item de ")); this._hlExtraLi2.appendChild(saverSpan);
+        this._hlExtraLi2.appendChild(document.createTextNode(` com uma economia de R$ ${formatM(maxSaverVal)} frente às metas`));
+        if (maxSaverConta) {
+          const cSpan2 = document.createElement("span"); cSpan2.textContent = maxSaverConta; cSpan2.style.fontWeight = "700";
+          this._hlExtraLi2.appendChild(document.createTextNode(" liderada pela natureza de ")); this._hlExtraLi2.appendChild(cSpan2);
+        }
+        this._hlExtraLi2.appendChild(document.createTextNode("."));
+      } else { this._hlExtraLi2.style.display = "none"; }
 
       this._insightGrid.style.display = "grid";
     }
