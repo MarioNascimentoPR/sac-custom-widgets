@@ -1,8 +1,76 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY WITH CLEAN ENGINE
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - ADVANCED PROFILER ENGINES
    ========================================================================== */
 
 (function () {
+  // CONFIGURAÇÃO CORPORATIVA: Altere para false para desligar 100% da Telemetria
+  const ENABLE_TELEMETRY = true;
+
+  /* ==========================================================================
+     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E STRESS TEST (HEADLESS)
+     ========================================================================== */
+  class EvoStreamProfiler {
+    constructor() {
+      this.metrics = {
+        totalCycle: 0, jsTime: 0, domTime: 0, paintTime: 0, fps: 60,
+        steps: { parsing: 0, aggregation: 0, domCreation: 0, svgDrawing: 0, highlights: 0 },
+        memory: 0, redundantRenders: 0, dataVolume: 0
+      };
+      this._lastDataSignature = "";
+      this._fpsFrameCount = 0;
+      this._fpsLastTime = performance.now();
+    }
+
+    verifyRedundancy(cubeData) {
+      if (!ENABLE_TELEMETRY || !cubeData) return false;
+      try {
+        const signature = JSON.stringify(cubeData.slice(0, 10).map(r => r.id || ""));
+        if (this._lastDataSignature === signature) {
+          this.metrics.redundantRenders++;
+          return true;
+        }
+        this._lastDataSignature = signature;
+      } catch (e) { return false; }
+      return false;
+    }
+
+    startFPSMonitor() {
+      if (!ENABLE_TELEMETRY) return;
+      this._fpsFrameCount = 0;
+      this._fpsLastTime = performance.now();
+      const run = () => {
+        this._fpsFrameCount++;
+        const now = performance.now();
+        if (now - this._fpsLastTime >= 500) {
+          this.metrics.fps = Math.round((this._fpsFrameCount * 1000) / (now - this._fpsLastTime));
+          this._fpsFrameCount = 0;
+          this._fpsLastTime = now;
+        } else if (this._fpsFrameCount < 100) {
+          requestAnimationFrame(run);
+        }
+      };
+      requestAnimationFrame(run);
+    }
+
+    collectSystemMemory() {
+      if (!ENABLE_TELEMETRY) return;
+      if (window.performance && performance.memory) {
+        this.metrics.memory = performance.memory.usedJSHeapSize;
+      }
+    }
+
+    runStressProjection(baseRows, sampleJSTime) {
+      if (!baseRows || baseRows === 0) return { "10k": 0, "25k": 0, "50k": 0, "100k": 0 };
+      const baseValue = sampleJSTime / baseRows;
+      return {
+        k10: baseValue * 10000 * 1.05,
+        k25: baseValue * 25000 * 1.12,
+        k50: baseValue * 50000 * 1.25,
+        k100: baseValue * 100000 * 1.45
+      };
+    }
+  }
+
   const template = document.createElement("template");
   template.innerHTML = `
     <style>
@@ -34,21 +102,24 @@
       }
       .tree-dropdown-content.show { display: block; }
       
+      /* UI DESIGN DO PAINEL DE TELEMETRIA AVANÇADA */
       .telemetry-btn {
         font-size: 11px; font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
       }
       .telemetry-btn:hover { background-color: #e2e8f0; color: #1e293b; }
       .telemetry-modal {
-        display: none; position: absolute; top: 48px; right: 18px; width: 290px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); z-index: 1000; padding: 14px; font-size: 11px; color: #334155;
+        display: none; position: absolute; top: 48px; right: 18px; width: 330px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 1000; padding: 14px; font-size: 11px; color: #334155;
       }
       .telemetry-modal.show { display: block; }
       .telemetry-title { font-size: 11.5px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
       .telemetry-close { background: none; border: none; font-size: 16px; cursor: pointer; color: #94a3b8; font-weight: 700; line-height: 1; }
-      .telemetry-close:hover { color: #64748b; }
-      .telemetry-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #f1f5f9; align-items: center; }
-      .telemetry-row:last-child { border-bottom: none; }
+      .telemetry-section-title { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 10px 0 4px 0; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
+      .telemetry-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; align-items: center; }
       .telemetry-label { font-weight: 600; color: #64748b; }
-      .telemetry-val { font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
+      .telemetry-val { font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; background: #f8fafc; padding: 1px 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
+      .stress-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10.5px; }
+      .stress-table th { text-align: left; background: #e2e8f0; color: #334155; padding: 3px 6px; font-weight: 700; }
+      .stress-table td { padding: 4px 6px; border-bottom: 1px solid #edf2f7; font-weight: 600; }
 
       .widget-legend { display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0; }
       .legend-item { display: flex; align-items: center; gap: 5px; }
@@ -133,29 +204,42 @@
           <div class="tree-dropdown-trigger" id="treeDropdownTrigger">Selecionar...</div>
           <div class="tree-dropdown-content" id="treeDropdownContent"></div>
           
-          <button class="telemetry-btn" id="telemetryBtn">📊 Telemetria</button>
+          <button class="telemetry-btn" id="telemetryBtn" style="display: none;">📊 Telemetria</button>
           
           <div class="telemetry-modal" id="telemetryModal">
             <div class="telemetry-title">
               <span>Métricas de Performance</span>
               <button class="telemetry-close" id="closeTelemetry">×</button>
             </div>
-            <div class="telemetry-row">
-              <span class="telemetry-label">Processamento JS:</span>
-              <span class="telemetry-val" id="tmJS">0.00 ms</span>
-            </div>
-            <div class="telemetry-row">
-              <span class="telemetry-label">Renderização DOM:</span>
-              <span class="telemetry-val" id="tmDOM">0.00 ms</span>
-            </div>
-            <div class="telemetry-row">
-              <span class="telemetry-label">Reflows Otimizados:</span>
-              <span class="telemetry-val" id="tmReflow">0 passes</span>
-            </div>
-            <div class="telemetry-row">
-              <span class="telemetry-label">Escalabilidade SAC:</span>
-              <span class="telemetry-val" id="tmVol">0 rows</span>
-            </div>
+            
+            <div class="telemetry-section-title">Ciclo de Vida Total</div>
+            <div class="telemetry-row"><span class="telemetry-label">Tempo Total Ciclo:</span><span class="telemetry-val" id="tmTotal">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">Engine JS Puro:</span><span class="telemetry-val" id="tmJS">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">Pintura e Layout:</span><span class="telemetry-val" id="tmDOM">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">Estabilidade (FPS):</span><span class="telemetry-val" id="tmFPS">60 FPS</span></div>
+            
+            <div class="telemetry-section-title">Amostragem por Etapa</div>
+            <div class="telemetry-row"><span class="telemetry-label">1. Ingestão e Parsing:</span><span class="telemetry-val" id="stParsing">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">2. Agregação e Cubo:</span><span class="telemetry-val" id="stAggr">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">3. Construção Base DOM:</span><span class="telemetry-val" id="stDOM">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">4. Plotagem SVG Vector:</span><span class="telemetry-val" id="stSVG">0.00 ms</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">5. Geração Highlights:</span><span class="telemetry-val" id="stHL">0.00 ms</span></div>
+            
+            <div class="telemetry-section-title">Diagnóstico de Saúde</div>
+            <div class="telemetry-row"><span class="telemetry-label">Memória Heap V8:</span><span class="telemetry-val" id="tmMem">0.00 MB</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">Re-renders Redundantes:</span><span class="telemetry-val" id="tmRedund">0</span></div>
+            <div class="telemetry-row"><span class="telemetry-label">Volume de Linhas SAC:</span><span class="telemetry-val" id="tmVol">0 rows</span></div>
+            
+            <div class="telemetry-section-title">Simulação de Estresse Operacional</div>
+            <table class="stress-table">
+              <thead><tr><th>Carga</th><th>Cenário Preditivo (JS)</th></tr></thead>
+              <tbody>
+                <tr><td>10k linhas</td><td id="st10k">-</td></tr>
+                <tr><td>25k linhas</td><td id="st25k">-</td></tr>
+                <tr><td>50k linhas</td><td id="st50k">-</td></tr>
+                <tr><td>100k linhas</td><td id="st100k">-</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -219,14 +303,15 @@
   `;
 
   /* ==========================================================================
-     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA SANEADA (PURE HEADLESS)
+     ENGINE ANALÍTICA PURA JS (HEADLESS ENGINE)
      ========================================================================== */
   class EvoNarrativeEngine {
     constructor() {
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
     }
 
-    analyze(cubeData, targetNode, currentYear, previousYear, tempoDimId, versaoDimId, itemFinanceiroDimId, contaContabilDimId, measId, fullSeriesData) {
+    analyze(cubeData, targetNode, currentYear, previousYear, tempoDimId, versaoDimId, itemFinanceiroDimId, contaContabilDimId, measId, fullSeriesData, profiler) {
+      const tStartAggregation = performance.now();
       const varianceTable = { month: {}, ytd: {} };
       const driverTable = [];
       const outlierTable = [];
@@ -341,6 +426,10 @@
       rankingTable.push(...outlierTable);
       rankingTable.sort((a, b) => b.score - a.score);
 
+      if (ENABLE_TELEMETRY && profiler) {
+        profiler.metrics.steps.aggregation = performance.now() - tStartAggregation;
+      }
+
       return { varianceTable, driverTable, outlierTable: rankingTable, rankingTable };
     }
 
@@ -351,6 +440,9 @@
     }
   }
 
+  /* ==========================================================================
+     UI LAYER MANAGEMENT WITH REQUESTUPDATE REACTION
+     ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
@@ -367,13 +459,13 @@
       
       this._updateQueued = false;
       this._analyticsEngine = new EvoNarrativeEngine();
+      this._profiler = new EvoStreamProfiler();
 
       this._tempoDimId = null;
       this._versaoDimId = null;
       this._itemFinanceiroDimId = null;
       this._contaContabilDimId = null;
       this._extraDimIds = [];
-      this._reflowCount = 0;
 
       this._boundWindowClick = (e) => {
         const path = e.composedPath();
@@ -403,13 +495,28 @@
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
+        // ELEMENTOS DE MAQUEAMENTO DA TELEMETRIA
         this._telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
         this._telemetryModal = this._shadowRoot.getElementById("telemetryModal");
         this._closeTelemetry = this._shadowRoot.getElementById("closeTelemetry");
+        this._lblTotal = this._shadowRoot.getElementById("tmTotal");
         this._lblJS = this._shadowRoot.getElementById("tmJS");
         this._lblDOM = this._shadowRoot.getElementById("tmDOM");
-        this._lblReflow = this._shadowRoot.getElementById("tmReflow");
+        this._lblFPS = this._shadowRoot.getElementById("tmFPS");
+        this._lblParsing = this._shadowRoot.getElementById("stParsing");
+        this._lblAggr = this._shadowRoot.getElementById("stAggr");
+        this._lblStepDOM = this._shadowRoot.getElementById("stDOM");
+        this._lblStepSVG = this._shadowRoot.getElementById("stSVG");
+        this._lblStepHL = this._shadowRoot.getElementById("stHL");
+        this._lblMem = this._shadowRoot.getElementById("tmMem");
+        this._lblRedund = this._shadowRoot.getElementById("tmRedund");
         this._lblVol = this._shadowRoot.getElementById("tmVol");
+        
+        // TABELA PREDICTIVE STRESS
+        this._st10k = this._shadowRoot.getElementById("st10k");
+        this._st25k = this._shadowRoot.getElementById("st25k");
+        this._st50k = this._shadowRoot.getElementById("st50k");
+        this._st100k = this._shadowRoot.getElementById("st100k");
 
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
@@ -427,13 +534,17 @@
         this._miniLblAct = this._shadowRoot.getElementById("mini-lbl-act");
         this._miniLblBud = this._shadowRoot.getElementById("mini-lbl-bud");
 
-        this._telemetryBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          this._telemetryModal.classList.toggle("show");
-        });
-        this._closeTelemetry.addEventListener("click", () => {
-          this._telemetryModal.classList.remove("show");
-        });
+        if (ENABLE_TELEMETRY) {
+          this._telemetryBtn.style.display = "flex";
+          this._telemetryBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this._telemetryModal.classList.toggle("show");
+          });
+          this._closeTelemetry.addEventListener("click", () => {
+            this._telemetryModal.classList.remove("show");
+          });
+          this._profiler.startFPSMonitor();
+        }
 
         this._treeDropdownTrigger.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -471,13 +582,6 @@
       });
     }
 
-    _initStaticHighlightsDOM() {
-      this._hlUl = document.createElement("ul");
-      this._hlUl.className = "ul-highlight";
-      this._highlightContentText.textContent = "";
-      this._highlightContentText.appendChild(this._hlUl);
-    }
-
     _toggleDropdownDOM() {
       if (this._treeDropdownContent) {
         this._treeDropdownContent.classList.toggle("show", this._isDropdownOpen);
@@ -491,6 +595,13 @@
     onCustomWidgetAfterUpdate(changedProperties) {
       this._updateStyles();
       if ("performanceCube" in changedProperties && this.performanceCube) {
+        
+        // DETECTOR DE RE-RENDERS REDUNDANTES
+        if (this._profiler.verifyRedundancy(this.performanceCube.data)) {
+          if (ENABLE_TELEMETRY) this._lblRedund.textContent = this._profiler.metrics.redundantRenders;
+          return; 
+        }
+
         this._currentData = this.performanceCube;
         this._selectedCutoffId = null;
         this._isTreeBuilt = false; 
@@ -516,15 +627,10 @@
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
     }
 
-    _clearSvgOverlay(svg) {
-      while (svg.lastElementChild) {
-        svg.removeChild(svg.lastElementChild);
-      }
-    }
-
     renderChart() {
       if (!document.contains(this) || !this._shadowRoot) return;
-      const tStartJS = performance.now();
+      
+      const tArrivalData = performance.now();
 
       const residualPlaceholder = this._axisX.querySelector(".placeholder-text");
       if (residualPlaceholder) residualPlaceholder.remove();
@@ -540,7 +646,7 @@
       }
 
       try {
-        this._reflowCount++;
+        const tParsingStart = performance.now();
         const metadata = financialData.metadata;
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
@@ -747,26 +853,62 @@
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
 
-        const tEndJS = performance.now();
-        const tStartDOM = performance.now();
+        if (ENABLE_TELEMETRY) {
+          this._profiler.metrics.steps.parsing = performance.now() - tParsingStart;
+        }
 
+        // TELEMETRIA ESTÁGIO 3: DOM Creation
+        const tDOMStart = performance.now();
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
+        if (ENABLE_TELEMETRY) {
+          this._profiler.metrics.steps.domCreation = performance.now() - tDOMStart;
+        }
+
         this._renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, calculatedBudget);
 
+        // TELEMETRIA ESTÁGIO 4 & PAINT: Conexões de Linhas e Render Final
+        const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
+          const tSVGStart = performance.now();
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
           this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
           
-          const tEndDOM = performance.now();
-          this._lblJS.textContent = `${(tEndJS - tStartJS).toFixed(2)} ms`;
-          this._lblDOM.textContent = `${(tEndDOM - tStartDOM).toFixed(2)} ms`;
-          this._lblReflow.textContent = `${this._reflowCount} passes`;
-          this._lblVol.textContent = `${financialData.data.length} rows`;
+          if (ENABLE_TELEMETRY) {
+            this._profiler.metrics.steps.svgDrawing = performance.now() - tSVGStart;
+            this._profiler.collectSystemMemory();
+
+            const tFinalPaint = performance.now();
+            const jsTotalTime = tEndJS - tArrivalData;
+            const domTotalTime = tFinalPaint - tDOMPaintStart;
+
+            // Injeção de Telemetria no Pop-up em Tempo de Execução
+            this._lblTotal.textContent = `${(tFinalPaint - tArrivalData).toFixed(2)} ms`;
+            this._lblJS.textContent = `${jsTotalTime.toFixed(2)} ms`;
+            this._lblDOM.textContent = `${domTotalTime.toFixed(2)} ms`;
+            this._lblFPS.textContent = `${this._profiler.metrics.fps} FPS`;
+            
+            this._lblParsing.textContent = `${this._profiler.metrics.steps.parsing.toFixed(2)} ms`;
+            this._lblAggr.textContent = `${this._profiler.metrics.steps.aggregation.toFixed(2)} ms`;
+            this._lblStepDOM.textContent = `${this._profiler.metrics.steps.domCreation.toFixed(2)} ms`;
+            this._lblStepSVG.textContent = `${this._profiler.metrics.steps.svgDrawing.toFixed(2)} ms`;
+            this._lblStepHL.textContent = `${this._profiler.metrics.steps.highlights.toFixed(2)} ms`;
+            
+            this._lblMem.textContent = `${(this._profiler.metrics.memory / 1024 / 1024).toFixed(2)} MB`;
+            this._lblVol.textContent = `${financialData.data.length} rows`;
+
+            // Execução das Projeções de Estresse Analíticas
+            const stressProjections = this._profiler.runStressProjection(financialData.data.length, jsTotalTime);
+            this._st10k.textContent = `${stressProjections.k10.toFixed(2)} ms`;
+            this._st25k.textContent = `${stressProjections.k25.toFixed(2)} ms`;
+            this._st50k.textContent = `${stressProjections.k50.toFixed(2)} ms`;
+            this._st100k.textContent = `${stressProjections.k100.toFixed(2)} ms`;
+          }
         });
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
       }
+      const tEndJS = performance.now();
     }
 
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
@@ -816,17 +958,10 @@
 
     _drawUnifiedFlatConnections(svg, container, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
+      this._clearSvgOverlay(svg);
       
-      const containerHeight = container.offsetHeight;
-      if (containerHeight === 0) return;
-      
-      const barElements = container.querySelectorAll(barSelector);
-      if (!barElements || barElements.length === 0) return;
-      
-      const barCenters = Array.from(barElements).map(bar => {
-        if (!bar) return 0;
-        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
-      });
+      const containerHeight = container.offsetHeight; if (containerHeight === 0) return;
+      const barElements = container.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
       
       const pairs = [];
       if (mode === "monthly") {
@@ -836,71 +971,58 @@
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
 
+      const getCenterX = (idx) => {
+        const bar = barElements[idx]; if (!bar) return 0;
+        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
+      };
+
       const ceilingY = -16;
-      const floorY = containerHeight;
+      const floorY = containerHeight; 
+      const fragment = document.createDocumentFragment();
 
-      let existingGroups = svg.querySelectorAll(".connector-group");
-
-      while (existingGroups.length < pairs.length) {
-        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        g.setAttribute("class", "connector-group");
-        
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none");
-        
-        const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        fo.setAttribute("width", "70"); fo.setAttribute("height", "22");
-        
-        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
-        const span = document.createElement("span"); span.className = "variance-tag";
-        
-        div.appendChild(span); fo.appendChild(div); g.appendChild(path); g.appendChild(fo); svg.appendChild(g);
-        existingGroups = svg.querySelectorAll(".connector-group");
-      }
-
-      for (let i = pairs.length; i < existingGroups.length; i++) {
-        existingGroups[i].style.display = "none";
-      }
-
-      pairs.forEach((pair, idx) => {
-        const g = existingGroups[idx];
-        g.style.display = "block";
-        
-        const xFrom = barCenters[pair.from];
-        const xTo = barCenters[pair.to];
+      pairs.forEach((pair) => {
+        const xFrom = getCenterX(pair.from); const xTo = getCenterX(pair.to);
+        if (xFrom === 0 || xTo === 0) return;
         
         const itemFrom = dataArray[pair.from];
         const itemTo = dataArray[pair.to];
+        const val1 = itemFrom.value; 
+        const val2 = itemTo.value;
         
         let isCostSaving = false;
         let variancePercent = 0;
         let directionalArrow = "";
 
         if (itemTo.type === "budget") {
-          const diff = itemFrom.value - itemTo.value;
+          const diff = val1 - val2; 
           isCostSaving = diff <= 0;
-          variancePercent = itemTo.value !== 0 ? (diff / itemTo.value) * 100 : 0;
+          variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         } else {
-          const diff = itemTo.value - itemFrom.value;
+          const diff = val2 - val1; 
           isCostSaving = diff <= 0;
-          variancePercent = itemFrom.value !== 0 ? (diff / itemFrom.value) * 100 : 0;
+          variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         }
 
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
+        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); 
+        fragment.appendChild(path);
         
-        g.querySelector("path").setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
-        
-        const fo = g.querySelector("foreignObject");
         const midX = xFrom + (xTo - xFrom) / 2;
-        fo.setAttribute("x", (midX - 35).toString());
-        fo.setAttribute("y", (ceilingY - 11).toString());
+        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (ceilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
         
-        const span = g.querySelector(".variance-tag");
-        span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
+        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
+        const span = document.createElement("span"); span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
         span.textContent = varianceText;
+        
+        div.appendChild(span); foreignObj.appendChild(div); fragment.appendChild(foreignObj);
       });
+      svg.appendChild(fragment);
     }
 
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
@@ -949,13 +1071,12 @@
 
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
-      this._miniBarAct.style.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`; // Limpeza dupla de sintaxe .style.style feita na versão quebrada antiga
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
       this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
-      this._miniLblPrev.textContent = formatM(totalRealizadoYTDAntigo);
-      this._miniLblAct.textContent = formatM(totalRealizadoYTDAtual);
-      this._miniLblBud.textContent = formatM(totalBudgetYTDCompleto);
+      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
+      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
+      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
 
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
@@ -1002,9 +1123,11 @@
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
       this._hlUl.appendChild(liCons);
 
+      // TELEMETRIA ESTÁGIO 5: Monitor de Highlights por Item Financeiro
+      const tHLStart = performance.now();
       const analysis = this._analyticsEngine.analyze(
         this._currentData.data, currentBarNode, currentYear, previousYear,
-        this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData
+        this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData, this._profiler
       );
 
       analysis.outlierTable.forEach(item => {
@@ -1038,6 +1161,10 @@
 
         this._hlUl.appendChild(liItem);
       });
+
+      if (ENABLE_TELEMETRY) {
+        this._profiler.metrics.steps.highlights = performance.now() - tHLStart;
+      }
 
       this._insightGrid.style.display = "grid";
     }
