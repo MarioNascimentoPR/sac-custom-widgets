@@ -1,816 +1,769 @@
 (function () {
+
+  const BAR_WIDTH = 46;
+  const BAR_GAP = 20;
+  const BRACKET_WIDTH = 66;
+
   const template = document.createElement("template");
+
   template.innerHTML = `
-    <style>
-      :host {
-        --color-actual: #1f77b4;
-        --color-historical: #7f7f7f;
-        --color-budget: #aec7e8;
-        --font-size-labels: 12px;
-        --color-saving: #137333;
-        --color-saving-bg: #e6f4ea;
-        --color-saving-border: #ceead6;
-        --color-increase: #c5221f;
-        --color-increase-bg: #fce8e6;
-        --color-increase-border: #fad2cf;
-        --color-border-axis: #cbd5e0;
-        
-        display: block;
-        width: 100%;
-        height: 100%;
-        box-sizing: border-box;
-        background: #ffffff;
-      }
-      
-      #widget-wrapper {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        height: 100%;
-        padding: 14px 18px;
-        box-sizing: border-box;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        position: relative;
-        overflow-y: auto;
-        overflow-x: hidden;
-      }
+  <style>
+    :host {
+      --color-actual: #1f77b4;
+      --color-historical: #7f7f7f;
+      --color-budget: #aec7e8;
+      --font-size-labels: 12px;
+      --color-saving: #137333;
+      --color-saving-bg: #e6f4ea;
+      --color-saving-border: #ceead6;
+      --color-increase: #c5221f;
+      --color-increase-bg: #fce8e6;
+      --color-increase-border: #fad2cf;
+      --color-border-axis: #cbd5e0;
 
-      .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex-shrink: 0; gap: 12px; }
-      .header-left-block { display: flex; flex-direction: column; }
-      .widget-title { font-size: 13px; font-weight: 700; color: #2c3e50; }
-      .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
+      display:block;
+      width:100%;
+      height:100%;
+      background:#fff;
+      box-sizing:border-box;
+    }
 
-      .filter-container-finance { position: relative; display: flex; align-items: center; gap: 6px; z-index: 100; }
-      .filter-label-finance { font-size: 11px; font-weight: 600; color: #4a5568; }
+    #widget-wrapper{
+      display:flex;
+      flex-direction:column;
+      width:100%;
+      height:100%;
+      padding:14px 18px;
+      box-sizing:border-box;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      overflow:auto;
+    }
 
-      .tree-dropdown-trigger {
-        font-size: 11px; font-weight: 700; color: #2d3748; background-color: #f8fafc; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 28px 4px 10px; cursor: pointer; min-width: 120px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-        background-repeat: no-repeat; background-position: right 8px center; background-size: 12px; user-select: none; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
-      }
+    .widget-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:14px;
+      padding-bottom:8px;
+      border-bottom:1px solid #f0f0f0;
+    }
 
-      .tree-dropdown-content {
-        display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 260px; overflow-y: auto; min-width: 160px; padding: 6px 0;
-      }
-      .tree-dropdown-content.show { display: block; }
+    .widget-title{
+      font-size:13px;
+      font-weight:700;
+      color:#2c3e50;
+    }
 
-      .tree-year-node { font-weight: 700; color: #2d3748; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; user-select: none; }
-      .tree-year-node:hover { background-color: #edf2f7; }
-      .tree-year-node::before { content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block; }
-      .tree-year-node.expanded::before { transform: rotate(90deg); }
+    .scale-tag{
+      font-size:10px;
+      font-weight:600;
+      color:#7f8c8d;
+      margin-top:2px;
+    }
 
-      .tree-months-container { display: none; flex-direction: column; padding-left: 14px; background: #f7fafc; }
-      .tree-months-container.show { display: flex; }
-      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
-      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
-      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
+    .widget-legend{
+      display:flex;
+      gap:14px;
+      margin-bottom:12px;
+      font-size:10.5px;
+      font-weight:600;
+      color:#4a5568;
+    }
 
-      .widget-legend { display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0; }
-      .legend-item { display: flex; align-items: center; gap: 5px; }
-      .legend-color { width: 10px; height: 10px; border-radius: 2px; }
-      .legend-color.hist { background-color: var(--color-historical); }
-      .legend-color.act { background-color: var(--color-actual); }
-      .legend-color.bud { 
-        background-color: transparent; border: 1px solid var(--color-budget); box-sizing: border-box;
-        background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
-        background-size: 4px 4px;
-      }
+    .legend-item{
+      display:flex;
+      align-items:center;
+      gap:5px;
+    }
 
-      /* LAYOUT DOS GRÁFICOS */
-      .main-visualization-layout { display: flex; width: 100%; gap: 24px; margin-bottom: 24px; flex-shrink: 0; align-items: stretch; }
-      .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
-      .visualization-column.monthly-col { flex: 3; }
-      .visualization-column.ytd-col { flex: 1; border-left: 1px solid #e2e8f0; padding-left: 24px; display: flex; flex-direction: column; justify-content: space-between; }
+    .legend-color{
+      width:10px;
+      height:10px;
+      border-radius:2px;
+    }
 
-      .ytd-chart-header-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: auto; padding-bottom: 6px; }
-      
-      /* CONTAINERS DO GRÁFICO (Respiro de 60px no topo para os conectores) */
-      .chart-container-block { position: relative; height: 175px; padding-top: 60px; box-sizing: border-box; width: 100%; }
-      .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; z-index: 2; }
-      
-      /* BARRAS */
-      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2;}
-      .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
-      .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
-      .bar-element.budget {
-        background-color: transparent; border: 1px solid var(--color-budget); border-bottom: 1px solid var(--color-budget); box-sizing: border-box;
-        background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
-        background-size: 6px 6px;
-      }
-      
-      /* RÓTULOS DOS VALORES: Sempre em Top -22px (Blindado) */
-      .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 1px); font-weight: 700; color: #2d3748; white-space: nowrap; z-index: 5; }
-      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -24px; }
-      
-      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
-      .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
-      .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
-      .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
+    .legend-color.hist{
+      background:var(--color-historical);
+    }
 
-      /* ==========================================================================
-         A SOLUÇÃO INFALÍVEL DE CONECTORES (SEM SVG)
-         ========================================================================== */
-      .variance-bracket {
-        position: absolute;
-        top: -45px; /* Exatos 23px ACIMA do rótulo da coluna para não haver colisão */
-        left: 50%;  /* Nasce perfeitamente no centro da barra atual */
-        width: 66px; /* Alcança perfeitamente o centro da barra vizinha (23 + 20 + 23) */
-        height: 12px;
-        border-top: 1.5px solid var(--color-border-axis);
-        border-left: 1.5px solid var(--color-border-axis);
-        border-right: 1.5px solid var(--color-border-axis);
-        z-index: 10;
-        pointer-events: none;
-      }
-      
-      /* SETAS NATIVAS DA HASTE */
-      .variance-bracket::before, .variance-bracket::after {
-        content: ''; position: absolute; bottom: -5px; width: 0; height: 0;
-        border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 5px solid var(--color-border-axis);
-      }
-      .variance-bracket::before { left: -4px; }
-      .variance-bracket::after { right: -4px; }
+    .legend-color.act{
+      background:var(--color-actual);
+    }
 
-      /* WRAPPER PARA CENTRALIZAR A TAG NO MEIO DA HASTE */
-      .variance-tag-wrapper {
-        position: absolute;
-        top: -11px;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-      }
-      
-      /* DESIGN DA TAG (Cores semânticas financeiras estritas) */
-      .variance-tag {
-        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; background-color: #ffffff; z-index: 15;
-      }
-      .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
-      .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
+    .legend-color.bud{
+      border:1px solid var(--color-budget);
+      background-image:
+        linear-gradient(
+          45deg,
+          var(--color-budget) 25%,
+          transparent 25%,
+          transparent 50%,
+          var(--color-budget) 50%,
+          var(--color-budget) 75%,
+          transparent 75%,
+          transparent
+        );
+      background-size:4px 4px;
+    }
 
-      /* ==========================================================================
-         GRID INFERIOR EXECUTIVO (MÉTRICAS E HIGHLIGHTS)
-         ========================================================================== */
-      .insight-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; margin-top: auto; padding-top: 16px; border-top: 1px solid #e2e8f0; flex-shrink: 0; width: 100%; }
-      @media (max-width: 768px) { .insight-grid { grid-template-columns: 1fr; gap: 16px; } }
+    .main-visualization-layout{
+      display:flex;
+      gap:24px;
+      margin-bottom:24px;
+    }
 
-      .grid-column-finance { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
-      .column-title-finance { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+    .visualization-column{
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      padding-top:24px;
+    }
 
-      .panel-content-rows { display: flex; flex-direction: column; gap: 1px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; }
-      .data-row-item { display: grid; grid-template-columns: 1.8fr 1fr 1fr; align-items: center; background: #ffffff; padding: 8px 12px; font-size: calc(var(--font-size-labels) - 0.5px); color: #2d3748; gap: 8px; }
+    .monthly-col{
+      flex:3;
+    }
 
-      .cell-label { font-weight: 600; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
-      .cell-label::before { content: ''; width: 4px; height: 12px; background: #cbd5e0; border-radius: 2px; display: inline-block; flex-shrink: 0; }
-      .row-m-style .cell-label::before { background: var(--color-actual); }
-      .row-ytd-style .cell-label::before { background: #2b6cb0; }
+    .ytd-col{
+      flex:1;
+      border-left:1px solid #e2e8f0;
+      padding-left:24px;
+    }
 
-      .cell-value { font-size: calc(var(--font-size-labels) - 0.5px); text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1e293b; white-space: nowrap; }
-      .cell-status-wrapper { display: flex; justify-content: flex-end; align-items: center; }
+    .ytd-chart-header-title{
+      position:absolute;
+      top:0;
+      left:24px;
+      font-size:10px;
+      font-weight:700;
+      color:#4a5568;
+      text-transform:uppercase;
+    }
 
-      .status-badge-finance {
-        font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-width: 78px; box-sizing: border-box;
-      }
-      .status-badge-finance.success { background-color: var(--color-saving-bg); color: var(--color-saving); border: 1px solid var(--color-saving-border); }
-      .status-badge-finance.warning { background-color: var(--color-increase-bg); color: var(--color-increase); border: 1px solid var(--color-increase-border); }
-      .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; border: 1px solid #e8eaed; }
+    .chart-container-block{
+      position:relative;
+      height:165px;
+      padding-top:60px;
+      overflow:hidden;
+    }
 
-      .highlight-card-area { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
-      .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
-      .highlight-icon-box { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
-      
-      .highlight-scannable-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
-      .highlight-topic-item { display: flex; align-items: flex-start; gap: 8px; font-size: 11.5px; line-height: 1.4; color: #4a5568; font-weight: 500; }
-      .topic-bullet { margin-top: 5px; width: 5px; height: 5px; background-color: #4a5568; border-radius: 50%; flex-shrink: 0; }
-      .topic-text strong { color: #0f172a; }
+    .chart-area{
+      width:100%;
+      height:100%;
+      display:flex;
+      justify-content:center;
+    }
 
-      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
-    </style>
-    
-    <div id="widget-wrapper">
-      <div class="widget-header">
-        <div class="header-left-block">
-          <div class="widget-title">Performance Mensal</div>
-          <div class="scale-tag">Valores em Milhões (M)</div>
-        </div>
-        <div class="filter-container-finance">
-          <span class="filter-label-finance">Corte:</span>
-          <div class="tree-dropdown-trigger" id="treeDropdownTrigger">Selecionar...</div>
-          <div class="tree-dropdown-content" id="treeDropdownContent"></div>
-        </div>
-      </div>
-      
-      <div class="widget-legend">
-        <div class="legend-item"><div class="legend-color hist"></div> Histórico (Realizado)</div>
-        <div class="legend-item"><div class="legend-color act"></div> Mês Atual (Realizado)</div>
-        <div class="legend-item"><div class="legend-color bud"></div> Orçado (Budget)</div>
-      </div>
+    .chart-area-inner{
+      display:flex;
+      align-items:flex-end;
+      gap:${BAR_GAP}px;
+      position:relative;
+      height:100%;
+    }
 
-      <div class="main-visualization-layout">
-        <div class="monthly-col visualization-column">
-          <div class="chart-container-block">
-            <div class="chart-area" id="chartArea"></div>
-          </div>
-          <div class="axis-x-block">
-            <div class="axis-x" id="axisX"></div>
-          </div>
-        </div>
+    .axis-x{
+      width:100%;
+      display:flex;
+      justify-content:center;
+      margin-top:6px;
+      border-top:1px solid #cbd5e0;
+      padding-top:6px;
+    }
 
-        <div class="visualization-column ytd-col">
-          <div class="ytd-chart-header-title" id="ytd-chart-header-title">Evolução YTD Acumulada</div>
-          <div class="chart-container-block">
-            <div class="chart-area" id="ytdChartArea"></div>
-          </div>
-          <div class="axis-x-block">
-            <div class="axis-x" id="ytdAxisX"></div>
-          </div>
-        </div>
-      </div>
+    .axis-x-inner{
+      display:flex;
+      gap:${BAR_GAP}px;
+    }
 
-      <div class="insight-grid" id="insightGrid" style="display: none;">
-        <div class="grid-column-finance">
-          <div class="column-title-finance">Métricas de Performance Operacional</div>
-          <div class="panel-content-rows">
-            <div class="data-row-item row-m-style">
-              <div class="cell-label">Desvio Mês (Real x Orçado)</div>
-              <div class="cell-value" id="val-diff-row">-</div>
-              <div class="cell-status-wrapper"><span class="status-badge-finance" id="val-pct-row">-</span></div>
-            </div>
-            <div class="data-row-item row-m-style">
-              <div class="cell-label">Consumo do Budget no Mês</div>
-              <div class="cell-value" id="val-pct-consumption-row">-</div>
-              <div class="cell-status-wrapper"><span class="status-badge-finance neutral" id="month-consumption-badge">Mês</span></div>
-            </div>
-            <div class="data-row-item row-ytd-style">
-              <div class="cell-label">Desvio YTD (Real x Orçado)</div>
-              <div class="cell-value" id="ytd-diff-row">-</div>
-              <div class="cell-status-wrapper"><span class="status-badge-finance" id="ytd-diff-pct-badge">-</span></div>
-            </div>
-            <div class="data-row-item row-ytd-style">
-              <div class="cell-label">Consumo do Budget Período (YTD)</div>
-              <div class="cell-value" id="ytd-pct-row">-</div>
-              <div class="cell-status-wrapper"><span class="status-badge-finance neutral" id="ytd-consumption-badge">YTD</span></div>
-            </div>
-          </div>
-        </div>
+    .bar-wrapper{
+      width:${BAR_WIDTH}px;
+      height:100%;
+      position:relative;
+      display:flex;
+      align-items:flex-end;
+      flex-shrink:0;
+    }
 
-        <div class="highlight-card-area">
-          <div class="highlight-title-box">
-            <span class="highlight-icon-box">💡</span>
-            <span>Highlights</span>
-          </div>
-          <ul class="highlight-scannable-list">
-            <li class="highlight-topic-item">
-              <div class="topic-bullet"></div>
-              <div class="topic-text" id="topic-month-perf">-</div>
-            </li>
-            <li class="highlight-topic-item">
-              <div class="topic-bullet"></div>
-              <div class="topic-text" id="topic-ytd-perf">-</div>
-            </li>
-            <li class="highlight-topic-item">
-              <div class="topic-bullet"></div>
-              <div class="topic-text" id="topic-conclusion-perf">-</div>
-            </li>
-          </ul>
-        </div>
+    .bar-element{
+      width:100%;
+      border-radius:3px 3px 0 0;
+      position:relative;
+      display:flex;
+      justify-content:center;
+    }
+
+    .historical{
+      background:var(--color-historical);
+    }
+
+    .actual{
+      background:var(--color-actual);
+      border:1px solid #15517b;
+      box-sizing:border-box;
+      box-shadow:0 0 10px rgba(31,119,180,.35);
+    }
+
+    .budget{
+      border:1px solid var(--color-budget);
+      background-image:
+        linear-gradient(
+          45deg,
+          rgba(174,199,232,.4) 25%,
+          transparent 25%,
+          transparent 50%,
+          rgba(174,199,232,.4) 50%,
+          rgba(174,199,232,.4) 75%,
+          transparent 75%,
+          transparent
+        );
+      background-size:6px 6px;
+    }
+
+    .kpi-label{
+      position:absolute;
+      top:-22px;
+      font-size:11px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .axis-label{
+      width:${BAR_WIDTH}px;
+      text-align:center;
+      font-size:11px;
+      font-weight:600;
+      color:#718096;
+      white-space:nowrap;
+    }
+
+    .actual-month{
+      color:var(--color-actual);
+      font-weight:700;
+    }
+
+    .css-bracket{
+      position:absolute;
+      top:-40px;
+      width:${BRACKET_WIDTH}px;
+      height:14px;
+      border-top:1.5px solid var(--color-border-axis);
+      border-left:1.5px solid var(--color-border-axis);
+      border-right:1.5px solid var(--color-border-axis);
+      pointer-events:none;
+    }
+
+    .css-bracket::before,
+    .css-bracket::after{
+      content:'';
+      position:absolute;
+      bottom:-5px;
+      width:0;
+      height:0;
+      border-left:3.5px solid transparent;
+      border-right:3.5px solid transparent;
+      border-top:5px solid var(--color-border-axis);
+    }
+
+    .css-bracket::before{
+      left:-4px;
+    }
+
+    .css-bracket::after{
+      right:-4px;
+    }
+
+    .css-bracket-label{
+      position:absolute;
+      top:-11px;
+      width:100%;
+      display:flex;
+      justify-content:center;
+    }
+
+    .variance-tag{
+      font-size:10px;
+      font-weight:700;
+      padding:2px 6px;
+      border-radius:4px;
+      background:#fff;
+    }
+
+    .saving{
+      background:var(--color-saving-bg);
+      color:var(--color-saving);
+      border:1px solid var(--color-saving-border);
+    }
+
+    .increase{
+      background:var(--color-increase-bg);
+      color:var(--color-increase);
+      border:1px solid var(--color-increase-border);
+    }
+  </style>
+
+  <div id="widget-wrapper">
+
+    <div class="widget-header">
+      <div>
+        <div class="widget-title">Performance Mensal</div>
+        <div class="scale-tag">Valores em Milhões (M)</div>
       </div>
     </div>
+
+    <div class="widget-legend">
+      <div class="legend-item"><div class="legend-color hist"></div> Histórico</div>
+      <div class="legend-item"><div class="legend-color act"></div> Atual</div>
+      <div class="legend-item"><div class="legend-color bud"></div> Budget</div>
+    </div>
+
+    <div class="main-visualization-layout">
+
+      <div class="monthly-col visualization-column">
+
+        <div class="chart-container-block">
+          <div class="chart-area">
+            <div class="chart-area-inner" id="monthlyChartInner"></div>
+          </div>
+        </div>
+
+        <div class="axis-x">
+          <div class="axis-x-inner" id="monthlyAxisInner"></div>
+        </div>
+
+      </div>
+
+      <div class="visualization-column ytd-col">
+
+        <div class="ytd-chart-header-title" id="ytdTitle">
+          Evolução YTD
+        </div>
+
+        <div class="chart-container-block">
+          <div class="chart-area">
+            <div class="chart-area-inner" id="ytdChartInner"></div>
+          </div>
+        </div>
+
+        <div class="axis-x">
+          <div class="axis-x-inner" id="ytdAxisInner"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
   `;
 
   class EvoSummaryWidget extends HTMLElement {
+
     constructor() {
       super();
+
       this._props = {};
       this._currentData = null;
-      this._shadowRoot = null;
-      this._selectedCutoffId = null;
-      this._isTreeBuilt = false; 
-      this._isDropdownOpen = false; 
     }
 
     connectedCallback() {
-      if (!this._shadowRoot) {
-        this._shadowRoot = this.attachShadow({ mode: "open" });
-        this._shadowRoot.appendChild(template.content.cloneNode(true));
-        
-        this._chartArea = this._shadowRoot.getElementById("chartArea");
-        this._ytdChartArea = this._shadowRoot.getElementById("ytdChartArea");
-        this._axisX = this._shadowRoot.getElementById("axisX");
-        this._ytdAxisX = this._shadowRoot.getElementById("ytdAxisX");
-        
-        this._insightGrid = this._shadowRoot.getElementById("insightGrid");
-        this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
-        this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
-        this._ytdChartHeaderTitle = this._shadowRoot.getElementById("ytd-chart-header-title");
-        
-        this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
-        this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
-        this._valPctConsumptionRow = this._shadowRoot.getElementById("val-pct-consumption-row");
-        this._monthConsumptionBadge = this._shadowRoot.getElementById("month-consumption-badge");
-        
-        this._ytdDiffRow = this._shadowRoot.getElementById("ytd-diff-row");
-        this._ytdDiffPctBadge = this._shadowRoot.getElementById("ytd-diff-pct-badge");
-        this._ytdPctRow = this._shadowRoot.getElementById("ytd-pct-row");
-        this._ytdConsumptionBadge = this._shadowRoot.getElementById("ytd-consumption-badge");
-        
-        this._topicMonthPerf = this._shadowRoot.getElementById("topic-month-perf");
-        this._topicYtdPerf = this._shadowRoot.getElementById("topic-ytd-perf");
-        this._topicConclusionPerf = this._shadowRoot.getElementById("topic-conclusion-perf");
 
-        this._treeDropdownTrigger.addEventListener("click", (e) => {
-          e.stopPropagation();
-          this._isDropdownOpen = !this._isDropdownOpen;
-          this._toggleDropdownDOM();
-        });
+      if (this._shadowRoot) return;
 
-        window.addEventListener("click", () => {
-          this._isDropdownOpen = false;
-          this._toggleDropdownDOM();
-        });
-      }
-    }
+      this._shadowRoot = this.attachShadow({ mode: "open" });
 
-    _toggleDropdownDOM() {
-      if (!this._treeDropdownContent) return;
-      if (this._isDropdownOpen) {
-        this._treeDropdownContent.classList.add("show");
-      } else {
-        this._treeDropdownContent.classList.remove("show");
-      }
+      this._shadowRoot.appendChild(
+        template.content.cloneNode(true)
+      );
+
+      this._monthlyChartInner =
+        this._shadowRoot.getElementById("monthlyChartInner");
+
+      this._monthlyAxisInner =
+        this._shadowRoot.getElementById("monthlyAxisInner");
+
+      this._ytdChartInner =
+        this._shadowRoot.getElementById("ytdChartInner");
+
+      this._ytdAxisInner =
+        this._shadowRoot.getElementById("ytdAxisInner");
+
+      this._ytdTitle =
+        this._shadowRoot.getElementById("ytdTitle");
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
-      this._props = { ...this._props, ...changedProperties };
+      this._props = {
+        ...this._props,
+        ...changedProperties
+      };
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
-      this._updateStyles();
-      if ("performanceCube" in changedProperties && this.performanceCube) {
-        this._currentData = this.performanceCube;
-        this._selectedCutoffId = null;
-        this._isTreeBuilt = false; 
-        if (this._shadowRoot) {
-          this._treeDropdownContent.textContent = ""; 
-          this.renderChart();
-        }
-      }
-    }
 
-    _updateStyles() {
-      if (!this._shadowRoot) return;
-      const style = this.style;
-      if (this._props.colorActualMonth) style.setProperty("--color-actual", this._props.colorActualMonth);
-      if (this._props.colorHistorical) style.setProperty("--color-historical", this._props.colorHistorical);
-      if (this._props.colorBudget) style.setProperty("--color-budget", this._props.colorBudget);
-      if (this._props.fontSizeLabels) style.setProperty("--font-size-labels", `${this._props.fontSizeLabels}px`);
+      if ("performanceCube" in changedProperties) {
+        this._currentData = this.performanceCube;
+        this.renderChart();
+      }
     }
 
     _parseValue(val) {
-      if (typeof val === 'number') return val;
+
+      if (typeof val === "number") return val;
+
       if (!val || val === "-") return 0;
-      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+
+      return Number(
+        String(val)
+          .replaceAll(".", "")
+          .replace(",", ".")
+          .replace(/[^\d.-]/g, "")
+      ) || 0;
     }
 
-    _clearDOM() {
-      this._chartArea.innerHTML = "";
-      this._axisX.innerHTML = "";
-      this._ytdChartArea.innerHTML = "";
-      this._ytdAxisX.innerHTML = "";
-      this._insightGrid.style.display = "none";
+    _formatMillions(v) {
+      return (v / 1000000).toFixed(2) + "M";
     }
 
-    // Função construtora do Conector Geométrico Absoluto em CSS
-    _createCssBracket(val1, val2) {
-      const diff = val2 - val1;
-      let pct = val1 !== 0 ? (diff / val1) * 100 : 0;
-      
-      // Regra de Custos: Negativo (<=0) é Verde (Saving). Positivo (>0) é Vermelho (Estouro).
-      const isSaving = diff <= 0;
-      if (!isSaving && pct < 0) pct = Math.abs(pct);
-      else if (isSaving && pct > 0) pct = -pct;
+    _formatPercent(v, saving) {
+      return `${saving ? "▼" : "▲"} ${Math.abs(v).toFixed(2)}%`;
+    }
 
-      const tagClass = isSaving ? "saving" : "increase";
-      const arrow = isSaving ? "▼ " : "▲ ";
-      const text = arrow + Math.abs(pct).toFixed(2) + "%";
+    _buildBarHTML(data, maxVal) {
 
-      const bracket = document.createElement("div");
-      bracket.className = "variance-bracket";
-      bracket.innerHTML = `
-        <div class="variance-tag-wrapper">
-            <span class="variance-tag ${tagClass}">${text}</span>
-        </div>
-      `;
-      return bracket;
+      let bars = "";
+      let axis = "";
+
+      data.forEach(d => {
+
+        const height = (d.value / maxVal) * 100;
+
+        bars += `
+          <div class="bar-wrapper">
+            <div 
+              class="bar-element ${d.type}" 
+              style="height:${height}%"
+            >
+              <span class="kpi-label">
+                ${this._formatMillions(d.value)}
+              </span>
+            </div>
+          </div>
+        `;
+
+        axis += `
+          <div class="axis-label ${d.type === "actual" ? "actual-month" : ""}">
+            ${d.label}
+          </div>
+        `;
+      });
+
+      return { bars, axis };
+    }
+
+    _buildBracketHTML(pairs, data) {
+
+      let html = "";
+
+      pairs.forEach(pair => {
+
+        const val1 = data[pair.from].value;
+        const val2 = data[pair.to].value;
+
+        const diff = val2 - val1;
+
+        const pct =
+          val1 !== 0
+            ? (diff / val1) * 100
+            : 0;
+
+        const saving = diff <= 0;
+
+        html += `
+          <div 
+            class="css-bracket"
+            style="left:calc(${pair.from} * ${BRACKET_WIDTH}px + 23px)"
+          >
+            <div class="css-bracket-label">
+              <span class="variance-tag ${saving ? "saving" : "increase"}">
+                ${this._formatPercent(pct, saving)}
+              </span>
+            </div>
+          </div>
+        `;
+      });
+
+      return html;
     }
 
     renderChart() {
-      if (!document.contains(this) || !this._shadowRoot) return;
+
+      if (!this._currentData) return;
 
       const financialData = this._currentData;
-      if (!financialData || !financialData.data || financialData.data.length === 0) {
-        this._clearDOM();
-        this._axisX.innerHTML = "<div class='placeholder-text'>Aguardando dados estruturados...</div>";
-        return;
-      }
 
-      try {
-        const metadata = financialData.metadata;
-        const dimensions = metadata.dimensions || {};
-        const mainStructureMembers = metadata.mainStructureMembers || {};
+      if (
+        !financialData.data ||
+        !financialData.data.length
+      ) return;
 
-        const dimKeys = Object.keys(dimensions);
-        const measureKeys = Object.keys(mainStructureMembers);
+      const metadata = financialData.metadata;
 
-        if (dimKeys.length < 1 || measureKeys.length < 1) { this._clearDOM(); return; }
+      const dimensions = metadata.dimensions || {};
+      const measures = metadata.mainStructureMembers || {};
 
-        const measId = measureKeys[0];
-        let tempoDimId = dimKeys[0];
-        let versaoDimId = dimKeys[1] || null;
+      const dimKeys = Object.keys(dimensions);
+      const measureKeys = Object.keys(measures);
 
-        if (dimKeys.length >= 2) {
-          const descFirst = String(dimensions[dimKeys[0]].description || "").toUpperCase();
-          if (descFirst.includes("VERSÃO") || descFirst.includes("VERSION") || descFirst.includes("CENÁRIO")) {
-            tempoDimId = dimKeys[1]; versaoDimId = dimKeys[0];
-          }
+      const measureId = measureKeys[0];
+
+      let tempoDimId = dimKeys[0];
+      let versionDimId = dimKeys[1];
+
+      const timelineMap = {};
+
+      financialData.data.forEach(row => {
+
+        const tempoObj = row[tempoDimId];
+
+        if (!tempoObj) return;
+
+        const id = String(tempoObj.id);
+
+        if (!timelineMap[id]) {
+
+          timelineMap[id] = {
+            id,
+            label: tempoObj.label,
+            realizado: 0,
+            orcado: 0,
+            isCurrentMonth: false
+          };
         }
 
-        const timelineMap = {};
+        const value =
+          this._parseValue(
+            row[measureId]?.formattedValue ||
+            row[measureId]?.raw ||
+            0
+          );
 
-        financialData.data.forEach(row => {
-          const tempoObj = row[tempoDimId]; if (!tempoObj) return;
-          const tId = String(tempoObj.id); const tLabel = tempoObj.label || tempoObj.description || tId;
-          if (tId.toLowerCase().includes("(all)") || tLabel.toLowerCase().includes("(all)")) return;
+        const versionObj = row[versionDimId];
 
-          if (!timelineMap[tId]) {
-            timelineMap[tId] = { id: tId, label: tLabel, realizado: 0, orcado: 0, isCurrentMonth: false, rowContext: row };
-          }
-          if (tempoObj.properties && (tempoObj.properties.isCurrent === "true" || tempoObj.properties.isCurrent === true)) { timelineMap[tId].isCurrentMonth = true; }
-          if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
+        if (versionObj) {
 
-          const rawValue = this._parseValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
-          if (versaoDimId) {
-            const vObj = row[versaoDimId];
-            if (vObj) {
-              const vId = String(vObj.id).toUpperCase(); const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
-              if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) { timelineMap[tId].orcado += rawValue; }
-              else { timelineMap[tId].realizado += rawValue; }
-            }
-          } else { timelineMap[tId].realizado += rawValue; }
-        });
+          const version =
+            String(versionObj.id).toUpperCase();
 
-        const sortedMonths = Object.values(timelineMap);
-        if (sortedMonths.length === 0) { this._clearDOM(); return; }
-
-        const monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
-        const fullSeriesData = [];
-        let defaultActualIndex = -1;
-
-        sortedMonths.forEach((m) => {
-          let parsedYear = new Date().getFullYear();
-          const matches = m.id.match(/\d{4}/);
-          if (matches) {
-            parsedYear = parseInt(matches[0]);
+          if (
+            version.includes("BUDGET") ||
+            version.includes("ORÇ")
+          ) {
+            timelineMap[id].orcado += value;
           } else {
-            const labelDigits = m.label.match(/\d{4}/);
-            if (labelDigits) parsedYear = parseInt(labelDigits[0]);
+            timelineMap[id].realizado += value;
           }
 
-          if (parsedYear < 2022 || parsedYear > 2028) return;
+        } else {
 
-          const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
-          const targetMonthIndex = monthOrderMap[cleanLabelUpper] || 1;
-          const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
-
-          fullSeriesData.push({ 
-            id: m.id, 
-            label: alignedLabel, 
-            value: m.realizado, 
-            type: m.isCurrentMonth ? "actual" : "historical", 
-            originalNode: m, 
-            yearValue: parsedYear, 
-            monthNum: targetMonthIndex, 
-            rawRow: m.rowContext 
-          });
-        });
-
-        fullSeriesData.sort((a, b) => {
-          if (a.yearValue !== b.yearValue) return a.yearValue - b.yearValue;
-          return a.monthNum - b.monthNum;
-        });
-
-        fullSeriesData.forEach((d, idx) => {
-          if (d.type === "actual") defaultActualIndex = idx;
-        });
-
-        if (defaultActualIndex === -1 && fullSeriesData.length > 0) {
-          defaultActualIndex = fullSeriesData.length - 1;
+          timelineMap[id].realizado += value;
         }
 
-        if (!this._isTreeBuilt && fullSeriesData.length > 0) {
-          this._treeDropdownContent.textContent = ""; 
-          const yearsMap = {};
-          
-          fullSeriesData.forEach(d => {
-            if (!yearsMap[d.yearValue]) {
-              const yearNode = document.createElement("div");
-              yearNode.className = "tree-year-node";
-              yearNode.textContent = `Ano ${d.yearValue}`;
-              
-              const monthsContainer = document.createElement("div");
-              monthsContainer.className = "tree-months-container";
-              
-              yearNode.addEventListener("click", (e) => {
-                e.stopPropagation();
-                yearNode.classList.toggle("expanded");
-                monthsContainer.classList.toggle("show");
-              });
-
-              this._treeDropdownContent.appendChild(yearNode);
-              this._treeDropdownContent.appendChild(monthsContainer);
-              yearsMap[d.yearValue] = monthsContainer;
-            }
-
-            const monthItem = document.createElement("div");
-            monthItem.className = "tree-month-item";
-            monthItem.textContent = d.label;
-            monthItem.setAttribute("data-id", d.id);
-            
-            monthItem.addEventListener("click", (e) => {
-              e.stopPropagation();
-              this._selectedCutoffId = d.id;
-              this._isDropdownOpen = false; 
-              this._toggleDropdownDOM();
-              this.renderChart();
-            });
-
-            yearsMap[d.yearValue].appendChild(monthItem);
-          });
-
-          if (!this._selectedCutoffId && fullSeriesData[defaultActualIndex]) {
-            this._selectedCutoffId = fullSeriesData[defaultActualIndex].id;
-          }
-          this._isTreeBuilt = true; 
+        if (
+          tempoObj.properties?.isCurrent === true ||
+          tempoObj.properties?.isCurrent === "true"
+        ) {
+          timelineMap[id].isCurrentMonth = true;
         }
 
-        let actualIndex = fullSeriesData.findIndex(d => d.id === this._selectedCutoffId);
-        if (actualIndex === -1) actualIndex = defaultActualIndex;
+      });
 
-        if (fullSeriesData[actualIndex]) {
-          this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
+      const series = Object.values(timelineMap);
+
+      const monthMap = {
+        JAN:1,FEB:2,MAR:3,APR:4,
+        MAY:5,JUN:6,JUL:7,AUG:8,
+        SEP:9,OCT:10,NOV:11,DEC:12
+      };
+
+      const finalData = series.map(m => {
+
+        const year =
+          parseInt(
+            m.id.match(/\d{4}/)?.[0]
+          );
+
+        const month =
+          monthMap[
+            String(m.label)
+              .substring(0,3)
+              .toUpperCase()
+          ] || 1;
+
+        return {
+          id:m.id,
+          label:m.label,
+          value:m.realizado,
+          budget:m.orcado,
+          yearValue:year,
+          monthNum:month,
+          type:m.isCurrentMonth
+            ? "actual"
+            : "historical"
+        };
+      });
+
+      finalData.sort((a,b) => {
+
+        if (a.yearValue !== b.yearValue) {
+          return a.yearValue - b.yearValue;
         }
 
-        this._treeDropdownContent.querySelectorAll(".tree-month-item").forEach(item => {
-          if (item.getAttribute("data-id") === this._selectedCutoffId) {
-            item.classList.add("selected");
-          } else {
-            item.classList.remove("selected");
-          }
-        });
+        return a.monthNum - b.monthNum;
+      });
 
-        fullSeriesData.forEach((d, idx) => {
-          d.type = (idx === actualIndex) ? "actual" : "historical";
-        });
+      let actualIndex =
+        finalData.findIndex(d => d.type === "actual");
 
-        const targetBudgetSource = fullSeriesData[actualIndex].originalNode;
-        const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
+      if (actualIndex === -1) {
+        actualIndex = finalData.length - 1;
+      }
 
-        this._clearDOM();
+      finalData.forEach((d, i) => {
+        d.type =
+          i === actualIndex
+            ? "actual"
+            : "historical";
+      });
 
-        const startIndex = Math.max(0, actualIndex - 12); 
-        const visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
+      const current = finalData[actualIndex];
 
-        let visibleActualIndex = visibleSeriesData.findIndex(d => d.id === this._selectedCutoffId);
-        if (visibleActualIndex === -1) visibleActualIndex = visibleSeriesData.length - 1;
+      const budgetVal =
+        current.budget || current.value;
 
-        visibleSeriesData.push({
-          label: `Bud. ${fullSeriesData[actualIndex].label.split(' ')[0]}`,
-          value: calculatedBudget,
-          type: "budget",
-          yearValue: fullSeriesData[actualIndex].yearValue,
-          monthNum: fullSeriesData[actualIndex].monthNum
-        });
+      const visible =
+        finalData.slice(
+          Math.max(0, actualIndex - 12),
+          actualIndex + 1
+        );
 
-        // ==========================================
-        // RENDERIZAÇÃO DO MENSAL COM CSS PURO
-        // ==========================================
-        const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.25 || 1;
+      visible.push({
+        label:`Bud. ${current.label}`,
+        value:budgetVal,
+        type:"budget"
+      });
 
-        visibleSeriesData.forEach((d, idx) => {
-          const barWrapper = document.createElement("div"); barWrapper.className = "bar-wrapper";
-          const barElement = document.createElement("div"); barElement.className = `bar-element ${d.type}`;
-          barElement.style.height = `${(d.value / maxVal) * 100}%`;
-          const kpiLabel = document.createElement("span"); kpiLabel.className = "kpi-label"; kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
-          
-          barElement.appendChild(kpiLabel);
-          barWrapper.appendChild(barElement);
+      const maxVal =
+        Math.max(...visible.map(d => d.value)) * 1.25;
 
-          // INSERE A HASTE (BRACKET) DIRETAMENTE NO WRAPPER DA BARRA SE FOR A BARRA CORRETA
-          if (idx === visibleActualIndex - 1) {
-             const bracket = this._createCssBracket(d.value, visibleSeriesData[visibleActualIndex].value);
-             barWrapper.appendChild(bracket);
-          } else if (idx === visibleActualIndex && visibleSeriesData.length > visibleActualIndex + 1) {
-             const bracket = this._createCssBracket(d.value, visibleSeriesData[visibleActualIndex + 1].value);
-             barWrapper.appendChild(bracket);
-          }
+      const monthly =
+        this._buildBarHTML(
+          visible,
+          maxVal
+        );
 
-          this._chartArea.appendChild(barWrapper);
-          
-          const axisLabel = document.createElement("div"); axisLabel.className = "axis-label"; axisLabel.textContent = d.label;
-          if (d.type === "actual") axisLabel.classList.add("actual-month");
-          this._axisX.appendChild(axisLabel);
-        });
+      const visibleActualIndex =
+        visible.findIndex(d => d.type === "actual");
 
-        // ==========================================
-        // CÁLCULOS TOTAIS E YTD
-        // ==========================================
-        const currentBarNode = fullSeriesData[actualIndex]; 
-        const actualVal = currentBarNode.value; 
-        const monthLabel = currentBarNode.label.split(' ')[0];
-        const currentYear = currentBarNode.yearValue; 
-        const previousYear = currentYear - 1;
-
-        const diffNominal = actualVal - budgetVal;
-        const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
-        const consumptionMonthPercent = budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0;
-        const isMonthSaving = diffNominal <= 0;
-
-        let totalRealizadoYTDAtual = 0;
-        let totalRealizadoYTDAntigo = 0;
-        let totalBudgetYTDCompleto = 0;
-
-        fullSeriesData.forEach((d, idx) => {
-          if (idx <= actualIndex) {
-            if (d.yearValue === currentYear) {
-              totalRealizadoYTDAtual += d.value;
-              totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value;
+      const monthlyBrackets =
+        this._buildBracketHTML(
+          [
+            {
+              from:visibleActualIndex - 1,
+              to:visibleActualIndex
+            },
+            {
+              from:visibleActualIndex,
+              to:visibleActualIndex + 1
             }
-          }
-          if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
-            totalRealizadoYTDAntigo += d.value;
-          }
-        });
+          ].filter(v => v.from >= 0 && v.to < visible.length),
+          visible
+        );
 
-        if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
+      this._monthlyChartInner.innerHTML =
+        monthly.bars + monthlyBrackets;
 
-        const diffYtdNominal = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
-        const diffYtdPercent = totalBudgetYTDCompleto !== 0 ? (diffYtdNominal / totalBudgetYTDCompleto) * 100 : 0;
-        const consumoBudgetPercent = (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100;
-        const isYtdSaving = diffYtdNominal <= 0;
+      this._monthlyAxisInner.innerHTML =
+        monthly.axis;
 
-        // ==========================================
-        // RENDERIZAÇÃO DO YTD COM CSS PURO
-        // ==========================================
-        this._ytdChartHeaderTitle.textContent = `Evolução YTD Acumulada (${currentYear})`;
-        
-        const ytdDataList = [
-            { label: `Ant. (${previousYear})`, value: totalRealizadoYTDAntigo, type: 'historical' },
-            { label: `Atual (${currentYear})`, value: totalRealizadoYTDAtual, type: 'actual' },
-            { label: 'Meta YTD', value: totalBudgetYTDCompleto, type: 'budget' }
-        ];
-        const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
+      let ytdAtual = 0;
+      let ytdAnterior = 0;
+      let ytdBudget = 0;
 
-        ytdDataList.forEach((d, idx) => {
-            const barWrapper = document.createElement("div"); barWrapper.className = "bar-wrapper";
-            const barElement = document.createElement("div"); barElement.className = `bar-element ${d.type}`;
-            barElement.style.height = `${(d.value / maxYTD) * 100}%`;
-            const kpiLabel = document.createElement("span"); kpiLabel.className = "kpi-label"; kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
-            
-            barElement.appendChild(kpiLabel);
-            barWrapper.appendChild(barElement);
+      const currentYear = current.yearValue;
+      const prevYear = currentYear - 1;
 
-            // INSERE A HASTE (BRACKET) DO YTD
-            if (idx === 0) {
-               const bracket = this._createCssBracket(d.value, ytdDataList[1].value);
-               barWrapper.appendChild(bracket);
-            } else if (idx === 1) {
-               // Especial: A tag do YTD Meta calcula contra o BUDGET YTD, não é puramente sequencial.
-               const bracket = this._createCssBracket(d.value, ytdDataList[2].value);
-               barWrapper.appendChild(bracket);
-            }
+      finalData.forEach(d => {
 
-            this._ytdChartArea.appendChild(barWrapper);
-            
-            const axisLabel = document.createElement("div"); axisLabel.className = "axis-label"; axisLabel.textContent = d.label;
-            this._ytdAxisX.appendChild(axisLabel);
-        });
+        if (
+          d.yearValue === currentYear &&
+          d.monthNum <= current.monthNum
+        ) {
 
+          ytdAtual += d.value;
+          ytdBudget += d.budget || d.value;
+        }
 
-        // ==========================================
-        // ATUALIZAÇÃO DO PAINEL INFERIOR
-        // ==========================================
-        const formatM = (v) => (v / 1000000).toFixed(2) + "M";
-        const formatPercentStr = (v, isSav) => (isSav ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
+        if (
+          d.yearValue === prevYear &&
+          d.monthNum <= current.monthNum
+        ) {
 
-        this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
-        this._valPctRow.textContent = formatPercentStr(diffPercent, isMonthSaving);
-        this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
-        this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
-        this._monthConsumptionBadge.className = "status-badge-finance " + (consumptionMonthPercent <= 100 ? "success" : "warning");
-        this._monthConsumptionBadge.textContent = consumptionMonthPercent <= 100 ? "No Prazo" : "Estourado";
+          ytdAnterior += d.value;
+        }
+      });
 
-        this._ytdDiffRow.textContent = (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal);
-        this._ytdDiffPctBadge.textContent = formatPercentStr(diffYtdPercent, isYtdSaving);
-        this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
-        this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
-        this._ytdConsumptionBadge.className = "status-badge-finance " + (consumoBudgetPercent <= 100 ? "success" : "warning");
-        this._ytdConsumptionBadge.textContent = consumoBudgetPercent <= 100 ? "No Prazo" : "Estourado";
+      const ytdData = [
+        {
+          label:`Ant (${prevYear})`,
+          value:ytdAnterior,
+          type:"historical"
+        },
+        {
+          label:`Atual (${currentYear})`,
+          value:ytdAtual,
+          type:"actual"
+        },
+        {
+          label:"Meta",
+          value:ytdBudget,
+          type:"budget"
+        }
+      ];
 
-        const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
-        const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
+      const maxYtd =
+        Math.max(...ytdData.map(d => d.value)) * 1.25;
 
-        this._topicMonthPerf.innerHTML = `Mês Corrente (<strong>${monthLabel}</strong>): O desvio real fechou com <strong>${monthStatusLabel}</strong> de R$ ${Math.abs(diffNominal / 1000000).toFixed(2)}M frente ao budget.`;
-        this._topicYtdPerf.innerHTML = `Consumo Mensal: A absorção real da competência atingiu o percentual de <strong>${consumptionMonthPercent.toFixed(1)}%</strong> da meta programada.`;
-        this._topicConclusionPerf.innerHTML = `Performance YTD: O acumulado anual consolidou um desvio <strong>${ytdStatusLabel}</strong>, absorvendo <strong>${consumoBudgetPercent.toFixed(1)}%</strong> da meta consolidada anual.`;
+      const ytd =
+        this._buildBarHTML(
+          ytdData,
+          maxYtd
+        );
 
-        this._insightGrid.style.display = "grid";
+      const ytdBrackets =
+        this._buildBracketHTML(
+          [
+            { from:0, to:1 },
+            { from:1, to:2 }
+          ],
+          ytdData
+        );
 
-      } catch (error) {
-        console.error("Erro interno no processamento visual:", error);
-      }
-    }
+      this._ytdChartInner.innerHTML =
+        ytd.bars + ytdBrackets;
 
-    getColorActualMonth() { return this._props.colorActualMonth; }
-    setColorActualMonth(val) { this._props.colorActualMonth = val; }
-    getColorHistorical() { return this._props.colorHistorical; }
-    setColorHistorical(val) { this._props.colorHistorical = val; }
-    getColorBudget() { return this._props.colorBudget; }
-    setColorBudget(val) { this._props.colorBudget = val; }
-    getFontSizeLabels() { return this._props.fontSizeLabels; }
-    setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
-  }
-  if (!customElements.get("sac-summary")) { customElements.define("sac-summary", EvoSummaryWidget); }
-})();
+      this._ytdAxisInner.innerHTML =
+        ytd.axis;
 
-/* ==========================================================================
-   PAINEL DE CONFIGURAÇÃO INTEGRADO
-   ========================================================================== */
-(function () {
-  const templateStyling = document.createElement("template");
-  templateStyling.innerHTML = `
-    <style>
-      #root { padding: 14px; font-family: system-ui, -apple-system, sans-serif; font-size: 11px; color: #2c3e50; }
-      .control-group { margin-bottom: 12px; }
-      label { display: block; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-      input[type="color"] { display: block; width: 100%; height: 28px; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer; background: #ffffff; }
-      input[type="number"] { width: 100%; height: 26px; border: 1px solid #cbd5e0; border-radius: 4px; padding-left: 6px; box-sizing: border-box; }
-    </style>
-    <div id="root">
-      <div class="control-group">
-        <label>Cor Mês Atual (Realizado)</label>
-        <input id="cls-act" type="color" />
-      </div>
-      <div class="control-group">
-        <label>Cor Histórico (Realizado)</label>
-        <input id="cls-hist" type="color" />
-      </div>
-      <div class="control-group">
-        <label>Cor Orçado (Budget)</label>
-        <input id="cls-bud" type="color" />
-      </div>
-      <div class="control-group">
-        <label>Tamanho da Fonte Rótulos (px)</label>
-        <input id="font-size-lbl" type="number" min="8" max="16" />
-      </div>
-    </div>
-  `;
-
-  class EvoSummaryWidgetStyling extends HTMLElement {
-    constructor() {
-      super();
-      this._shadowRoot = this.attachShadow({ mode: "open" });
-      this._shadowRoot.appendChild(templateStyling.content.cloneNode(true));
-      this._changeProperty = this._changeProperty.bind(this);
-
-      this._shadowRoot.getElementById("cls-act").addEventListener("change", (e) => this._changeProperty("colorActualMonth", e.target.value));
-      this._shadowRoot.getElementById("cls-hist").addEventListener("change", (e) => this._changeProperty("colorHistorical", e.target.value));
-      this._shadowRoot.getElementById("cls-bud").addEventListener("change", (e) => this._changeProperty("colorBudget", e.target.value));
-      this._shadowRoot.getElementById("font-size-lbl").addEventListener("change", (e) => this._changeProperty("fontSizeLabels", parseInt(e.target.value)));
-    }
-
-    _changeProperty(name, value) {
-      this.dispatchEvent(new CustomEvent("propertiesChanged", {
-        detail: { properties: { [name]: value } }
-      }));
-    }
-
-    onCustomWidgetAfterUpdate(changedProperties) {
-      if (changedProperties.colorActualMonth !== undefined) {
-        this._shadowRoot.getElementById("cls-act").value = changedProperties.colorActualMonth;
-      }
-      if (changedProperties.colorHistorical !== undefined) {
-        this._shadowRoot.getElementById("cls-hist").value = changedProperties.colorHistorical;
-      }
-      if (changedProperties.colorBudget !== undefined) {
-        this._shadowRoot.getElementById("cls-bud").value = changedProperties.colorBudget;
-      }
-      if (changedProperties.fontSizeLabels !== undefined) {
-        this._shadowRoot.getElementById("font-size-lbl").value = changedProperties.fontSizeLabels;
-      }
+      this._ytdTitle.textContent =
+        `Evolução YTD (${currentYear})`;
     }
   }
 
-  if (!customElements.get("sac-summary-styling")) {
-    customElements.define("sac-summary-styling", EvoSummaryWidgetStyling);
+  if (!customElements.get("sac-summary")) {
+    customElements.define(
+      "sac-summary",
+      EvoSummaryWidget
+    );
   }
+
 })();
