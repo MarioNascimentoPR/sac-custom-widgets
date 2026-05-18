@@ -124,7 +124,6 @@
         padding: 0 4px;
       }
       
-      /* Expansão do limite do budget para evitar truncamento no texto */
       .bar-wrapper:last-child {
         min-width: 85px; 
       }
@@ -189,7 +188,7 @@
       .axis-label {
         flex: 1;
         text-align: center;
-        font-size: calc(var(--font-size-labels) - 1px); /* Redução milimétrica preventiva */
+        font-size: calc(var(--font-size-labels) - 1px);
         font-weight: 600;
         color: #718096;
         white-space: nowrap;
@@ -224,10 +223,10 @@
         border-color: #feebc8;
       }
 
-      /* SIMETRIA DE GRID ALINHADA (Solução para Quebra do Grid) */
+      /* REESTRUTURAÇÃO COMPLETA: GRID DUPLO COMPLEMENTAR (Mês Atual vs YTD & Forecast) */
       .insight-grid {
         display: flex;
-        gap: 16px;
+        gap: 24px;
         margin-top: auto;
         padding-top: 12px;
         border-top: 1px solid #f0f0f0;
@@ -235,28 +234,27 @@
         width: 100%;
       }
 
-      .data-table-holder {
-        flex: 1.1; 
-        min-width: 0;
-      }
-
-      .text-insight-holder {
-        flex: 0.9; 
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        background-color: #f8fafc;
-        border-radius: 5px;
-        padding: 10px 12px;
-        border-left: 3px solid #cbd5e0;
-        box-sizing: border-box;
-      }
-
-      @media (max-width: 620px) {
+      @media (max-width: 768px) {
         .insight-grid {
           flex-direction: column;
-          gap: 12px;
+          gap: 16px;
         }
+      }
+
+      .grid-column-finance {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .column-title-finance {
+        font-size: 11px;
+        font-weight: 700;
+        color: #1a202c;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+        border-bottom: 2px solid #e2e8f0;
       }
 
       .kpi-table {
@@ -266,15 +264,8 @@
         text-align: left;
       }
 
-      .kpi-table th {
-        color: #718096;
-        font-weight: 600;
-        padding-bottom: 6px;
-        border-bottom: 2px solid #edf2f7;
-      }
-
       .kpi-table td {
-        padding: 6px 0;
+        padding: 7px 0;
         border-bottom: 1px solid #edf2f7;
         color: #2d3748;
         font-weight: 500;
@@ -305,6 +296,13 @@
         background: var(--color-actual);
       }
 
+      .kpi-table tr.forecast-row td {
+        color: #ef6c00;
+      }
+      .kpi-table tr.forecast-row .row-title::before {
+        background: #ef6c00;
+      }
+
       .kpi-table .num-cell {
         text-align: right;
         font-variant-numeric: tabular-nums;
@@ -315,49 +313,18 @@
         color: #1a202c;
       }
 
-      .text-insight-holder.saving { border-left-color: #34a853; }
-      .text-insight-holder.increase { border-left-color: #f9ab00; }
-
-      .insight-box-header {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: calc(var(--font-size-labels) - 0.5px);
+      /* TAGS DE STATUS DE GOVERNANÇA CORPORATIVA (Anexo 2) */
+      .status-badge-finance {
+        font-size: 10px;
         font-weight: 700;
-        color: #2d3748;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
-        border-bottom: 1px dashed #e2e8f0;
+        padding: 1px 6px;
+        border-radius: 3px;
+        text-align: center;
+        display: inline-block;
       }
-
-      .insight-box-header svg {
-        width: 14px;
-        height: 14px;
-        fill: currentColor;
-      }
-
-      .insight-paragraph {
-        margin: 0;
-        font-size: var(--font-size-labels);
-        line-height: 1.48;
-        color: #4a5568;
-      }
-
-      .inline-highlight {
-        font-weight: 700;
-        padding: 0px 3px;
-        border-radius: 2px;
-      }
-
-      .inline-highlight.saving {
-        background-color: #e6f4ea;
-        color: #137333;
-      }
-
-      .inline-highlight.increase {
-        background-color: #fef7e0;
-        color: #b06000;
-      }
+      .status-badge-finance.success { background-color: #e6f4ea; color: #137333; }
+      .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; }
+      .status-badge-finance.warning { background-color: #fef7e0; color: #b06000; }
       
       .placeholder-text {
         padding: 8px;
@@ -394,18 +361,12 @@
       </div>
 
       <div class="insight-grid" id="insightGrid" style="display: none;">
-        <div class="data-table-holder">
+        <div class="grid-column-finance">
+          <div class="column-title-finance" id="title-col-current">Mês Atual</div>
           <table class="kpi-table">
-            <thead>
-              <tr>
-                <th>Cenário Comercial</th>
-                <th class="num-cell">Valor Absoluto</th>
-                <th class="num-cell">Var. Nominal</th>
-              </tr>
-            </thead>
             <tbody>
               <tr class="highlighted-row">
-                <td class="row-title" id="lbl-act-row">Realizado</td>
+                <td class="row-title" id="lbl-act-row">Realizado Comercial</td>
                 <td class="num-cell bold-val" id="val-act-row">-</td>
                 <td class="num-cell">—</td>
               </tr>
@@ -415,19 +376,35 @@
                 <td class="num-cell">—</td>
               </tr>
               <tr>
-                <td class="row-title">Desvio Geral</td>
+                <td class="row-title">Desvio Líquido Mês</td>
                 <td class="num-cell bold-val" id="val-diff-row">-</td>
                 <td class="num-cell bold-val" id="val-pct-row">-</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div class="text-insight-holder" id="textInsightBox">
-          <div class="insight-box-header">
-            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-            <span>Highlights</span>
-          </div>
-          <p class="insight-paragraph" id="insightTextDesc"></p>
+
+        <div class="grid-column-finance">
+          <div class="column-title-finance">Acumulado do Ano (YTD) & Forecast</div>
+          <table class="kpi-table">
+            <tbody>
+              <tr>
+                <td class="row-title">Acumulado do Ano (YTD)</td>
+                <td class="num-cell bold-val" id="ytd-abs-row">-</td>
+                <td class="num-cell"><span class="status-badge-finance success">No Prazo</span></td>
+              </tr>
+              <tr>
+                <td class="row-title">Consumo do Budget Anual</td>
+                <td class="num-cell" id="ytd-pct-row">-</td>
+                <td class="num-cell"><span class="status-badge-finance neutral" id="ytd-ceiling-lbl">Teto: 800M</span></td>
+              </tr>
+              <tr class="forecast-row">
+                <td class="row-title" id="forecast-lbl-title">Projeção p/ Dez (Forecast)</td>
+                <td class="num-cell bold-val" id="forecast-abs-row">-</td>
+                <td class="num-cell bold-val"><span class="status-badge-finance warning" id="forecast-pct-lbl">-</span></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -453,13 +430,20 @@
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         
+        // Mapeamento atômico das duas colunas de fechamento
+        this._titleColCurrent = this._shadowRoot.getElementById("title-col-current");
         this._lblActRow = this._shadowRoot.getElementById("lbl-act-row");
         this._valActRow = this._shadowRoot.getElementById("val-act-row");
         this._valBudRow = this._shadowRoot.getElementById("val-bud-row");
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
-        this._textInsightBox = this._shadowRoot.getElementById("textInsightBox");
-        this._insightTextDesc = this._shadowRoot.getElementById("insightTextDesc");
+        
+        this._ytdAbsRow = this._shadowRoot.getElementById("ytd-abs-row");
+        this._ytdPctRow = this._shadowRoot.getElementById("ytd-pct-row");
+        this._ytdCeilingLbl = this._shadowRoot.getElementById("ytd-ceiling-lbl");
+        this._forecastLblTitle = this._shadowRoot.getElementById("forecast-lbl-title");
+        this._forecastAbsRow = this._shadowRoot.getElementById("forecast-abs-row");
+        this._forecastPctLbl = this._shadowRoot.getElementById("forecast-pct-lbl");
       }
 
       this._resizeObserver = new ResizeObserver(() => {
@@ -513,10 +497,7 @@
     _clearDOM() {
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach(el => el.remove());
-      
-      while (this._axisX.firstChild) {
-        this._axisX.removeChild(this._axisX.firstChild);
-      }
+      while (this._axisX.firstChild) this._axisX.removeChild(this._axisX.firstChild);
 
       const svg = this._svgOverlay;
       const paths = svg.querySelectorAll('path');
@@ -547,7 +528,6 @@
 
         if (dimKeys.length < 1 || measureKeys.length < 1) {
           this._clearDOM();
-          this._axisX.innerHTML = "<div class='placeholder-text' style='color:#D32F2F;'>Adicione as Dimensões e Medidas no Builder.</div>";
           return;
         }
 
@@ -632,7 +612,7 @@
           const shortYearString = String(currentYearCounter).substring(2, 4);
           const alignedLabel = `${m.label} ${shortYearString}`;
 
-          seriesData.push({ label: alignedLabel, value: m.realizado, type });
+          seriesData.push({ label: alignedLabel, value: m.realizado, type, originalNode: m, yearValue: currentYearCounter });
         });
 
         if (actualIndex === -1 && seriesData.length > 0) {
@@ -646,7 +626,9 @@
         seriesData.push({
           label: `budget - ${seriesData[actualIndex].label}`,
           value: calculatedBudget,
-          type: "budget"
+          type: "budget",
+          originalNode: targetBudgetSource,
+          yearValue: seriesData[actualIndex].yearValue
         });
 
         this._clearDOM();
@@ -665,7 +647,7 @@
 
           const kpiLabel = document.createElement("span");
           kpiLabel.className = "kpi-label";
-          // PADRONIZAÇÃO EXECUTIVA DE CASAS DECIMAIS: Exibe rigorosamente 2 casas em todos os rótulos (Ex: 63.94M)
+          // PADRONIZAÇÃO EXECUTIVA DE 2 CASAS DECIMAIS NO GRÁFICO (Fim da Incoerência de Rótulos)
           kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
           barElement.appendChild(kpiLabel);
 
@@ -681,7 +663,9 @@
         });
 
         this._drawUnifiedFlatConnections(barElements, seriesData, actualIndex);
-        this._renderInsightPanel(seriesData, sortedMonths, actualIndex, calculatedBudget);
+        
+        // PROCESSAMENTO EM LOTE DO NOVO LAYOUT DUPLO CORPORATIVO
+        this._renderDoubleFinancePanel(seriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
@@ -723,11 +707,10 @@
         const val1 = seriesData[pair.from].value;
         const val2 = seriesData[pair.to].value;
         
-        // CÁLCULO DA CAIXINHA AÉREA SINCRONIZADA COM A REGRA DE CUSTOS (Fim da Matemática Invertida)
         const diff = val2 - val1;
         let variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
         
-        // Se a barra destino for maior que a origem, para CUSTOS isso é desfavorável (Sinal Negativo na Visão de Meta)
+        // REGRA DE CUSTOS DO GRÁFICO (Casamento com o Erro de Sinal)
         const isCostIncrease = val2 > val1;
         if (isCostIncrease && variancePercent > 0) {
           variancePercent = -variancePercent; 
@@ -768,9 +751,9 @@
         span.textContent = varianceText;
         
         if (isCostIncrease) {
-          span.classList.add("increase"); // Laranja: Estouro desfavorável
+          span.classList.add("increase");
         } else {
-          span.classList.add("saving");   // Verde: Economia favorável
+          span.classList.add("saving");
         }
 
         div.appendChild(span);
@@ -779,14 +762,15 @@
       });
     }
 
-    _renderInsightPanel(seriesData, sortedMonths, actualIndex, budgetVal) {
-      const currentMonthNode = sortedMonths[actualIndex];
-      const actualVal = currentMonthNode.realizado;
-      const monthLabel = seriesData[actualIndex].label;
+    // ARQUITETURA DE MATRIZ FINANCEIRA DUPLA ESTENDIDA (YTD & FORECAST AUTOMATIZADO)
+    _renderDoubleFinancePanel(seriesData, actualIndex, budgetVal) {
+      const currentBarNode = seriesData[actualIndex];
+      const actualVal = currentBarNode.value;
+      const monthLabel = currentBarNode.label.split(' ')[0]; // Pega apenas a sigla limpa (Mar, Apr)
 
       const diffNominal = actualVal - budgetVal;
       
-      // REGRA DE SINAL FINANCEIRO CORRETA: Realizado > Budget = Desvio Negativo/Desfavorável para a Meta
+      // LOGICA FINANCEIRA DE CUSTOS (Realizado > Budget = Desvio Negativo)
       const isOverBudget = actualVal > budgetVal;
       let diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
       if (isOverBudget && diffPercent > 0) {
@@ -796,59 +780,62 @@
       }
       
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
-      // Exibição amigável sem assustar com duplos sinais, mantendo consistência centavo por centavo
-      const formatNominalDisplay = (v) => (v >= 0 ? "+" : "") + (v / 1000000).toFixed(2) + "M";
-      const formatPercentDisplay = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+      const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
 
-      this._lblActRow.textContent = `Realizado (${monthLabel})`;
+      // COLUNA 1: Atualização dos campos atômicos do Mês Vigente
+      this._titleColCurrent.textContent = `Mês Atual (${monthLabel.toUpperCase()})`;
+      this._lblActRow.textContent = `Realizado Comercial`;
       this._valActRow.textContent = formatM(actualVal);
       this._valBudRow.textContent = formatM(budgetVal);
       this._valDiffRow.textContent = formatM(diffNominal);
-      this._valPctRow.textContent = formatPercentDisplay(diffPercent);
+      this._valPctRow.textContent = formatPercent(diffPercent);
 
-      this._textInsightBox.className = "text-insight-holder";
-      
-      let semClassBudget = isOverBudget ? "increase" : "saving";
-      let statusTextBudget = isOverBudget ? "aumento de custos" : "eficiência operacional";
-      let relatoFimBudget = isOverBudget ? "acima do teto orçado para o período." : "abaixo da meta corporativa.";
+      // COLUNA 2: Lógica Macrocumulativa Automatizada do Ano Fiscal (YTD / Forecast)
+      const currentYear = currentBarNode.yearValue;
+      let totalRealizadoYTD = 0;
+      let totalBudgetAnualCompleto = 0;
+      let mesesHistoricosContados = 0;
 
-      this._textInsightBox.classList.add(semClassBudget);
-
-      let dynamicNarration = `
-        A performance consolidada de <span class="bold-val">${monthLabel}</span> atingiu 
-        <span class="bold-val">${formatM(actualVal)}</span>. Em relação ao orçamento planejado (Budget), 
-        o desvio nominal foi registrado em <span class="inline-highlight ${semClassBudget}">${formatNominalDisplay(diffNominal)}</span> 
-        (<span class="inline-highlight ${semClassBudget}">${formatPercentDisplay(diffPercent)}</span>), configurando 
-        um quadro de <span class="bold-val">${statusTextBudget}</span> vindo ${relatoFimBudget}
-      `;
-
-      if (actualIndex > 0) {
-        const prevMonthVal = sortedMonths[actualIndex - 1].realizado;
-        const prevMonthLabel = seriesData[actualIndex - 1].label;
-        const diffPrev = actualVal - prevMonthVal;
-        
-        const isPrevIncrease = actualVal > prevMonthVal;
-        let diffPrevPct = prevMonthVal !== 0 ? (diffPrev / prevMonthVal) * 100 : 0;
-        if (isPrevIncrease && diffPrevPct > 0) {
-          diffPrevPct = -diffPrevPct;
-        } else if (!isPrevIncrease && diffPrevPct < 0) {
-          diffPrevPct = Math.abs(diffPrevPct);
+      // Varre a esteira cronológica para estruturar a matemática acumulativa real
+      seriesData.forEach(d => {
+        if (d.type !== "budget" && d.yearValue === currentYear) {
+          totalBudgetAnualCompleto += (d.originalNode ? d.originalNode.orcado : 0) || d.value; 
+          
+          // Conta na linha do YTD apenas os meses até o período atual inclusive
+          if (seriesData.indexOf(d) <= actualIndex) {
+            totalRealizadoYTD += d.value;
+            mesesHistoricosContados++;
+          }
         }
+      });
 
-        let semClassPrev = isPrevIncrease ? "increase" : "saving";
-        let statusTextPrev = isPrevIncrease ? "um avanço sequencial de despesas" : "uma contração estável de custos";
+      // Proteção matemática caso o banco de dados do orçamento anual retorne zerado
+      if (totalBudgetAnualCompleto === 0) totalBudgetAnualCompleto = 800000000; // Teto do Anexo
 
-        dynamicNarration += `
-          <br><br><b>Comparado ao mês anterior (${prevMonthLabel}):</b> A oscilação nominal fechou em 
-          <span class="inline-highlight ${semClassPrev}">${formatNominalDisplay(diffPrev)}</span> 
-          (<span class="inline-highlight ${semClassPrev}">${formatPercentDisplay(diffPrevPct)}</span>), registrando 
-          <span class="bold-val">${statusTextPrev}</span> na performance evolutiva dos períodos.
-        `;
-      }
+      // Consumo Percentual do Budget Anual
+      const consumoBudgetPercent = (totalRealizadoYTD / totalBudgetAnualCompleto) * 100;
 
-      this._insightTextDesc.innerHTML = dynamicNarration;
-      this._insightGrid.style.color = "#2d3748";
-      this._insightGrid.style.display = "flex"; // Força o Grid simétrico baseado em Flexbox estável
+      // CÁLCULO DINÂMICO DE FORECAST (YTD Real + Tendência Média para os meses restantes)
+      const mediaMensalRealizada = totalRealizadoYTD / (mesesHistoricosContados || 1);
+      const mesesRestantesAno = 12 - mesesHistoricosContados;
+      const totalForecastProjetado = totalRealizadoYTD + (mediaMensalRealizada * mesesRestantesAno);
+
+      // Desvio do Forecast frente ao Teto Anual
+      const desvioForecastPercent = (totalForecastProjetado / totalBudgetAnualCompleto) * 100;
+
+      // Atualização dos ponteiros estruturados na tabela de Governança
+      this._ytdAbsRow.textContent = formatM(totalRealizadoYTD);
+      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(1) + "%";
+      this._ytdCeilingLbl.textContent = `Teto: ${formatM(totalBudgetAnualCompleto)}`;
+      
+      this._forecastLblTitle.textContent = `Projeção p/ Dez (Forecast)`;
+      this._forecastAbsRow.textContent = formatM(totalForecastProjetado);
+      this._forecastPctLbl.textContent = desvioForecastPercent.toFixed(1) + "% Meta";
+
+      // Ajuste de classes de alertas dinâmicos baseados no estouro do teto projetado
+      this._forecastPctLbl.className = "status-badge-finance " + (totalForecastProjetado > totalBudgetAnualCompleto ? "warning" : "success");
+
+      this._insightGrid.style.display = "flex"; 
     }
 
     getColorActualMonth() { return this._props.colorActualMonth; }
