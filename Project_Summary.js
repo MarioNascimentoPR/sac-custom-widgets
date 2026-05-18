@@ -32,9 +32,9 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 14px;
         border-bottom: 1px solid #f0f0f0;
-        padding-bottom: 6px;
+        padding-bottom: 8px;
         flex-shrink: 0;
         gap: 12px;
       }
@@ -145,46 +145,49 @@
         background-size: 4px 4px;
       }
 
-      /* NOVO LAYOUT DE GRÁFICOS LADO A LADO */
+      /* COMPOSIÇÃO COERENTE SIMÉTRICA (Grid Executivo Unificado) */
       .main-visualization-layout {
         display: flex;
         width: 100%;
         gap: 24px;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
         flex-shrink: 0;
+        align-items: stretch; /* Força os dois blocos a terem exatamente a mesma altura */
       }
 
       .visualization-column {
         display: flex;
         flex-direction: column;
+        justify-content: flex-end; /* Sincroniza a base de colisão dos eixos */
       }
 
       .visualization-column.monthly-col {
-        flex: 3; /* Ocupa 75% do espaço horizontal */
+        flex: 3;
       }
 
       .visualization-column.ytd-col {
-        flex: 1; /* Ocupa 25% do espaço horizontal */
-        border-left: 1px solid #f0f0f0;
-        padding-left: 20px;
+        flex: 1;
+        border-left: 1px solid #e2e8f0;
+        padding-left: 24px;
       }
 
+      /* CORREÇÃO DE STORYTELLING: Título do Gráfico YTD alinhado ao topo */
       .ytd-chart-header-title {
         font-size: 11px;
         font-weight: 700;
         color: #4a5568;
         text-transform: uppercase;
-        margin-bottom: 6px;
-        padding-bottom: 2px;
-        border-bottom: 1px solid #edf2f7;
+        margin-bottom: auto; /* Joga o bloco do título fixo para o topo da esteira */
+        padding-bottom: 4px;
         letter-spacing: 0.5px;
       }
       
       .chart-container-block {
         position: relative;
-        height: 175px; 
-        padding-top: 36px; 
+        height: 145px; 
+        padding-top: 32px; 
         box-sizing: border-box;
+        width: 100%;
       }
 
       .chart-area {
@@ -194,7 +197,6 @@
       
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
       
-      /* PADRONIZAÇÃO DE PROXIMIDADE IGUALADA: Colunas com largura fixa e gaps simétricos */
       .bar-wrapper {
         display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 1;
       }
@@ -219,7 +221,7 @@
       }
       .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -22px; }
       
-      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; }
+      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
       
       .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
@@ -769,6 +771,9 @@
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${lineCeiling} L ${coordTo.x} ${lineCeiling} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); path.setAttribute("marker-end", markerId);
         
+        if (pair.type === "yoy" || pair.type === "budget") {
+          path.setAttribute("stroke-dasharray", "3,3"); 
+        }
         svg.appendChild(path);
         
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
@@ -811,11 +816,17 @@
       const diffMonthYoY = actualVal - prevYearMonthVal;
       let pctMonthYoY = prevYearMonthVal !== 0 ? (diffMonthYoY / prevYearMonthVal) * 100 : 0;
       const isMonthYoYRetraction = actualVal < prevYearMonthVal;
+      
+      if (isMonthYoYRetraction && pctMonthYoY > 0) {
+        pctMonthYoY = -pctMonthYoY;
+      } else if (!isMonthYoYRetraction && pctMonthYoY < 0) {
+        pctMonthYoY = Math.abs(pctMonthYoY);
+      }
 
       this._lblPrevMonthRow.textContent = `Mesmo Mês Ano Ant. (${previousYear})`;
       this._valPrevMonthRow.textContent = formatM(prevYearMonthVal);
       this._valPrevMonthPctRow.textContent = formatPercent(pctMonthYoY);
-      this._valPrevMonthPctRow.className = "bold-val status-badge-finance " + (isMonthYoYRetraction ? "success" : "warning");
+      this._valPrevMonthPctRow.style.color = isMonthYoYRetraction ? "#137333" : "#c5221f";
 
       // 2. Lógica Comparativa Cumulativa (YTD)
       let totalRealizadoYTDAtual = 0;
@@ -852,7 +863,7 @@
       this._ytdPrevPctLbl.textContent = formatPercent(pctYoY);
       this._ytdPrevPctLbl.className = "status-badge-finance " + (isYoYRetraction ? "success" : "warning");
 
-      // POSICIONAMENTO E CALCULO DO NOVO GRÁFICO DE COLUNAS YTD (LADO DIREITO SUPERIOR)
+      // AJUSTE DE SINAL E ALTURA DO MINI CHART DO YTD ACUMULADO COM SIMETRIA COMPLETA
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
       
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
