@@ -602,7 +602,7 @@
       };
 
       // TETO EXATO: 20 pixels do topo. Como não tem espaço inútil, a tag encosta exatamente na label.
-      const ceilingY = 20;
+      const ceilingY = 14;
       const floorY = containerHeight; 
       
       pairs.forEach((pair) => {
