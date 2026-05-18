@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - DYNAMIC TITLE & OVERVIEW MODEL
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HEADLESS ENGINE ARCHITECTURE
    ========================================================================== */
 
 (function () {
@@ -19,8 +19,6 @@
       }
       .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex-shrink: 0; gap: 12px; }
       .header-left-block { display: flex; flex-direction: column; }
-      
-      /* AJUSTE TIPOGRÁFICO: Aumento ligeiro do tamanho do texto do título */
       .widget-title { font-size: 16px; font-weight: 700; color: #2c3e50; }
       .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
       
@@ -78,6 +76,14 @@
       }
       .grid-column-finance { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
       .column-title-finance { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      
+      .period-summary-banner {
+        font-size: 11.5px; line-height: 1.5; color: #444444; margin: 0 0 12px 0; padding: 8px 12px;
+        border-radius: 4px; border-left: 4px solid #cbd5e0; font-family: system-ui, -apple-system, sans-serif;
+      }
+      .period-summary-banner.summary-saving { background-color: #e8f5e9; color: #1b5e20; border-left-color: #2E7D32; }
+      .period-summary-banner.summary-desvio { background-color: #ffebee; color: #b71c1c; border-left-color: #D32F2F; }
+
       .panel-content-rows { display: flex; flex-direction: column; gap: 1px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; }
       .data-row-item { display: grid; grid-template-columns: 1.8fr 1fr 1fr; align-items: center; background: #ffffff; padding: 8px 12px; font-size: calc(var(--font-size-labels) - 0.5px); color: #2d3748; gap: 8px; }
       .cell-label { font-weight: 600; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
@@ -98,12 +104,11 @@
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
-      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
         <div class="header-left-block">
-          <div class="widget-title" id="widgetTitle">Performance Mensal</div>
+          <div class="widget-title" id="widgetTitle">Performance Summary</div>
           <div class="scale-tag">Valores em Milhões (M)</div>
         </div>
         <div class="filter-container-finance">
@@ -143,6 +148,7 @@
       <div class="insight-grid" id="insightGrid" style="display: none;">
         <div class="grid-column-finance">
           <div class="column-title-finance">Acompanhamento de Metas Orçamentárias</div>
+          <div id="periodSummaryBanner" class="period-summary-banner" style="display: none;"></div>
           <div class="panel-content-rows">
             <div class="data-row-item row-m-style">
               <div class="cell-label">Desvio Mês (Real x Orçado)</div><div class="cell-value" id="val-diff-row">-</div>
@@ -170,6 +176,186 @@
     </div>
   `;
 
+  /* ==========================================================================
+     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA COGNITIVA (HEADLESS & DECOUPLED)
+     ========================================================================== */
+  class EvoNarrativeEngine {
+    constructor() {
+      this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
+    }
+
+    /**
+     * Pipeline de extração de características de dados sem dependência de UI / DOM.
+     * Gera e pontua tabelas de variâncias, drivers, outliers e rankings estruturados.
+     */
+    analyze(cubeData, targetNode, currentYear, previousYear, tempoDimId, versaoDimId, itemFinanceiroDimId, contaContabilDimId, measId, fullSeriesData) {
+      const varianceTable = { month: {}, ytd: {} };
+      const driverTable = [];
+      const outlierTable = [];
+      const rankingTable = [];
+
+      // 1. Feature Extraction: Visão de Competência Mensal
+      let monthActual = targetNode.value;
+      let monthBudget = targetNode.originalNode.orcado > 0 ? targetNode.originalNode.orcado : targetNode.originalNode.realizado;
+      let monthDiff = monthActual - monthBudget;
+
+      varianceTable.month = {
+        actual: monthActual,
+        budget: monthBudget,
+        diffNominal: monthDiff,
+        pctVar: monthBudget !== 0 ? (monthDiff / monthBudget) * 100 : 0,
+        consumption: monthBudget !== 0 ? (monthActual / monthBudget) * 100 : 0,
+        isSaving: monthDiff <= 0
+      };
+
+      // 2. Feature Extraction: Acumulado Período (YTD)
+      let totalRealizadoYTDAtual = 0;
+      let totalRealizadoYTDAntigo = 0;
+      let totalBudgetYTDCompleto = 0;
+
+      fullSeriesData.forEach(d => {
+        if (d.yearValue === currentYear && d.monthNum <= targetNode.monthNum) {
+          totalRealizadoYTDAtual += d.value;
+          totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
+        }
+        if (d.yearValue === previousYear && d.monthNum <= targetNode.monthNum) {
+          totalRealizadoYTDAntigo += d.value;
+        }
+      });
+
+      if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
+      let ytdDiff = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
+
+      varianceTable.ytd = {
+        actual: totalRealizadoYTDAtual,
+        budget: totalBudgetYTDCompleto,
+        previous: totalRealizadoYTDAntigo,
+        diffNominal: ytdDiff,
+        pctVar: totalBudgetYTDCompleto !== 0 ? (ytdDiff / totalBudgetYTDCompleto) * 100 : 0,
+        consumption: totalBudgetYTDCompleto !== 0 ? (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100 : 0,
+        isSaving: ytdDiff <= 0
+      };
+
+      // 3. Feature Extraction: Construção das Matrizes Multidimensionais Lineares
+      const itemFinanceiroMap = {};
+
+      cubeData.forEach(row => {
+        if (!tempoDimId || !itemFinanceiroDimId) return;
+        
+        const tempoObj = row[tempoDimId];
+        if (!tempoObj) return;
+        
+        const rowMonthNode = fullSeriesData.find(d => d.id === String(tempoObj.id));
+        if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > targetNode.monthNum) return;
+
+        const itemObj = row[itemFinanceiroDimId];
+        const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
+        const itemUpper = itemName.toUpperCase();
+        
+        // Cláusulas de Barreira / Higienização contra Rateios, Liquidações e Agregadores Nativos do SAC
+        if (
+          itemUpper.includes("TOTAL") || 
+          itemUpper.includes("ALL_MEMBERS") || 
+          itemUpper.includes("(ALL)") || 
+          itemUpper === "OUTROS" || 
+          itemUpper.includes("RATEIO") || 
+          itemUpper.includes("LIQUIDA")
+        ) return;
+
+        let contaName = "Geral";
+        if (contaContabilDimId && row[contaContabilDimId]) {
+          contaName = row[contaContabilDimId].label || row[contaContabilDimId].description || row[contaContabilDimId].id || "Geral";
+        }
+        const contaUpper = contaName.toUpperCase();
+        if (contaUpper.includes("RATEIO") || contaUpper.includes("LIQUIDA")) return;
+
+        if (!itemFinanceiroMap[itemName]) {
+          itemFinanceiroMap[itemName] = { realizado: 0, orcado: 0, contas: {} };
+        }
+
+        const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
+        
+        let isBudget = false;
+        if (versaoDimId && row[versaoDimId]) {
+          const vId = String(row[versaoDimId].id).toUpperCase();
+          const vLabel = String(row[versaoDimId].label || row[versaoDimId].description || "").toUpperCase();
+          if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
+            isBudget = true;
+          }
+        }
+
+        if (isBudget) {
+          itemFinanceiroMap[itemName].orcado += rawValue;
+        } else {
+          itemFinanceiroMap[itemName].realizado += rawValue;
+        }
+
+        if (!itemFinanceiroMap[itemName].contas[contaName]) {
+          itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
+        }
+        if (isBudget) {
+          itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue;
+        } else {
+          itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue;
+        }
+      });
+
+      // 4. Insight Scoring Framework: Atribuição de Severidade Relativa e Ocultação de Ruídos
+      Object.keys(itemFinanceiroMap).forEach(itemName => {
+        const metrics = itemFinanceiroMap[itemName];
+        const desvioItem = metrics.realizado - metrics.orcado;
+        const pctVar = metrics.orcado !== 0 ? (desvioItem / metrics.orcado) * 100 : 0;
+        const isSaving = desvioItem <= 0;
+
+        let keyContaName = "";
+        let keyContaMaxAbs = -1;
+        Object.keys(metrics.contas).forEach(cName => {
+          const cImpact = metrics.contas[cName].realizado - metrics.contas[cName].orcado;
+          if (Math.abs(cImpact) > keyContaMaxAbs) {
+            keyContaMaxAbs = Math.abs(cImpact);
+            keyContaName = cName;
+          }
+        });
+
+        const mainDriverImpactValue = keyContaName ? (metrics.contas[keyContaName].realizado - metrics.contas[keyContaName].orcado) : 0;
+
+        const featureRow = {
+          itemName: itemName,
+          realizado: metrics.realizado,
+          budget: metrics.orcado,
+          desvio: desvioItem,
+          pctVar: pctVar,
+          isSaving: isSaving,
+          driverConta: keyContaName,
+          driverImpact: mainDriverImpactValue,
+          score: Math.abs(desvioItem) // Métrica cognitiva de severidade por desvio absoluto de magnitude
+        };
+
+        driverTable.push(featureRow);
+
+        // Noise Limiter: Oculta e descarta variações analíticas marginais inferiores a R$ 1.000
+        if (Math.abs(desvioItem) > 1000) {
+          outlierTable.push(featureRow);
+        }
+      });
+
+      // Criação da Ranking Table estruturada por ordenação de criticidade orçamentária
+      rankingTable.push(...outlierTable);
+      rankingTable.sort((a, b) => b.score - a.score);
+
+      return { varianceTable, driverTable, outlierTable: rankingTable, rankingTable };
+    }
+
+    _parseRawValue(val) {
+      if (typeof val === 'number') return val;
+      if (!val || val === "-") return 0;
+      return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+    }
+  }
+
+  /* ==========================================================================
+     UI LAYER AND COMPONENT SCOPE MANAGEMENT
+     ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
@@ -184,6 +370,9 @@
       this._yearRegex = /\d{4}/;
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
       this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
+
+      // Instanciação da Engine Desacoplada e Reutilizável
+      this._analyticsEngine = new EvoNarrativeEngine();
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -215,6 +404,7 @@
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
         this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
+        this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
         this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
         this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
@@ -341,7 +531,6 @@
 
         this._measId = measureKeys[0];
         
-        // REIDRATAÇÃO DO TÍTULO OVERVIEW: Puxa o Indicador selecionado do Modelo do SAC dinamicamente
         const measureInfo = mainStructureMembers[this._measId] || {};
         const indicatorLabel = measureInfo.label || measureInfo.description || measureInfo.id || "Indicador";
         if (this._widgetTitle) {
@@ -513,6 +702,7 @@
           this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
         }
 
+        // Dropdown NodeList Token Toggle
         const dropdownItems = this._treeDropdownContent.querySelectorAll(".tree-month-item");
         dropdownItems.forEach(item => {
           item.classList.toggle("selected", item.getAttribute("data-id") === this._selectedCutoffId);
@@ -538,6 +728,8 @@
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.10 || 1;
 
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
+        
+        // Ativação da Camada Financeira Desacoplada
         this._renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, calculatedBudget);
 
         requestAnimationFrame(() => {
@@ -664,211 +856,119 @@
       svg.appendChild(fragment);
     }
 
+    /* ==========================================================================
+       RENDERING LAYER (UI COMPONENT COUPLING) - RENDERS HEADLESS ARTIFACTS
+       ========================================================================== */
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
-      const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
+      const currentBarNode = fullSeriesData[actualIndex];
+      const currentYear = currentBarNode.yearValue; 
+      const previousYear = currentYear - 1;
       const monthLabel = currentBarNode.label.split(' ')[0];
-      const currentYear = currentBarNode.yearValue; const previousYear = currentYear - 1;
 
-      const diffNominal = actualVal - budgetVal;
-      const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
-      const consumptionMonthPercent = budgetVal !== 0 ? (actualVal / budgetVal) * 100 : 0;
-      const isMonthSaving = diffNominal <= 0;
-      
+      // Invocação Pura e Desacoplada do Motor de Análise Baseado em Score
+      const analysis = this._analyticsEngine.analyze(
+        this._currentData.data, currentBarNode, currentYear, previousYear,
+        this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData
+      );
+
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v, isSaving) => (isSaving ? "▼ " : "▲ ") + Math.abs(v).toFixed(2) + "%";
 
-      this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
-      this._valPctRow.textContent = formatPercent(diffPercent, isMonthSaving);
-      this._valPctRow.className = "status-badge-finance " + (isMonthSaving ? "success" : "warning");
-      this._valPctConsumptionRow.textContent = consumptionMonthPercent.toFixed(2) + "%";
+      const mFeatures = analysis.varianceTable.month;
+      const yFeatures = analysis.varianceTable.ytd;
 
-      let totalRealizadoYTDAtual = 0; let totalRealizadoYTDAntigo = 0; let totalBudgetYTDCompleto = 0;
+      this._valDiffRow.textContent = (mFeatures.diffNominal >= 0 ? "+" : "") + formatM(mFeatures.diffNominal);
+      this._valPctRow.textContent = formatPercent(mFeatures.pctVar, mFeatures.isSaving);
+      this._valPctRow.className = "status-badge-finance " + (mFeatures.isSaving ? "success" : "warning");
+      this._valPctConsumptionRow.textContent = mFeatures.consumption.toFixed(2) + "%";
 
-      fullSeriesData.forEach((d, idx) => {
-        if (idx <= actualIndex) {
-          if (d.yearValue === currentYear) {
-            totalRealizadoYTDAtual += d.value;
-            totalBudgetYTDCompleto += (d.originalNode ? d.originalNode.orcado : 0);
-          }
-        }
-        if (d.yearValue === previousYear && d.monthNum <= currentBarNode.monthNum) {
-          totalRealizadoYTDAntigo += d.value;
-        }
-      });
+      this._ytdDiffRow.textContent = (yFeatures.diffNominal >= 0 ? "+" : "") + formatM(yFeatures.diffNominal);
+      this._ytdDiffPctBadge.textContent = formatPercent(yFeatures.pctVar, yFeatures.isSaving);
+      this._ytdDiffPctBadge.className = "status-badge-finance " + (yFeatures.isSaving ? "success" : "warning");
+      this._ytdPctRow.textContent = yFeatures.consumption.toFixed(2) + "%";
 
-      if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
+      const maxYTD = Math.max(yFeatures.previous, yFeatures.actual, yFeatures.budget) * 1.10 || 1;
+      this._miniBarPrev.style.height = `${(yFeatures.previous / maxYTD) * 100}%`;
+      this._miniBarAct.style.height = `${(yFeatures.actual / maxYTD) * 100}%`;
+      this._miniBarBud.style.height = `${(yFeatures.budget / maxYTD) * 100}%`;
 
-      const diffYtdNominal = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
-      const diffYtdPercent = totalBudgetYTDCompleto !== 0 ? (diffYtdNominal / totalBudgetYTDCompleto) * 100 : 0;
-      const consumoBudgetPercent = (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100;
-      const isYtdSaving = diffYtdNominal <= 0;
-
-      this._ytdDiffRow.textContent = (diffYtdNominal >= 0 ? "+" : "") + formatM(diffYtdNominal);
-      this._ytdDiffPctBadge.textContent = formatPercent(diffYtdPercent, isYtdSaving);
-      this._ytdDiffPctBadge.className = "status-badge-finance " + (isYtdSaving ? "success" : "warning");
-      this._ytdPctRow.textContent = consumoBudgetPercent.toFixed(2) + "%";
-
-      const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
-      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
-      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
-      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
-
-      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
-      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
-      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
+      this._miniLblPrev.textContent = formatM(yFeatures.previous);
+      this._miniLblAct.textContent = formatM(yFeatures.actual);
+      this._miniLblBud.textContent = formatM(yFeatures.budget);
 
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      this._ytdSeriesMock = [{ value: totalRealizadoYTDAntigo, type: "historical" }, { value: totalRealizadoYTDAtual, type: "actual" }, { value: totalBudgetYTDCompleto, type: "budget" }];
+      this._ytdSeriesMock = [{ value: yFeatures.previous, type: "historical" }, { value: yFeatures.actual, type: "actual" }, { value: yFeatures.budget, type: "budget" }];
 
       if (this._highlightCardArea) {
-        this._highlightCardArea.style.borderLeft = isYtdSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
+        this._highlightCardArea.style.borderLeft = yFeatures.isSaving ? "4px solid #2E7D32" : "4px solid #D32F2F";
       }
 
-      const monthStatusText = isMonthSaving ? "economia de custos" : "estouro orçamentário";
-      const ytdStatusText = isYtdSaving ? "abaixo do teto (eficiência)" : "acima da meta (atenção)";
-      const semanticColorMonth = isMonthSaving ? "#2E7D32" : "#D32F2F";
-      const semanticColorYTD = isYtdSaving ? "#2E7D32" : "#D32F2F";
-      const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
+      // Renderização do Banner YTD Compacto Esquerdo
+      if (this._periodSummaryBanner) {
+        this._periodSummaryBanner.style.display = "block";
+        this._periodSummaryBanner.className = yFeatures.isSaving ? "period-summary-banner summary-saving" : "period-summary-banner summary-desvio";
+        this._periodSummaryBanner.textContent = "";
+
+        this._periodSummaryBanner.appendChild(document.createTextNode("No acumulado YTD, o projeto opera "));
+        const spanYtdStatus = document.createElement("strong");
+        spanYtdStatus.textContent = yFeatures.isSaving ? "abaixo do teto orçamentário (eficiência) " : "acima da meta prevista (atenção) ";
+        this._periodSummaryBanner.appendChild(spanYtdStatus);
+
+        this._periodSummaryBanner.appendChild(document.createTextNode("com variação de "));
+        const spanYtdDelta = document.createElement("strong");
+        spanYtdDelta.textContent = `R$ ${Math.abs(yFeatures.diffNominal/1000000).toFixed(2)}M (${yFeatures.diffNominal >= 0 ? "+" : ""}${yFeatures.pctVar.toFixed(1)}%)`;
+        this._periodSummaryBanner.appendChild(spanYtdDelta);
+        this._periodSummaryBanner.appendChild(document.createTextNode(`, absorvendo ${yFeatures.consumption.toFixed(1)}% do orçamento total.`));
+      }
 
       this._hlUl.textContent = "";
+
+      const monthStatusText = mFeatures.isSaving ? "economia de custos" : "estouro orçamentário";
+      const semanticColorMonth = mFeatures.isSaving ? "#2E7D32" : "#D32F2F";
+      const semanticColorCons = mFeatures.consumption > 100 ? "#D32F2F" : (mFeatures.consumption > 90 ? "#EF6C00" : "#2E7D32");
 
       const liMonth = document.createElement("li");
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
-      liMonth.appendChild(s1); liMonth.appendChild(document.createTextNode("Fechamento com ")); liMonth.appendChild(statusSpan1); liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M.`));
+      liMonth.appendChild(s1); liMonth.appendChild(document.createTextNode("Fechamento com ")); liMonth.appendChild(statusSpan1); liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(mFeatures.diffNominal/1000000).toFixed(2)}M.`));
       this._hlUl.appendChild(liMonth);
 
       const liCons = document.createElement("li");
       const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
-      const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
+      const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${mFeatures.consumption.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
       this._hlUl.appendChild(liCons);
 
-      const liYtd = document.createElement("li");
-      const s3 = document.createElement("strong"); s3.textContent = "Posicionamento YTD: ";
-      const statusSpan3 = document.createElement("span"); statusSpan3.textContent = ytdStatusText; statusSpan3.style.color = semanticColorYTD; statusSpan3.style.fontWeight = "700";
-      const valueSpan3 = document.createElement("span"); valueSpan3.textContent = `${consumoBudgetPercent.toFixed(1)}%`; valueSpan3.style.fontWeight = "700";
-      liYtd.appendChild(s3); liYtd.appendChild(document.createTextNode("Acumulado com desvio ")); liYtd.appendChild(statusSpan3); liYtd.appendChild(document.createTextNode(", consumindo ")); liYtd.appendChild(valueSpan3); liYtd.appendChild(document.createTextNode(" do ano."));
-      this._hlUl.appendChild(liYtd);
-
-      const itemFinanceiroMap = {};
-      const financialData = this._currentData;
-
-      financialData.data.forEach(row => {
-        if (!this._tempoDimId || !this._itemFinanceiroDimId) return;
-        
-        const tempoObj = row[this._tempoDimId];
-        if (!tempoObj) return;
-        
-        const rowMonthNode = fullSeriesData.find(d => d.id === String(tempoObj.id));
-        if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > currentBarNode.monthNum) return;
-
-        const itemObj = row[this._itemFinanceiroDimId];
-        const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
-        const itemUpper = itemName.toUpperCase();
-        
-        if (
-          itemUpper.includes("TOTAL") || 
-          itemUpper.includes("ALL_MEMBERS") || 
-          itemUpper.includes("(ALL)") || 
-          itemUpper === "OUTROS" || 
-          itemUpper.includes("RATEIO") || 
-          itemUpper.includes("LIQUIDA")
-        ) return;
-
-        let contaName = "Geral";
-        if (this._contaContabilDimId && row[this._contaContabilDimId]) {
-          contaName = row[this._contaContabilDimId].label || row[this._contaContabilDimId].description || row[this._contaContabilDimId].id || "Geral";
-        }
-        const contaUpper = contaName.toUpperCase();
-        if (contaUpper.includes("RATEIO") || contaUpper.includes("LIQUIDA")) return;
-
-        if (!itemFinanceiroMap[itemName]) {
-          itemFinanceiroMap[itemName] = { realizado: 0, orcado: 0, contas: {} };
-        }
-
-        const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
-        
-        let isBudget = false;
-        if (this._versaoDimId && row[this._versaoDimId]) {
-          const vId = String(row[this._versaoDimId].id).toUpperCase();
-          const vLabel = String(row[this._versaoDimId].label || row[this._versaoDimId].description || "").toUpperCase();
-          if (vId.includes("ORÇADO") || vId.includes("ORCADO") || vId.includes("BUDGET") || vLabel.includes("ORÇADO") || vLabel.includes("BUDGET")) {
-            isBudget = true;
-          }
-        }
-
-        if (isBudget) {
-          itemFinanceiroMap[itemName].orcado += rawValue;
-        } else {
-          itemFinanceiroMap[itemName].realizado += rawValue;
-        }
-
-        if (!itemFinanceiroMap[itemName].contas[contaName]) {
-          itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
-        }
-        if (isBudget) {
-          itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue;
-        } else {
-          itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue;
-        }
-      });
-
-      Object.keys(itemFinanceiroMap).forEach(itemName => {
-        const metrics = itemFinanceiroMap[itemName];
-        const desvioItem = metrics.realizado - metrics.orcado;
-        const isSaving = desvioItem <= 0;
-        const pctVar = metrics.orcado !== 0 ? (desvioItem / metrics.orcado) * 100 : 0;
-        
-        const statusText = isSaving ? "economia operacional" : "desvio adverso";
-        const semanticColor = isSaving ? "#2E7D32" : "#D32F2F";
-        const directionalArrow = isSaving ? "▼ " : "▲ ";
-
-        let keyContaName = "";
-        let keyContaMaxAbs = -1;
-        Object.keys(metrics.contas).forEach(cName => {
-          const cDiff = metrics.contas[cName].realizado - metrics.contas[cName].orcado;
-          if (Math.abs(cDiff) > keyContaMaxAbs) {
-            keyContaMaxAbs = Math.abs(cDiff);
-            keyContaName = cName;
-          }
-        });
+      // Geração Dinâmica da Lista de Narrativas filtradas pela Outlier Table da Engine
+      analysis.outlierTable.forEach(item => {
+        const statusText = item.isSaving ? "economia operacional" : "desvio adverso";
+        const semanticColor = item.isSaving ? "#2E7D32" : "#D32F2F";
+        const directionalArrow = item.isSaving ? "▼ " : "▲ ";
 
         const liItem = document.createElement("li");
-        const sLabel = document.createElement("strong");
-        sLabel.textContent = `${itemName}: `;
+        const sLabel = document.createElement("strong"); sLabel.textContent = `${item.itemName}: `;
         liItem.appendChild(sLabel);
 
         liItem.appendChild(document.createTextNode("O acumulado YTD consolidou "));
-        
-        const spanStatus = document.createElement("span");
-        spanStatus.textContent = statusText;
-        spanStatus.style.color = semanticColor;
-        spanStatus.style.fontWeight = "700";
+        const spanStatus = document.createElement("span"); spanStatus.textContent = statusText; spanStatus.style.color = semanticColor; spanStatus.style.fontWeight = "700";
         liItem.appendChild(spanStatus);
 
-        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(desvioItem/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(pctVar).toFixed(2)}%), registrando Realizado de R$ ${(metrics.realizado/1000000).toFixed(2)}M contra orçamento de R$ ${(metrics.orcado/1000000).toFixed(2)}M.`));
+        liItem.appendChild(document.createTextNode(` de R$ ${Math.abs(item.desvio/1000000).toFixed(2)}M (${directionalArrow}${Math.abs(item.pctVar).toFixed(2)}%), registrando Realizado de R$ ${(item.realizado/1000000).toFixed(2)}M contra orçamento de R$ ${(item.budget/1000000).toFixed(2)}M.`));
 
-        if (keyContaName && keyContaMaxAbs > 0) {
-          const cDiffReal = metrics.contas[keyContaName].realizado - metrics.contas[keyContaName].orcado;
-          const cSaving = cDiffReal <= 0;
+        if (item.driverConta && Math.abs(item.driverImpact) > 0) {
+          const cSaving = item.driverImpact <= 0;
           const cColor = cSaving ? "#2E7D32" : "#D32F2F";
           
           liItem.appendChild(document.createTextNode(" O principal driver desse comportamento foi a natureza de "));
-          const spanConta = document.createElement("span");
-          spanConta.textContent = keyContaName;
-          spanConta.style.fontWeight = "700";
-          liItem.appendChild(spanConta);
-          liItem.appendChild(document.createTextNode(" com um impacto de "));
+          const spanConta = document.createElement("span"); spanConta.textContent = item.driverConta; spanConta.style.fontWeight = "700";
+          liItem.appendChild(spanConta); liItem.appendChild(document.createTextNode(" com um impacto de "));
           
           const spanContaDiff = document.createElement("span");
-          spanContaDiff.textContent = `${cDiffReal >= 0 ? "+" : ""}${(cDiffReal/1000000).toFixed(2)}M`;
-          spanContaDiff.style.color = cColor;
-          spanContaDiff.style.fontWeight = "700";
-          liItem.appendChild(spanContaDiff);
-          liItem.appendChild(document.createTextNode("."));
+          spanContaDiff.textContent = `${item.driverImpact >= 0 ? "+" : ""}${(item.driverImpact/1000000).toFixed(2)}M`;
+          spanContaDiff.style.color = cColor; spanContaDiff.style.fontWeight = "700";
+          liItem.appendChild(spanContaDiff); liItem.appendChild(document.createTextNode("."));
         }
 
         this._hlUl.appendChild(liItem);
