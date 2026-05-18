@@ -134,31 +134,31 @@
         justify-content: space-between;
       }
 
-      /* FIX DO TÍTULO YTD: Reduzido para 10px, peso sóbrio e margem controlada no topo */
+      /* FIX DO TÍTULO YTD: Reduzido e alinhado perfeitamente ao topo */
       .ytd-chart-header-title { 
-        font-size: 10px; 
+        font-size: 11px; 
         font-weight: 700; 
         color: #4a5568; 
         text-transform: uppercase; 
         letter-spacing: 0.5px;
         margin-bottom: auto;
-        padding-bottom: 4px;
+        padding-bottom: 6px;
       }
       
-      /* AREA DO GRÁFICO: Ganhando folga superior para abrigar a linha isolada */
+      /* FIX DE ALTURA OPERACIONAL: Aumentamos o respiro para 65px para acomodar os ganchos */
       .chart-container-block { 
         position: relative; 
-        height: 175px; 
-        padding-top: 60px; 
+        height: 185px; 
+        padding-top: 65px; 
         box-sizing: border-box; 
         width: 100%; 
       }
       .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
-      /* FIX DA CAMADA: O SVG vai para trás das barras e textos para impedir sobreposição manual */
+      /* BLINDAGEM DE Z-INDEX: O SVG overlay é forçado estritamente para trás (camada 1) */
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
       
-      /* FIX DE ELEMENTOS VIZINHOS: Garantindo isolamento de camadas */
+      /* BARRAS NO TOPO: As barras e os wrappers sobem de nível para a camada 2 */
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
       .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
       .bar-element.historical { background-color: var(--color-historical); }
@@ -169,7 +169,7 @@
         background-size: 6px 6px;
       }
       
-      /* VALOR DA COLUNA (M): Fica em z-index alto e nunca é cortado */
+      /* RÓTULOS DOS VALORES (M): Fixados na camada 3 para máxima prioridade visual */
       .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 1px); font-weight: 700; color: #2d3748; white-space: nowrap; z-index: 3; }
       .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -24px; }
       
@@ -178,14 +178,14 @@
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
       .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
       
-      /* TAGS DE VARIAÇÃO: Alinhadas no teto limpo do SVG */
+      /* TAGS DE VARIAÇÃO PERCENTUAL: Isoladas no topo absoluto do SVG (camada 3) */
       .variance-tag {
         font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; z-index: 3;
       }
       .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
       .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
 
-      /* GRID INFERIOR EXECUTIVO */
+      /* GRID INFERIOR REESTRUTURADO */
       .insight-grid {
         display: grid;
         grid-template-columns: 1.1fr 1fr;
@@ -777,9 +777,9 @@
         return { x: bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2), y: containerHeight - bar.offsetHeight };
       };
 
-      /* FIX ABSOLUTO DO CEILING: Reduzimos e travamos a linha no topo absoluto (14px).
-         Como alteramos a ordem no DOM do wrapper, a linha agora é desenhada estritamente POR TRÁS dos números. 
-         Além disso, mudamos a ancoragem vertical subtraindo 40px da altura da barra, forçando a linha a dar a volta por cima limpa. */
+      /* FIX GEOMÉTRICO ABSOLUTO: Travamos a linha no topo definitivo (14px).
+         Como alteramos o z-index no CSS, a linha é desenhada estritamente por trás dos números.
+         O cálculo 'coordY - 55' força os ganchos verticais a subirem sem trombar nos rótulos de dados. */
       const fixedCeilingY = 14;
       
       pairsToConnect.forEach((pair) => {
@@ -799,9 +799,8 @@
         const markerId = "url(#arrow-neutral)";
         const lineStrokeColor = "var(--color-border-axis)";
 
-        /* O cálculo "coordY - 34" garante que o gancho vertical faça a curva bem acima do rótulo numérico fixo */
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y - 34} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 34}`);
+        path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y - 55} L ${coordFrom.x} ${fixedCeilingY} L ${coordTo.x} ${fixedCeilingY} L ${coordTo.x} ${coordTo.y - 55}`);
         path.setAttribute("stroke", lineStrokeColor); 
         path.setAttribute("stroke-width", "1.25"); 
         path.setAttribute("fill", "none"); 
