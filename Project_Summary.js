@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EVOSTREAM PERFORMANCE SUMMARY WIDGET - REQUESTUPDATE REACTIVE PATTERN
+   EVOSTREAM PERFORMANCE SUMMARY WIDGET - HIGH PERFORMANCE BATCHED RUNTIME
    ========================================================================== */
 
 (function () {
@@ -17,7 +17,7 @@
         display: flex; flex-direction: column; width: 100%; height: 100%; padding: 14px 18px; box-sizing: border-box;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; position: relative; overflow: auto;
       }
-      .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex-shrink: 0; gap: 12px; }
+      .widget-header { display: flex; justify-open: space-between; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; flex-shrink: 0; gap: 12px; }
       .header-left-block { display: flex; flex-direction: column; }
       .widget-title { font-size: 16px; font-weight: 700; color: #2c3e50; }
       .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
@@ -62,7 +62,7 @@
       .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 2; }
       .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; height: 0%; transition: height 0.3s ease-out; }
       .bar-element.historical { background-color: var(--color-historical); }
-      .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
+      .bar-element.actual { background-color: var(--color-actual); box-shadow: none; box-sizing: border-box; }
       .bar-element.budget {
         background-color: #ffffff; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
@@ -187,7 +187,7 @@
   `;
 
   /* ==========================================================================
-     HEADLESS ENGINE ANALÍTICA - CORE PURE JS
+     4 & 5. ENGINE DE INTELIGÊNCIA ANALÍTICA SANEADA (PURE HEADLESS)
      ========================================================================== */
   class EvoNarrativeEngine {
     constructor() {
@@ -205,18 +205,13 @@
       let monthDiff = monthActual - monthBudget;
 
       varianceTable.month = {
-        actual: monthActual,
-        budget: monthBudget,
-        diffNominal: monthDiff,
+        actual: monthActual, budget: monthBudget, diffNominal: monthDiff,
         pctVar: monthBudget !== 0 ? (monthDiff / monthBudget) * 100 : 0,
         consumption: monthBudget !== 0 ? (monthActual / monthBudget) * 100 : 0,
         isSaving: monthDiff <= 0
       };
 
-      let totalRealizadoYTDAtual = 0;
-      let totalRealizadoYTDAntigo = 0;
-      let totalBudgetYTDCompleto = 0;
-
+      let totalRealizadoYTDAtual = 0; let totalRealizadoYTDAntigo = 0; let totalBudgetYTDCompleto = 0;
       fullSeriesData.forEach(d => {
         if (d.yearValue === currentYear && d.monthNum <= targetNode.monthNum) {
           totalRealizadoYTDAtual += d.value;
@@ -226,16 +221,12 @@
           totalRealizadoYTDAntigo += d.value;
         }
       });
-
       if (totalBudgetYTDCompleto === 0) totalBudgetYTDCompleto = totalRealizadoYTDAtual || 1;
       let ytdDiff = totalRealizadoYTDAtual - totalBudgetYTDCompleto;
 
       varianceTable.ytd = {
-        actual: totalRealizadoYTDAtual,
-        budget: totalBudgetYTDCompleto,
-        previous: totalRealizadoYTDAntigo,
-        diffNominal: ytdDiff,
-        pctVar: totalBudgetYTDCompleto !== 0 ? (ytdDiff / totalBudgetYTDCompleto) * 100 : 0,
+        actual: totalRealizadoYTDAtual, budget: totalBudgetYTDCompleto, previous: totalRealizadoYTDAntigo,
+        diffNominal: ytdDiff, pctVar: totalBudgetYTDCompleto !== 0 ? (ytdDiff / totalBudgetYTDCompleto) * 100 : 0,
         consumption: totalBudgetYTDCompleto !== 0 ? (totalRealizadoYTDAtual / totalBudgetYTDCompleto) * 100 : 0,
         isSaving: ytdDiff <= 0
       };
@@ -244,24 +235,19 @@
 
       cubeData.forEach(row => {
         if (!tempoDimId || !itemFinanceiroDimId) return;
+        const tObj = row[tempoDimId]; if (!tObj) return;
         
-        const tempoObj = row[tempoDimId];
-        if (!tempoObj) return;
-        
-        const rowMonthNode = fullSeriesData.find(d => d.id === String(tempoObj.id));
+        const rowMonthNode = fullSeriesData.find(d => d.id === String(tObj.id));
         if (!rowMonthNode || rowMonthNode.yearValue !== currentYear || rowMonthNode.monthNum > targetNode.monthNum) return;
 
         const itemObj = row[itemFinanceiroDimId];
         const itemName = itemObj ? (itemObj.label || itemObj.description || itemObj.id || "Outros") : "Outros";
         const itemUpper = itemName.toUpperCase();
-        
+
         if (
-          itemUpper.includes("TOTAL") || 
-          itemUpper.includes("ALL_MEMBERS") || 
-          itemUpper.includes("(ALL)") || 
-          itemUpper === "OUTROS" || 
-          itemUpper.includes("RATEIO") || 
-          itemUpper.includes("LIQUIDA")
+          itemUpper.includes("TOTAL") || itemUpper.includes("ALL_MEMBERS") || 
+          itemUpper.includes("(ALL)") || itemUpper === "OUTROS" || 
+          itemUpper.includes("RATEIO") || itemUpper.includes("LIQUIDA")
         ) return;
 
         let contaName = "Geral";
@@ -276,7 +262,6 @@
         }
 
         const rawValue = this._parseRawValue(row[measId] ? (row[measId].formattedValue || row[measId].raw || 0) : 0);
-        
         let isBudget = false;
         if (versaoDimId && row[versaoDimId]) {
           const vId = String(row[versaoDimId].id).toUpperCase();
@@ -286,57 +271,39 @@
           }
         }
 
-        if (isBudget) {
-          itemFinanceiroMap[itemName].orcado += rawValue;
-        } else {
-          itemFinanceiroMap[itemName].realizado += rawValue;
-        }
+        if (isBudget) { itemFinanceiroMap[itemName].orcado += rawValue; } 
+        else { itemFinanceiroMap[itemName].realizado += rawValue; }
 
         if (!itemFinanceiroMap[itemName].contas[contaName]) {
           itemFinanceiroMap[itemName].contas[contaName] = { realizado: 0, orcado: 0 };
         }
-        if (isBudget) {
-          itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue;
-        } else {
-          itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue;
-        }
+        if (isBudget) { itemFinanceiroMap[itemName].contas[contaName].orcado += rawValue; } 
+        else { itemFinanceiroMap[itemName].contas[contaName].realizado += rawValue; }
       });
 
-      Object.keys(itemFinanceiroMap).forEach(itemName => {
-        const metrics = itemFinanceiroMap[itemName];
-        const desvioItem = metrics.realizado - metrics.orcado;
-        const pctVar = metrics.orcado !== 0 ? (desvioItem / metrics.orcado) * 100 : 0;
-        const isSaving = desvioItem <= 0;
+      Object.keys(itemFinanceiroMap).forEach(name => {
+        const item = itemFinanceiroMap[name];
+        const desvioNominal = item.realizado - item.orcado;
+        const variancePct = item.orcado !== 0 ? (desvioNominal / item.orcado) * 100 : 0;
 
-        let keyContaName = "";
-        let keyContaMaxAbs = -1;
-        Object.keys(metrics.contas).forEach(cName => {
-          const cImpact = metrics.contas[cName].realizado - metrics.contas[cName].orcado;
-          if (Math.abs(cImpact) > keyContaMaxAbs) {
-            keyContaMaxAbs = Math.abs(cImpact);
-            keyContaName = cName;
+        let driverContaName = ""; let maxContaImpact = -1;
+        Object.keys(item.contas).forEach(cName => {
+          const cImpact = item.contas[cName].realizado - item.contas[cName].orcado;
+          if (Math.abs(cImpact) > maxContaImpact) {
+            maxContaImpact = Math.abs(cImpact);
+            driverContaName = cName;
           }
         });
 
-        const mainDriverImpactValue = keyContaName ? (metrics.contas[keyContaName].realizado - metrics.contas[keyContaName].orcado) : 0;
-
         const featureRow = {
-          itemName: itemName,
-          realizado: metrics.realizado,
-          budget: metrics.orcado,
-          desvio: desvioItem,
-          pctVar: pctVar,
-          isSaving: isSaving,
-          driverConta: keyContaName,
-          driverImpact: mainDriverImpactValue,
-          score: Math.abs(desvioItem)
+          itemName: name, realizado: item.realizado, budget: item.orcado,
+          desvio: desvioNominal, pctVar: variancePct, isSaving: desvioNominal <= 0,
+          driverConta: driverContaName, driverImpact: item.contas[driverContaName] ? (item.contas[driverContaName].realizado - item.contas[driverContaName].orcado) : 0,
+          score: Math.abs(desvioNominal)
         };
 
         driverTable.push(featureRow);
-
-        if (Math.abs(desvioItem) > 1000) {
-          outlierTable.push(featureRow);
-        }
+        if (Math.abs(desvioNominal) > 1000) { outlierTable.push(featureRow); }
       });
 
       rankingTable.push(...outlierTable);
@@ -352,9 +319,6 @@
     }
   }
 
-  /* ==========================================================================
-     UI LAYER COMPONENT (SAC CUSTOM WIDGET CONTROLLER)
-     ========================================================================== */
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
@@ -369,9 +333,7 @@
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
       this._ytdSeriesMock = [{ value: 0, type: "historical" }, { value: 0, type: "actual" }, { value: 0, type: "budget" }];
       
-      // Flags de controle do padrão reativo requestUpdate Pattern
       this._updateQueued = false;
-
       this._analyticsEngine = new EvoNarrativeEngine();
 
       this._tempoDimId = null;
@@ -449,20 +411,13 @@
       clearTimeout(this._resizeTimeout);
     }
 
-    /* ==========================================================================
-       IMPLEMENTAÇÃO DO REQUESTUPDATE PATTERN (BATCHED ANIMATION LOOPS)
-       ========================================================================== */
     requestUpdate() {
       if (this._updateQueued) return;
       this._updateQueued = true;
       requestAnimationFrame(() => {
-        this._performUpdate();
+        this.renderChart();
         this._updateQueued = false;
       });
-    }
-
-    _performUpdate() {
-      this.renderChart();
     }
 
     _initStaticHighlightsDOM() {
@@ -508,12 +463,6 @@
       if (typeof val === 'number') return val;
       if (!val || val === "-") return 0;
       return parseFloat(String(val).replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
-    }
-
-    _clearSvgOverlay(svg) {
-      while (svg.lastElementChild) {
-        svg.removeChild(svg.lastElementChild);
-      }
     }
 
     renderChart() {
@@ -696,7 +645,7 @@
               this._selectedCutoffId = d.id;
               this._isDropdownOpen = false; 
               this._toggleDropdownDOM();
-              this.requestUpdate(); // Substituído renderChart por requestUpdate
+              this.requestUpdate();
             });
 
             yearsMap[d.yearValue].appendChild(monthItem);
@@ -742,43 +691,41 @@
         this._reconcileBarsAndLabels(visibleSeriesData, maxVal);
         this._renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, calculatedBudget);
 
-        requestAnimationFrame(() => {
-          this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
-          this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
-        });
-
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
       }
     }
 
+    /* ==========================================================================
+       OTIMIZAÇÃO E SEGREGACÃO: RECONCILIAÇÃO E REUTILIZAÇÃO DO DOM (BARS)
+       ========================================================================== */
     _reconcileBarsAndLabels(visibleSeriesData, maxVal) {
       const existingWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
       const existingLabels = this._axisX.querySelectorAll(".axis-label");
       const targetLength = visibleSeriesData.length;
 
       if (existingWrappers.length < targetLength) {
+        const fragBars = document.createDocumentFragment();
         for (let i = existingWrappers.length; i < targetLength; i++) {
           const wrapper = document.createElement("div"); wrapper.className = "bar-wrapper";
           const bar = document.createElement("div"); bar.className = "bar-element";
           const label = document.createElement("span"); label.className = "kpi-label";
-          bar.appendChild(label); wrapper.appendChild(bar); this._chartArea.appendChild(wrapper);
+          bar.appendChild(label); wrapper.appendChild(bar); fragBars.appendChild(wrapper);
         }
+        this._chartArea.appendChild(fragBars);
       } else if (existingWrappers.length > targetLength) {
-        for (let i = existingWrappers.length - 1; i >= targetLength; i--) {
-          existingWrappers[i].remove();
-        }
+        for (let i = existingWrappers.length - 1; i >= targetLength; i--) { existingWrappers[i].remove(); }
       }
 
       if (existingLabels.length < targetLength) {
+        const fragLabels = document.createDocumentFragment();
         for (let i = existingLabels.length; i < targetLength; i++) {
           const axisLabel = document.createElement("div"); axisLabel.className = "axis-label";
-          this._axisX.appendChild(axisLabel);
+          fragLabels.appendChild(axisLabel);
         }
+        this._axisX.appendChild(fragLabels);
       } else if (existingLabels.length > targetLength) {
-        for (let i = existingLabels.length - 1; i >= targetLength; i--) {
-          existingLabels[i].remove();
-        }
+        for (let i = existingLabels.length - 1; i >= targetLength; i--) { existingLabels[i].remove(); }
       }
 
       const updatedWrappers = this._chartArea.querySelectorAll(".bar-wrapper");
@@ -797,12 +744,23 @@
       });
     }
 
+    /* ==========================================================================
+       VIRTUALIZAÇÃO E PERFORMANCE: BATCHED READS E POOL REUSE (SVG OVERLAY)
+       ========================================================================== */
     _drawUnifiedFlatConnections(svg, container, barSelector, dataArray, actualIndex, mode) {
       if (!document.contains(this) || !this._shadowRoot || actualIndex === -1) return;
-      this._clearSvgOverlay(svg);
       
-      const containerHeight = container.offsetHeight; if (containerHeight === 0) return;
-      const barElements = container.querySelectorAll(barSelector); if (!barElements || barElements.length === 0) return;
+      // FASE 1: LEITURAS EM LOTE UPFRONT (Elimina Reflows Síncronos)
+      const containerHeight = container.offsetHeight;
+      if (containerHeight === 0) return;
+      
+      const barElements = container.querySelectorAll(barSelector);
+      if (!barElements || barElements.length === 0) return;
+      
+      const barCenters = Array.from(barElements).map(bar => {
+        if (!bar) return 0;
+        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
+      });
       
       const pairs = [];
       if (mode === "monthly") {
@@ -812,69 +770,79 @@
         pairs.push({ from: 0, to: 1 }); pairs.push({ from: 1, to: 2 });
       }
 
-      const getCenterX = (idx) => {
-        const bar = barElements[idx]; if (!bar) return 0;
-        return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
-      };
-
       const ceilingY = -16;
-      const floorY = containerHeight; 
-      const fragment = document.createDocumentFragment();
+      const floorY = containerHeight;
 
-      pairs.forEach((pair) => {
-        const xFrom = getCenterX(pair.from); const xTo = getCenterX(pair.to);
-        if (xFrom === 0 || xTo === 0) return;
+      // FASE 2: ESCRITAS E REUTILIZAÇÃO DO POOL DO DOM
+      let existingGroups = svg.querySelectorAll(".connector-group");
+
+      while (existingGroups.length < pairs.length) {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "connector-group");
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none");
+        
+        const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+        fo.setAttribute("width", "70"); fo.setAttribute("height", "22");
+        
+        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
+        const span = document.createElement("span"); span.className = "variance-tag";
+        
+        div.appendChild(span); fo.appendChild(div); g.appendChild(path); g.appendChild(fo); svg.appendChild(g);
+        existingGroups = svg.querySelectorAll(".connector-group");
+      }
+
+      for (let i = pairs.length; i < existingGroups.length; i++) {
+        existingGroups[i].style.display = "none";
+      }
+
+      pairs.forEach((pair, idx) => {
+        const g = existingGroups[idx];
+        g.style.display = "block";
+        
+        const xFrom = barCenters[pair.from];
+        const xTo = barCenters[pair.to];
         
         const itemFrom = dataArray[pair.from];
         const itemTo = dataArray[pair.to];
-        const val1 = itemFrom.value; 
-        const val2 = itemTo.value;
         
         let isCostSaving = false;
         let variancePercent = 0;
         let directionalArrow = "";
 
         if (itemTo.type === "budget") {
-          const diff = val1 - val2; 
+          const diff = itemFrom.value - itemTo.value;
           isCostSaving = diff <= 0;
-          variancePercent = val2 !== 0 ? (diff / val2) * 100 : 0;
+          variancePercent = itemTo.value !== 0 ? (diff / itemTo.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         } else {
-          const diff = val2 - val1; 
+          const diff = itemTo.value - itemFrom.value;
           isCostSaving = diff <= 0;
-          variancePercent = val1 !== 0 ? (diff / val1) * 100 : 0;
+          variancePercent = itemFrom.value !== 0 ? (diff / itemFrom.value) * 100 : 0;
           directionalArrow = isCostSaving ? "▼ " : "▲ ";
         }
 
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
-        path.setAttribute("stroke", "#cbd5e0"); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); 
-        fragment.appendChild(path);
         
+        g.querySelector("path").setAttribute("d", `M ${xFrom} ${floorY} L ${xFrom} ${ceilingY} L ${xTo} ${ceilingY} L ${xTo} ${floorY}`);
+        
+        const fo = g.querySelector("foreignObject");
         const midX = xFrom + (xTo - xFrom) / 2;
-        const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (ceilingY - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
+        fo.setAttribute("x", (midX - 35).toString());
+        fo.setAttribute("y", (ceilingY - 11).toString());
         
-        const div = document.createElement("div"); div.style.cssText = "display:flex; justify-content:center; align-items:center; width:100%; height:100%;";
-        const span = document.createElement("span"); span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
+        const span = g.querySelector(".variance-tag");
+        span.className = isCostSaving ? "variance-tag saving" : "variance-tag increase";
         span.textContent = varianceText;
-        
-        div.appendChild(span); foreignObj.appendChild(div); fragment.appendChild(foreignObj);
       });
-      svg.appendChild(fragment);
     }
 
-    /* ==========================================================================
-       ETAPA DE RENDERING (UI LAYER) - CONSUMO E POPULAÇÃO LIMPA DO DOM
-       ========================================================================== */
     _renderDoubleFinancePanel(visibleSeriesData, fullSeriesData, actualIndex, budgetVal) {
       const currentBarNode = fullSeriesData[actualIndex]; const actualVal = currentBarNode.value; 
       const monthLabel = currentBarNode.label.split(' ')[0];
       const currentYear = currentBarNode.yearValue; const previousYear = currentYear - 1;
 
-      // Invocação Headless limpa da engine analítica
       const analysis = this._analyticsEngine.analyze(
         this._currentData.data, currentBarNode, currentYear, previousYear,
         this._tempoDimId, this._versaoDimId, this._itemFinanceiroDimId, this._contaContabilDimId, this._measId, fullSeriesData
@@ -934,7 +902,7 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = mFeatures.isSaving ? "economia de custos" : "estouro orçamentário";
-      const semanticColorMonth = mFeatures.isSaving ? "#2E7D32" : "#D32F2F";
+      const semanticColorMonth = mFeatures.isSaving ? #2E7D32 : #D32F2F;
       const semanticColorCons = mFeatures.consumption > 100 ? "#D32F2F" : (mFeatures.consumption > 90 ? "#EF6C00" : "#2E7D32");
 
       const liMonth = document.createElement("li");
