@@ -147,14 +147,13 @@
       
       .chart-container-block {
         position: relative;
-        height: 175px; /* Elevado o teto aéreo geral do gráfico */
+        height: 175px; 
         padding-top: 36px; 
         margin-bottom: 0px; 
         flex-shrink: 0;
         box-sizing: border-box;
       }
 
-      /* EQUALIZAÇÃO GEOMÉTRICA: Espaçamento expandido para 20px (Fim do esmagamento) */
       .chart-area {
         width: 100%; height: 100%; display: flex; position: relative;
         align-items: flex-end; justify-content: center; gap: 20px; 
@@ -162,10 +161,10 @@
       
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
       
+      /* ALINHAMENTO DA LARGURA DA BARRA DO BUDGET IGUALADA ÀS DEMAIS */
       .bar-wrapper {
         display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 1;
       }
-      .bar-wrapper:last-child { min-width: 85px; }
       
       .bar-element {
         width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; margin-bottom: 0px; bottom: 0px;
@@ -189,10 +188,8 @@
       
       .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; margin-bottom: 14px; border-top: 1px solid #cbd5e0; padding-top: 6px; }
       
-      /* Sincronização do gap do eixo X com as barras */
       .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
-      .axis-label:last-child { min-width: 85px; }
       .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
       
       .variance-tag {
@@ -212,12 +209,8 @@
       .kpi-table { width: 100%; border-collapse: collapse; font-size: calc(var(--font-size-labels) - 0.5px); text-align: left; }
       .kpi-table td { padding: 7px 8px; border-bottom: 1px solid #edf2f7; color: #2d3748; font-weight: 500; }
       
-      /* GRID DE STORYTELLING: Recuo sutil e destaque de fundo para as linhas de conclusão analítica C-Level */
       .kpi-table tr.highlight-conclusion-row td {
-        background-color: #f8fafc;
-        border-top: 1px solid #e2e8f0;
-        border-bottom: 1px solid #e2e8f0;
-        font-weight: 700;
+        background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; font-weight: 700;
       }
       .kpi-table tr.highlight-conclusion-row .row-title { color: #1a202c; }
 
@@ -236,6 +229,41 @@
       .status-badge-finance.success { background-color: #e6f4ea; color: #137333; }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; }
       .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; }
+
+      /* ESTRUTURA DO MINI CHART DO YTD ACUMULADO (LADO DIREITO) */
+      .ytd-embedded-chart {
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-start;
+        gap: 8px;
+        height: 48px;
+        padding-top: 6px;
+        box-sizing: border-box;
+      }
+      .ytd-sub-bar {
+        width: 24px;
+        position: relative;
+        border-radius: 2px 2px 0 0;
+        transition: height 0.3s ease;
+      }
+      .ytd-sub-bar.prev { background-color: var(--color-historical); }
+      .ytd-sub-bar.current { background-color: var(--color-actual); }
+      .ytd-sub-bar.budget {
+        border: 1px dashed var(--color-budget);
+        border-bottom: none;
+        background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
+        background-size: 4px 4px;
+      }
+      .ytd-bar-label {
+        font-size: 8px;
+        font-weight: 700;
+        color: #718096;
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+      }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -320,8 +348,14 @@
                 <td class="num-cell bold-val" id="ytd-prev-abs-row">-</td>
                 <td class="num-cell bold-val"><span class="status-badge-finance" id="ytd-prev-pct-lbl">-</span></td>
               </tr>
-              <tr style="visibility: hidden; pointer-events: none;">
-                <td>Spacer Row</td><td class="num-cell">-</td><td>-</td>
+              <tr>
+                <td colspan="3" style="padding: 4px 8px;">
+                  <div class="ytd-embedded-chart">
+                    <div class="ytd-sub-bar prev" id="mini-bar-prev"><span class="ytd-bar-label" id="mini-lbl-prev">-</span></div>
+                    <div class="ytd-sub-bar current" id="mini-bar-act"><span class="ytd-bar-label" id="mini-lbl-act">-</span></div>
+                    <div class="ytd-sub-bar budget" id="mini-bar-bud"><span class="ytd-bar-label" id="mini-lbl-bud">-</span></div>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -375,6 +409,14 @@
         this._ytdPrevLbl = this._shadowRoot.getElementById("ytd-prev-lbl");
         this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
         this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
+
+        // Ponteiros para as microbarras do gráfico YTD embutido
+        this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
+        this._miniBarAct = this._shadowRoot.getElementById("mini-bar-act");
+        this._miniBarBud = this._shadowRoot.getElementById("mini-bar-bud");
+        this._miniLblPrev = this._shadowRoot.getElementById("mini-lbl-prev");
+        this._miniLblAct = this._shadowRoot.getElementById("mini-lbl-act");
+        this._miniLblBud = this._shadowRoot.getElementById("mini-lbl-bud");
 
         this._treeDropdownTrigger.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -673,7 +715,6 @@
       }
     }
 
-    // REMOÇÃO COMPLETA DO TRACEJADO PONTILHADO E PADRONIZAÇÃO EXECUTIVA DA LINHA DO TETO
     _drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex) {
       if (!document.contains(this) || !this._shadowRoot || visibleActualIndex === -1) return;
       const svg = this._svgOverlay; const containerHeight = this._chartArea.offsetHeight; if (containerHeight === 0) return;
@@ -692,9 +733,7 @@
       };
 
       let maxBarHeight = 0; barElements.forEach(bar => { if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight; });
-      
-      // ELEVAÇÃO DA ALTURA DA LINHA (Recuo estratégico síncrono para o teto global)
-      const globalCeilingY = containerHeight - maxBarHeight - 22;
+      const globalCeilingY = containerHeight - maxBarHeight - 16;
       
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from); const coordTo = getBarCenterAndTop(pair.to);
@@ -707,7 +746,6 @@
         if (isCostIncrease && variancePercent > 0) { variancePercent = -variancePercent; }
         else if (!isCostIncrease && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
         
-        // CONTEXTO DE NEGÓCIO: Injeção de setas analíticas corporativas direcionais (Anexo 2)
         const directionalArrow = variancePercent >= 0 ? "▲ " : "▼ ";
         const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
         const markerId = "url(#arrow-neutral)";
@@ -719,11 +757,9 @@
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${lineCeiling} L ${coordTo.x} ${lineCeiling} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); path.setAttribute("marker-end", markerId);
         
-        // PADRONIZAÇÃO EXECUTIVA DA TEXTURA: Sem pontilhados na linha, tudo contínuo e reto
         svg.appendChild(path);
         
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
-        
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
         foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (lineCeiling - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
         
@@ -763,6 +799,12 @@
       const diffMonthYoY = actualVal - prevYearMonthVal;
       let pctMonthYoY = prevYearMonthVal !== 0 ? (diffMonthYoY / prevYearMonthVal) * 100 : 0;
       const isMonthYoYRetraction = actualVal < prevYearMonthVal;
+      
+      if (isMonthYoYRetraction && pctMonthYoY > 0) {
+        pctMonthYoY = -pctMonthYoY;
+      } else if (!isMonthYoYRetraction && pctMonthYoY < 0) {
+        pctMonthYoY = Math.abs(pctMonthYoY);
+      }
 
       this._lblPrevMonthRow.textContent = `Mesmo Mês Ano Ant. (${previousYear})`;
       this._valPrevMonthRow.textContent = formatM(prevYearMonthVal);
@@ -803,6 +845,17 @@
       this._ytdPrevAbsRow.textContent = formatM(totalRealizadoYTDAntigo);
       this._ytdPrevPctLbl.textContent = formatPercent(pctYoY);
       this._ytdPrevPctLbl.className = "status-badge-finance " + (isYoYRetraction ? "success" : "warning");
+
+      // REQUISITO CUMPRIDO: Atualização da altura e dos rótulos do mini chart YTD (Lado Direito - image_6caaf6.png)
+      const maxSubVal = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) || 1;
+      
+      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxSubVal) * 100}%`;
+      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxSubVal) * 100}%`;
+      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxSubVal) * 100}%`;
+
+      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(1) + "M";
+      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(1) + "M";
+      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(1) + "M";
 
       this._insightGrid.style.display = "flex";
     }
