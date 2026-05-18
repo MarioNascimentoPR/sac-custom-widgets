@@ -261,12 +261,14 @@
       this._hlMonthLi = document.createElement("li");
       this._hlConsLi = document.createElement("li");
       this._hlYtdLi = document.createElement("li");
-      this._hlOffenderLi = document.createElement("li"); 
+      this._hlExtraLi1 = document.createElement("li"); // Linha atômica para Ofensores (Laranja/Vermelho)
+      this._hlExtraLi2 = document.createElement("li"); // Linha atômica para Economia/Alívio (Verde)
       
       ul.appendChild(this._hlMonthLi);
       ul.appendChild(this._hlConsLi);
       ul.appendChild(this._hlYtdLi);
-      ul.appendChild(this._hlOffenderLi);
+      ul.appendChild(this._hlExtraLi1);
+      ul.appendChild(this._hlExtraLi2);
       
       this._highlightContentText.textContent = "";
       this._highlightContentText.appendChild(ul);
@@ -344,30 +346,33 @@
         if (dimKeys.length < 1 || measureKeys.length < 1) return;
 
         this._measId = measureKeys[0];
-        let tempoDimId = null;
-        let versaoDimId = null;
+        
+        // CORREÇÃO GLOBAL: Passagem estrita das dimensões mapeadas para o escopo estável do objeto da classe
+        this._tempoDimId = null;
+        this._versaoDimId = null;
 
         dimKeys.forEach(key => {
           const desc = String(dimensions[key].description || "").toUpperCase();
           const id = String(dimensions[key].id || "").toUpperCase();
           
           if (desc.includes("VERSÃO") || desc.includes("VERSION") || desc.includes("CENÁRIO") || id.includes("VERSION") || id.includes("CATEGORY")) {
-            versaoDimId = key;
+            this._versaoDimId = key;
           } else if (desc.includes("TEMPO") || desc.includes("MÊS") || desc.includes("MES") || desc.includes("ANO") || desc.includes("DATE") || id.includes("TIME") || id.includes("CALENDAR")) {
-            tempoDimId = key;
+            this._tempoDimId = key;
           }
         });
 
-        if (!tempoDimId) tempoDimId = dimKeys[0];
-        if (!versaoDimId) versaoDimId = dimKeys[1] || null;
+        if (!this._tempoDimId) this._tempoDimId = dimKeys[0];
+        if (!this._versaoDimId) this._versaoDimId = dimKeys[1] || null;
 
-        this._extraDimIds = dimKeys.filter(key => key !== tempoDimId && key !== versaoDimId);
+        // Isola dinamicamente as novas colunas injetadas (Item Financeiro e Conta Contábil)
+        this._extraDimIds = dimKeys.filter(key => key !== this._tempoDimId && key !== this._versaoDimId);
 
         const timelineMap = {};
         const currentYearRuntime = new Date().getFullYear();
 
         financialData.data.forEach(row => {
-          const tempoObj = row[tempoDimId]; if (!tempoObj) return;
+          const tempoObj = row[this._tempoDimId]; if (!tempoObj) return;
           const tId = String(tempoObj.id); 
           if (tId.toLowerCase().includes("(all)")) return;
           
@@ -381,8 +386,8 @@
           if (row.versionContext && row.versionContext.isActualMonth) { timelineMap[tId].isCurrentMonth = true; }
 
           const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
-          if (versaoDimId) {
-            const vObj = row[versaoDimId];
+          if (this._versaoDimId) {
+            const vObj = row[this._versaoDimId];
             if (vObj) {
               const vId = String(vObj.id).toUpperCase(); 
               const vLabel = String(vObj.label || vObj.description || "").toUpperCase();
@@ -427,9 +432,7 @@
           return a.monthNum - b.monthNum;
         });
 
-        // ==========================================================================
-        // ALGORITMO DE INICIALIZAÇÃO CRONOLÓGICA INTELIGENTE (NOW - 1 MÊS = ABRIL 2026)
-        // ==========================================================================
+        // Inicialização cronológica baseada na data real do sistema (Now - 1 mês = Abril 2026)
         const nowRuntime = new Date();
         let targetMonthNum = nowRuntime.getMonth(); 
         let targetYearNum = nowRuntime.getFullYear();
@@ -724,7 +727,7 @@
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
       // ==========================================================================
-      // ENGINE DE HIGHLIGHTS MULTIDIMENSIONAL COMPLETA (MÊS SELECIONADO)
+      // ENGINE DE NARRATIVAS MULTIDIMENSIONAL COM CORREÇÃO DE ESCOPO
       // ==========================================================================
       const breakdownMap = {};
       const financialData = this._currentData;
@@ -759,11 +762,11 @@
         }
       });
 
-      // ALGORITMO BIDIRECIONAL DE EXTRAÇÃO DE INSIGHTS (OPEX)
+      // Extração bidirecional do maior Ofensor e do maior Ponto de Eficiência
       let topOffenderName = "";
-      let topOffenderValue = 0; // Armazena o maior desvio positivo (estouro)
+      let topOffenderValue = 0;
       let topSaverName = "";
-      let topSaverValue = 0;    // Armazena a maior economia absoluta (saving)
+      let topSaverValue = 0;
 
       Object.keys(breakdownMap).forEach(key => {
         const d = breakdownMap[key];
@@ -781,7 +784,7 @@
         }
       });
 
-      // REIDRATAÇÃO DOS ELEMENTOS DO DOM (IMUNIZAÇÃO ABSOLUTA ANTI-XSS)
+      // População atômica e segura das linhas nativas (Garantia de imunização Anti-XSS)
       this._hlMonthLi.textContent = "";
       const s1 = document.createElement("strong"); s1.textContent = `Mês Corrente (${monthLabel}): `;
       const statusSpan1 = document.createElement("span"); 
@@ -820,7 +823,7 @@
       this._hlYtdLi.appendChild(valueSpan3);
       this._hlYtdLi.appendChild(document.createTextNode(" do ano."));
 
-      // GATILHO DA INTERFACE ENRIQUECIDA PELAS DIMENSÕES DE ITEM FINANCEIRO E CONTA CONTÁBIL
+      // Injeção dinâmica da análise enriquecida pelas novas dimensões no bloco final de Highlights
       this._hlOffenderLi.textContent = "";
       if (topOffenderValue > 0) {
         this._hlOffenderLi.style.display = "block";
@@ -830,9 +833,9 @@
         offenderSpan.style.color = "#D32F2F"; 
         offenderSpan.style.fontWeight = "700";
         this._hlOffenderLi.appendChild(s4);
-        this._hlOffenderLi.appendChild(document.createTextNode("Apesar do resultado global, identificou-se desvio acima da meta na linha de "));
+        this._hlOffenderLi.appendChild(document.createTextNode("Abertura dimensional aponta pressão acima da meta na linha de "));
         this._hlOffenderLi.appendChild(offenderSpan);
-        this._hlOffenderLi.appendChild(document.createTextNode(`, com estouro de R$ ${formatM(topOffenderValue)}.`));
+        this._hlOffenderLi.appendChild(document.createTextNode(`, com desvio adverso de R$ ${formatM(topOffenderValue)}.`));
       } else if (topSaverValue > 0) {
         this._hlOffenderLi.style.display = "block";
         const s4 = document.createElement("strong"); s4.textContent = "Detalhamento de Eficiência: ";
