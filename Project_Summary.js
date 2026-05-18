@@ -114,343 +114,128 @@
         user-select: none;
       }
 
-      .tree-year-node:hover {
-        background-color: #edf2f7;
-      }
-
+      .tree-year-node:hover { background-color: #edf2f7; }
       .tree-year-node::before {
-        content: '▶';
-        font-size: 8px;
-        color: #718096;
-        transition: transform 0.2s ease;
-        display: inline-block;
+        content: '▶'; font-size: 8px; color: #718096; transition: transform 0.2s ease; display: inline-block;
       }
-
-      .tree-year-node.expanded::before {
-        transform: rotate(90deg);
-      }
+      .tree-year-node.expanded::before { transform: rotate(90deg); }
 
       .tree-months-container {
-        display: none;
-        flex-direction: column;
-        padding-left: 14px;
-        background: #f7fafc;
+        display: none; flex-direction: column; padding-left: 14px; background: #f7fafc;
       }
+      .tree-months-container.show { display: flex; }
 
-      .tree-months-container.show {
-        display: flex;
-      }
+      .tree-month-item { font-size: 11px; font-weight: 600; color: #4a5568; padding: 5px 12px; cursor: pointer; }
+      .tree-month-item:hover { background-color: #e2e8f0; color: var(--color-actual); }
+      .tree-month-item.selected { background-color: #edf2f7; color: var(--color-actual); font-weight: 700; }
 
-      .tree-month-item {
-        font-size: 11px;
-        font-weight: 600;
-        color: #4a5568;
-        padding: 5px 12px;
-        cursor: pointer;
-      }
-
-      .tree-month-item:hover {
-        background-color: #e2e8f0;
-        color: var(--color-actual);
-      }
-
-      .tree-month-item.selected {
-        background-color: #edf2f7;
-        color: var(--color-actual);
-        font-weight: 700;
-      }
-
-      .scale-tag {
-        font-size: 10px;
-        font-weight: 600;
-        color: #7f8c8d;
-        margin-top: 2px;
-      }
+      .scale-tag { font-size: 10px; font-weight: 600; color: #7f8c8d; margin-top: 2px; }
 
       .widget-legend {
-        display: flex;
-        gap: 14px;
-        margin-bottom: 12px;
-        font-size: 10.5px;
-        font-weight: 600;
-        color: #4a5568;
-        flex-shrink: 0;
+        display: flex; gap: 14px; margin-bottom: 12px; font-size: 10.5px; font-weight: 600; color: #4a5568; flex-shrink: 0;
       }
-
-      .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-
-      .legend-color {
-        width: 10px;
-        height: 10px;
-        border-radius: 2px;
-      }
-
+      .legend-item { display: flex; align-items: center; gap: 5px; }
+      .legend-color { width: 10px; height: 10px; border-radius: 2px; }
       .legend-color.hist { background-color: var(--color-historical); }
       .legend-color.act { background-color: var(--color-actual); }
       
       .legend-color.bud { 
-        background-color: transparent; 
-        border: 1px solid var(--color-budget);
-        box-sizing: border-box;
+        background-color: transparent; border: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
         background-size: 4px 4px;
       }
       
       .chart-container-block {
         position: relative;
-        height: 165px; 
-        padding-top: 32px; 
+        height: 175px; /* Elevado o teto aéreo geral do gráfico */
+        padding-top: 36px; 
         margin-bottom: 0px; 
         flex-shrink: 0;
         box-sizing: border-box;
       }
 
-      /* COMPACTAÇÃO DE COLUNAS: Mudança para justify-content center e adição de gap fixo */
+      /* EQUALIZAÇÃO GEOMÉTRICA: Espaçamento expandido para 20px (Fim do esmagamento) */
       .chart-area {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        position: relative;
-        align-items: flex-end;
-        justify-content: center;
-        gap: 12px; 
+        width: 100%; height: 100%; display: flex; position: relative;
+        align-items: flex-end; justify-content: center; gap: 20px; 
       }
       
-      .svg-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 2;
-      }
+      .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
       
-      /* Reduzido flex de crescimento para respeitar a largura máxima da coluna */
       .bar-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 46px; 
-        height: 100%;
-        justify-content: flex-end;
-        position: relative;
-        z-index: 1;
+        display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 1;
       }
-      
-      .bar-wrapper:last-child {
-        min-width: 85px; 
-      }
+      .bar-wrapper:last-child { min-width: 85px; }
       
       .bar-element {
-        width: 100%;
-        max-width: 46px;
-        border-radius: 3px 3px 0 0;
-        position: relative;
-        display: flex;
-        justify-content: center;
-        margin-bottom: 0px; 
-        bottom: 0px;
+        width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; margin-bottom: 0px; bottom: 0px;
       }
       
       .bar-element.historical { background-color: var(--color-historical); }
       .bar-element.actual {
-        background-color: var(--color-actual);
-        box-shadow: 0 0 10px rgba(31, 119, 180, 0.35);
-        border: 1px solid #15517b;
-        box-sizing: border-box;
+        background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box;
       }
       
       .bar-element.budget {
-        background-color: transparent;
-        border: 1px solid var(--color-budget);
-        border-bottom: 1px solid var(--color-budget); 
-        box-sizing: border-box;
+        background-color: transparent; border: 1px solid var(--color-budget); border-bottom: 1px solid var(--color-budget); box-sizing: border-box;
         background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
         background-size: 6px 6px;
       }
       
       .kpi-label {
-        position: absolute;
-        top: -20px;
-        font-size: calc(var(--font-size-labels) - 0.5px);
-        font-weight: 700;
-        color: #2d3748;
-        white-space: nowrap;
+        position: absolute; top: -20px; font-size: calc(var(--font-size-labels) - 0.5px); font-weight: 700; color: #2d3748; white-space: nowrap;
       }
-
-      .bar-element.actual .kpi-label {
-        color: #1a202c;
-        background: #edf2f7;
-        padding: 1px 4px;
-        border-radius: 4px;
-        top: -22px;
-      }
+      .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -22px; }
       
-      .axis-x-block {
-        display: flex;
-        flex-direction: column;
-        flex-shrink: 0;
-        margin-bottom: 14px;
-        border-top: 1px solid #cbd5e0;
-        padding-top: 6px;
-      }
-
-      /* Alinhamento do eixo sincronizado com o gap do gráfico superior */
-      .axis-x {
-        display: flex;
-        justify-content: center;
-        gap: 12px; 
-        height: 18px;
-      }
+      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; margin-bottom: 14px; border-top: 1px solid #cbd5e0; padding-top: 6px; }
       
-      .axis-label {
-        width: 46px; 
-        text-align: center;
-        font-size: calc(var(--font-size-labels) - 1px);
-        font-weight: 600;
-        color: #718096;
-        white-space: nowrap;
-      }
-
-      .axis-label:last-child {
-        min-width: 85px;
-      }
-
-      .axis-label.actual-month {
-        color: var(--color-actual);
-        font-weight: 700;
-      }
+      /* Sincronização do gap do eixo X com as barras */
+      .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
+      .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
+      .axis-label:last-child { min-width: 85px; }
+      .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
       
       .variance-tag {
-        font-size: calc(var(--font-size-labels) - 2px);
-        font-weight: 700;
-        padding: 1px 5px;
-        border-radius: 3px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        white-space: nowrap;
-        border: 1px solid transparent;
-        display: inline-block;
+        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); white-space: nowrap; border: 1px solid transparent; display: inline-block;
       }
+      .variance-tag.saving { background-color: #e6f4ea; color: #137333; border-color: #ceead6; }
+      .variance-tag.increase { background-color: #fce8e6; color: #c5221f; border-color: #fad2cf; }
 
-      .variance-tag.saving {
-        background-color: #e6f4ea;
-        color: #137333;
-        border-color: #ceead6;
-      }
+      .insight-grid { display: flex; gap: 24px; margin-top: auto; padding-top: 12px; border-top: 1px solid #f0f0f0; flex-shrink: 0; width: 100%; }
+      @media (max-width: 768px) { .insight-grid { flex-direction: column; gap: 16px; } }
 
-      .variance-tag.increase {
-        background-color: #fce8e6;
-        color: #c5221f;
-        border-color: #fad2cf;
-      }
-
-      .insight-grid {
-        display: flex;
-        gap: 24px;
-        margin-top: auto;
-        padding-top: 12px;
-        border-top: 1px solid #f0f0f0;
-        flex-shrink: 0;
-        width: 100%;
-      }
-
-      @media (max-width: 768px) {
-        .insight-grid {
-          flex-direction: column;
-          gap: 16px;
-        }
-      }
-
-      .grid-column-finance {
-        flex: 1;
-        min-width: 0;
-      }
-
+      .grid-column-finance { flex: 1; min-width: 0; }
       .column-title-finance {
-        font-size: 11px;
+        font-size: 11px; font-weight: 700; color: #1a202c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #e2e8f0;
+      }
+
+      .kpi-table { width: 100%; border-collapse: collapse; font-size: calc(var(--font-size-labels) - 0.5px); text-align: left; }
+      .kpi-table td { padding: 7px 8px; border-bottom: 1px solid #edf2f7; color: #2d3748; font-weight: 500; }
+      
+      /* GRID DE STORYTELLING: Recuo sutil e destaque de fundo para as linhas de conclusão analítica C-Level */
+      .kpi-table tr.highlight-conclusion-row td {
+        background-color: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
         font-weight: 700;
-        color: #1a202c;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
-        border-bottom: 2px solid #e2e8f0;
       }
+      .kpi-table tr.highlight-conclusion-row .row-title { color: #1a202c; }
 
-      .kpi-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: calc(var(--font-size-labels) - 0.5px);
-        text-align: left;
-      }
-
-      .kpi-table td {
-        padding: 7px 0;
-        border-bottom: 1px solid #edf2f7;
-        color: #2d3748;
-        font-weight: 500;
-      }
-
-      .kpi-table tr:last-child td {
-        border-bottom: none;
-      }
-
-      .kpi-table .row-title {
-        font-weight: 600;
-        color: #4a5568;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-
-      .kpi-table .row-title::before {
-        content: '';
-        width: 3.5px;
-        height: 11px;
-        background: #cbd5e0;
-        border-radius: 2px;
-        display: inline-block;
-      }
-
-      .kpi-table tr.highlighted-row .row-title::before {
-        background: var(--color-actual);
-      }
-
+      .kpi-table .row-title { font-weight: 600; color: #4a5568; display: flex; align-items: center; gap: 5px; }
+      .kpi-table .row-title::before { content: ''; width: 3.5px; height: 11px; background: #cbd5e0; border-radius: 2px; display: inline-block; }
+      .kpi-table tr.highlighted-row .row-title::before { background: var(--color-actual); }
       .kpi-table tr.comparison-row td { color: #2b6cb0; }
       .kpi-table tr.comparison-row .row-title::before { background: #2b6cb0; }
 
-      .kpi-table .num-cell {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .kpi-table .bold-val {
-        font-weight: 700;
-        color: #1a202c;
-      }
+      .kpi-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+      .kpi-table .bold-val { font-weight: 700; color: #1a202c; }
 
       .status-badge-finance {
-        font-size: 10px;
-        font-weight: 700;
-        padding: 1px 6px;
-        border-radius: 3px;
-        text-align: center;
-        display: inline-block;
+        font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-align: center; display: inline-block;
       }
       .status-badge-finance.success { background-color: #e6f4ea; color: #137333; }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; }
       .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; }
-      
-      .placeholder-text {
-        padding: 8px;
-        color: #718096;
-        font-size: 12px;
-      }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -502,12 +287,12 @@
                 <td class="num-cell" id="val-bud-row">-</td>
                 <td class="num-cell">—</td>
               </tr>
-              <tr>
+              <tr class="highlight-conclusion-row">
                 <td class="row-title">Desvio Geral Mês</td>
                 <td class="num-cell bold-val" id="val-diff-row">-</td>
                 <td class="num-cell bold-val" id="val-pct-row">-</td>
               </tr>
-              <tr class="comparison-row">
+              <tr class="highlight-conclusion-row comparison-row">
                 <td class="row-title" id="lbl-prev-month-row">Mesmo Mês Ano Ant.</td>
                 <td class="num-cell bold-val" id="val-prev-month-row">-</td>
                 <td class="num-cell bold-val" id="val-prev-month-pct-row">-</td>
@@ -530,10 +315,13 @@
                 <td class="num-cell" id="ytd-pct-row">-</td>
                 <td class="num-cell"><span class="status-badge-finance neutral" id="ytd-ceiling-lbl">-</span></td>
               </tr>
-              <tr class="comparison-row">
+              <tr class="highlight-conclusion-row comparison-row">
                 <td class="row-title" id="ytd-prev-lbl">Acumulado Ano Anterior</td>
                 <td class="num-cell bold-val" id="ytd-prev-abs-row">-</td>
                 <td class="num-cell bold-val"><span class="status-badge-finance" id="ytd-prev-pct-lbl">-</span></td>
+              </tr>
+              <tr style="visibility: hidden; pointer-events: none;">
+                <td>Spacer Row</td><td class="num-cell">-</td><td>-</td>
               </tr>
             </tbody>
           </table>
@@ -885,7 +673,7 @@
       }
     }
 
-    // UNIFICAÇÃO DA LINHA DO TETO DO SVG (Encontro alinhado perfeito das pontes)
+    // REMOÇÃO COMPLETA DO TRACEJADO PONTILHADO E PADRONIZAÇÃO EXECUTIVA DA LINHA DO TETO
     _drawUnifiedFlatConnections(barElements, visibleSeriesData, visibleActualIndex) {
       if (!document.contains(this) || !this._shadowRoot || visibleActualIndex === -1) return;
       const svg = this._svgOverlay; const containerHeight = this._chartArea.offsetHeight; if (containerHeight === 0) return;
@@ -894,8 +682,6 @@
       if (visibleActualIndex > 0) pairsToConnect.push({ from: visibleActualIndex - 1, to: visibleActualIndex, type: "monthly" });
       if (visibleActualIndex < barElements.length - 1) pairsToConnect.push({ from: visibleActualIndex, to: visibleActualIndex + 1, type: "budget" });
       
-      // SOLUÇÃO GEOMÉTRICA: Em uma esteira de 13 meses com gap centralizado, a barra homóloga fica SEMPRE no index zero (0)
-      // Conectamos a barra 0 à barra do mês ativo (índice 12)
       if (visibleSeriesData.length >= 14 && visibleActualIndex === 12) {
         pairsToConnect.push({ from: 0, to: 12, type: "yoy" });
       }
@@ -907,8 +693,8 @@
 
       let maxBarHeight = 0; barElements.forEach(bar => { if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight; });
       
-      // Baixamos levemente o teto global para comprimir o espaço aéreo e dar o encaixe milimétrico
-      const globalCeilingY = containerHeight - maxBarHeight - 16;
+      // ELEVAÇÃO DA ALTURA DA LINHA (Recuo estratégico síncrono para o teto global)
+      const globalCeilingY = containerHeight - maxBarHeight - 22;
       
       pairsToConnect.forEach((pair) => {
         const coordFrom = getBarCenterAndTop(pair.from); const coordTo = getBarCenterAndTop(pair.to);
@@ -921,10 +707,11 @@
         if (isCostIncrease && variancePercent > 0) { variancePercent = -variancePercent; }
         else if (!isCostIncrease && variancePercent < 0) { variancePercent = Math.abs(variancePercent); }
         
-        const varianceText = (variancePercent >= 0 ? "+" : "") + variancePercent.toFixed(2) + "%";
+        // CONTEXTO DE NEGÓCIO: Injeção de setas analíticas corporativas direcionais (Anexo 2)
+        const directionalArrow = variancePercent >= 0 ? "▲ " : "▼ ";
+        const varianceText = directionalArrow + Math.abs(variancePercent).toFixed(2) + "%";
         const markerId = "url(#arrow-neutral)";
         
-        // CORREÇÃO: Ambos usam a mesma linha de teto retilínea unificada para se encontrarem perfeitamente
         const lineCeiling = globalCeilingY;
         const lineStrokeColor = "#718096";
 
@@ -932,16 +719,12 @@
         path.setAttribute("d", `M ${coordFrom.x} ${coordFrom.y} L ${coordFrom.x} ${lineCeiling} L ${coordTo.x} ${lineCeiling} L ${coordTo.x} ${coordTo.y - 5}`);
         path.setAttribute("stroke", lineStrokeColor); path.setAttribute("stroke-width", "1.25"); path.setAttribute("fill", "none"); path.setAttribute("marker-end", markerId);
         
-        // O padrão YoY e Budget ganham traço tracejado discreto para estarem sintonizados ao manual
-        if (pair.type === "yoy" || pair.type === "budget") {
-          path.setAttribute("stroke-dasharray", "3,3"); 
-        }
+        // PADRONIZAÇÃO EXECUTIVA DA TEXTURA: Sem pontilhados na linha, tudo contínuo e reto
         svg.appendChild(path);
         
         const midX = coordFrom.x + (coordTo.x - coordFrom.x) / 2;
         
         const foreignObj = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-        // Centralização do card flutuante na junção superior das pontes
         foreignObj.setAttribute("x", (midX - 35).toString()); foreignObj.setAttribute("y", (lineCeiling - 11).toString()); foreignObj.setAttribute("width", "70"); foreignObj.setAttribute("height", "22");
         
         const div = document.createElement("div"); div.style.display = "flex"; div.style.justify = "center"; div.style.alignItems = "center"; div.style.width = "100%"; div.style.height = "100%";
@@ -963,15 +746,16 @@
       let diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
       
       const formatM = (v) => (v / 1000000).toFixed(2) + "M";
-      const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+      const formatPercent = (v) => (v >= 0 ? "▲ " : "▼ ") + Math.abs(v).toFixed(2) + "%";
 
       this._titleColCurrent.textContent = `Mês Atual (${monthLabel.toUpperCase()})`;
       this._lblActRow.textContent = `Realizado Comercial`; 
       this._valActRow.textContent = formatM(actualVal);
       this._valBudRow.textContent = formatM(budgetVal);
-      this._titleColCurrent.parentElement.querySelector("table tbody").rows[2].cells[1].textContent = formatM(diffNominal);
-      this._titleColCurrent.parentElement.querySelector("table tbody").rows[2].cells[2].textContent = formatPercent(diffPercent);
-      this._titleColCurrent.parentElement.querySelector("table tbody").rows[2].cells[2].style.color = (diffNominal < 0) ? "#137333" : "#c5221f";
+      
+      this._valDiffRow.textContent = (diffNominal >= 0 ? "+" : "") + formatM(diffNominal);
+      this._valPctRow.textContent = formatPercent(diffPercent);
+      this._valPctRow.className = "bold-val status-badge-finance " + (diffNominal > 0 ? "warning" : "success");
 
       const prevYearMonthNode = fullSeriesData.find(d => d.yearValue === previousYear && d.monthNum === currentBarNode.monthNum);
       const prevYearMonthVal = prevYearMonthNode ? prevYearMonthNode.value : 0;
@@ -979,18 +763,13 @@
       const diffMonthYoY = actualVal - prevYearMonthVal;
       let pctMonthYoY = prevYearMonthVal !== 0 ? (diffMonthYoY / prevYearMonthVal) * 100 : 0;
       const isMonthYoYRetraction = actualVal < prevYearMonthVal;
-      
-      if (isMonthYoYRetraction && pctMonthYoY > 0) {
-        pctMonthYoY = -pctMonthYoY;
-      } else if (!isMonthYoYRetraction && pctMonthYoY < 0) {
-        pctMonthYoY = Math.abs(pctMonthYoY);
-      }
 
       this._lblPrevMonthRow.textContent = `Mesmo Mês Ano Ant. (${previousYear})`;
       this._valPrevMonthRow.textContent = formatM(prevYearMonthVal);
-      this._valPrevMonthPctRow.textContent = formatPercent(pctMonthYoY) + " YoY";
-      this._valPrevMonthPctRow.style.color = isMonthYoYRetraction ? "#137333" : "#c5221f";
+      this._valPrevMonthPctRow.textContent = formatPercent(pctMonthYoY);
+      this._valPrevMonthPctRow.className = "bold-val status-badge-finance " + (isMonthYoYRetraction ? "success" : "warning");
 
+      // 2. Lógica Comparativa Cumulativa (YTD)
       let totalRealizadoYTDAtual = 0;
       let totalRealizadoYTDAntigo = 0;
       let totalBudgetYTDCompleto = 0;
@@ -1022,7 +801,7 @@
       
       this._ytdPrevLbl.textContent = `Acumulado Ano Ant. (${previousYear})`; 
       this._ytdPrevAbsRow.textContent = formatM(totalRealizadoYTDAntigo);
-      this._ytdPrevPctLbl.textContent = formatPercent(pctYoY) + " Desvio";
+      this._ytdPrevPctLbl.textContent = formatPercent(pctYoY);
       this._ytdPrevPctLbl.className = "status-badge-finance " + (isYoYRetraction ? "success" : "warning");
 
       this._insightGrid.style.display = "flex";
