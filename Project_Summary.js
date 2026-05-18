@@ -257,6 +257,14 @@
         border-left: 4px solid #cbd5e0; border-radius: 8px; padding: 14px 16px; color: #333333;
       }
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      .highlight-content-levels { display: flex; flex-direction: column; gap: 10px; }
+      .highlight-section { display: flex; flex-direction: column; gap: 6px; }
+      .highlight-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.6px; }
+      .highlight-section-title { white-space: nowrap; }
+      .highlight-detail-section { display: none; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+      .highlight-detail-section.show { display: flex; }
+      .highlight-toggle-btn { border: 1px solid #cbd5e0; background: #ffffff; color: #2d3748; border-radius: 4px; padding: 3px 8px; font-size: 10px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+      .highlight-toggle-btn:hover { background: #edf2f7; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
     </style>
     <div id="widget-wrapper">
@@ -687,6 +695,7 @@
       this._dataSignature = "";
       this._lastHighlightKey = "";
       this._lastPeriodSummaryKey = "";
+      this._isHighlightDetailOpen = false;
 
       this._tempoDimId = null;
       this._versaoDimId = null;
@@ -845,10 +854,61 @@
     }
 
     _initStaticHighlightsDOM() {
-      this._hlUl = document.createElement("ul");
-      this._hlUl.className = "ul-highlight";
+      const levelsWrapper = document.createElement("div");
+      levelsWrapper.className = "highlight-content-levels";
+
+      const summarySection = document.createElement("div");
+      summarySection.className = "highlight-section highlight-summary-section";
+      const summaryHeader = document.createElement("div");
+      summaryHeader.className = "highlight-section-header";
+      const summaryTitle = document.createElement("span");
+      summaryTitle.className = "highlight-section-title";
+      summaryTitle.textContent = "Resumo executivo";
+      summaryHeader.appendChild(summaryTitle);
+      this._hlSummaryUl = document.createElement("ul");
+      this._hlSummaryUl.className = "ul-highlight";
+      summarySection.appendChild(summaryHeader);
+      summarySection.appendChild(this._hlSummaryUl);
+
+      const detailSection = document.createElement("div");
+      detailSection.className = "highlight-section highlight-detail-section";
+      this._highlightDetailSection = detailSection;
+      const detailHeader = document.createElement("div");
+      detailHeader.className = "highlight-section-header";
+      const detailTitle = document.createElement("span");
+      detailTitle.className = "highlight-section-title";
+      detailTitle.textContent = "Detalhamento analítico";
+      detailHeader.appendChild(detailTitle);
+      this._hlDetailUl = document.createElement("ul");
+      this._hlDetailUl.className = "ul-highlight";
+      detailSection.appendChild(detailHeader);
+      detailSection.appendChild(this._hlDetailUl);
+
+      this._highlightToggleBtn = document.createElement("button");
+      this._highlightToggleBtn.type = "button";
+      this._highlightToggleBtn.className = "highlight-toggle-btn";
+      this._highlightToggleBtn.addEventListener("click", () => {
+        this._isHighlightDetailOpen = !this._isHighlightDetailOpen;
+        this._syncHighlightDetailVisibility();
+      });
+
+      summaryHeader.appendChild(this._highlightToggleBtn);
+      levelsWrapper.appendChild(summarySection);
+      levelsWrapper.appendChild(detailSection);
       this._highlightContentText.textContent = "";
-      this._highlightContentText.appendChild(this._hlUl);
+      this._highlightContentText.appendChild(levelsWrapper);
+      this._hlUl = this._hlSummaryUl;
+      this._syncHighlightDetailVisibility();
+    }
+
+    _syncHighlightDetailVisibility() {
+      if (this._highlightDetailSection) {
+        this._highlightDetailSection.classList.toggle("show", this._isHighlightDetailOpen);
+      }
+      if (this._highlightToggleBtn) {
+        this._highlightToggleBtn.textContent = this._isHighlightDetailOpen ? "Ocultar detalhamento" : "Ver detalhamento";
+        this._highlightToggleBtn.setAttribute("aria-expanded", this._isHighlightDetailOpen ? "true" : "false");
+      }
     }
 
     _toggleDropdownDOM() {
@@ -1508,7 +1568,7 @@
         totalBudgetYTDCompleto
       ].join("|");
 
-      if (this._lastHighlightKey === highlightKey && this._hlUl.childNodes.length > 0) {
+      if (this._lastHighlightKey === highlightKey && this._hlSummaryUl && this._hlSummaryUl.childNodes.length > 0) {
         if (ENABLE_TELEMETRY) {
           this._profiler.metrics.steps.highlights = 0;
         }
@@ -1517,7 +1577,19 @@
       }
 
       this._lastHighlightKey = highlightKey;
-      this._hlUl.textContent = "";
+      this._isHighlightDetailOpen = false;
+      this._syncHighlightDetailVisibility();
+      this._hlSummaryUl.textContent = "";
+      this._hlDetailUl.textContent = "";
+
+      const ytdStatusText = isYtdSaving ? "variação favorável" : "variação desfavorável";
+      const semanticColorYtd = isYtdSaving ? "#2E7D32" : "#D32F2F";
+      const liYtd = document.createElement("li");
+      const sYtd = document.createElement("strong"); sYtd.textContent = "Acumulado YTD: ";
+      const statusSpanYtd = document.createElement("span"); statusSpanYtd.textContent = ytdStatusText; statusSpanYtd.style.color = semanticColorYtd; statusSpanYtd.style.fontWeight = "700";
+      liYtd.appendChild(sYtd); liYtd.appendChild(document.createTextNode("posição consolidada com ")); liYtd.appendChild(statusSpanYtd);
+      liYtd.appendChild(document.createTextNode(` de R$ ${Math.abs(diffYtdNominal/1000000).toFixed(2)}M (${diffYtdNominal >= 0 ? "+" : ""}${diffYtdPercent.toFixed(1)}%), com consumo de ${consumoBudgetPercent.toFixed(1)}% do orçamento.`));
+      this._hlSummaryUl.appendChild(liYtd);
 
       const monthStatusText = diffNominal <= 0 ? "variação favorável" : "variação desfavorável";
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
@@ -1528,13 +1600,13 @@
       const statusSpan1 = document.createElement("span"); statusSpan1.textContent = monthStatusText; statusSpan1.style.color = semanticColorMonth; statusSpan1.style.fontWeight = "700";
       liMonth.appendChild(s1); liMonth.appendChild(document.createTextNode("Fechamento com ")); liMonth.appendChild(statusSpan1); 
       liMonth.appendChild(document.createTextNode(` de R$ ${Math.abs(diffNominal/1000000).toFixed(2)}M em relação ao orçamento da competência.`));
-      this._hlUl.appendChild(liMonth);
+      this._hlSummaryUl.appendChild(liMonth);
 
       const liCons = document.createElement("li");
       const s2 = document.createElement("strong"); s2.textContent = "Consumo Operacional: ";
       const statusSpan2 = document.createElement("span"); statusSpan2.textContent = `${consumptionMonthPercent.toFixed(1)}%`; statusSpan2.style.color = semanticColorCons; statusSpan2.style.fontWeight = "700";
       liCons.appendChild(s2); liCons.appendChild(document.createTextNode("A absorção atingiu ")); liCons.appendChild(statusSpan2); liCons.appendChild(document.createTextNode(" do orçamento da competência."));
-      this._hlUl.appendChild(liCons);
+      this._hlSummaryUl.appendChild(liCons);
 
       const tHLStart = performance.now();
       let analysis;
@@ -1557,7 +1629,11 @@
         const spanLead = document.createElement("span"); spanLead.textContent = lead.itemName; spanLead.style.fontWeight = "700";
         liSummary.appendChild(spanLead);
         liSummary.appendChild(document.createTextNode(`, enquadrado como ${lead.priorityLabel.toLowerCase()} e com ${lead.trendLabel}.`));
-        this._hlUl.appendChild(liSummary);
+        this._hlSummaryUl.appendChild(liSummary);
+      }
+
+      if (this._highlightToggleBtn) {
+        this._setStyle(this._highlightToggleBtn, "display", analysis.outlierTable.length > 0 ? "inline-flex" : "none");
       }
 
       analysis.outlierTable.forEach(item => {
@@ -1606,7 +1682,7 @@
           liItem.appendChild(spanContaDiff); liItem.appendChild(document.createTextNode(`${driverShareText}.`));
         }
 
-        this._hlUl.appendChild(liItem);
+        this._hlDetailUl.appendChild(liItem);
       });
 
       if (ENABLE_TELEMETRY) {
