@@ -144,13 +144,46 @@
         background-image: linear-gradient(45deg, var(--color-budget) 25%, transparent 25%, transparent 50%, var(--color-budget) 50%, var(--color-budget) 75%, transparent 75%, transparent);
         background-size: 4px 4px;
       }
+
+      /* NOVO LAYOUT DE GRÁFICOS LADO A LADO */
+      .main-visualization-layout {
+        display: flex;
+        width: 100%;
+        gap: 24px;
+        margin-bottom: 12px;
+        flex-shrink: 0;
+      }
+
+      .visualization-column {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .visualization-column.monthly-col {
+        flex: 3; /* Ocupa 75% do espaço horizontal */
+      }
+
+      .visualization-column.ytd-col {
+        flex: 1; /* Ocupa 25% do espaço horizontal */
+        border-left: 1px solid #f0f0f0;
+        padding-left: 20px;
+      }
+
+      .ytd-chart-header-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #4a5568;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        padding-bottom: 2px;
+        border-bottom: 1px solid #edf2f7;
+        letter-spacing: 0.5px;
+      }
       
       .chart-container-block {
         position: relative;
         height: 175px; 
         padding-top: 36px; 
-        margin-bottom: 0px; 
-        flex-shrink: 0;
         box-sizing: border-box;
       }
 
@@ -161,7 +194,7 @@
       
       .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
       
-      /* ALINHAMENTO DA LARGURA DA BARRA DO BUDGET IGUALADA ÀS DEMAIS */
+      /* PADRONIZAÇÃO DE PROXIMIDADE IGUALADA: Colunas com largura fixa e gaps simétricos */
       .bar-wrapper {
         display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; z-index: 1;
       }
@@ -186,7 +219,7 @@
       }
       .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -22px; }
       
-      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; margin-bottom: 14px; border-top: 1px solid #cbd5e0; padding-top: 6px; }
+      .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; }
       
       .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
@@ -229,41 +262,6 @@
       .status-badge-finance.success { background-color: #e6f4ea; color: #137333; }
       .status-badge-finance.neutral { background-color: #f1f3f4; color: #5f6368; }
       .status-badge-finance.warning { background-color: #fce8e6; color: #c5221f; }
-
-      /* ESTRUTURA DO MINI CHART DO YTD ACUMULADO (LADO DIREITO) */
-      .ytd-embedded-chart {
-        display: flex;
-        align-items: flex-end;
-        justify-content: flex-start;
-        gap: 8px;
-        height: 48px;
-        padding-top: 6px;
-        box-sizing: border-box;
-      }
-      .ytd-sub-bar {
-        width: 24px;
-        position: relative;
-        border-radius: 2px 2px 0 0;
-        transition: height 0.3s ease;
-      }
-      .ytd-sub-bar.prev { background-color: var(--color-historical); }
-      .ytd-sub-bar.current { background-color: var(--color-actual); }
-      .ytd-sub-bar.budget {
-        border: 1px dashed var(--color-budget);
-        border-bottom: none;
-        background-image: linear-gradient(45deg, rgba(174, 199, 232, 0.4) 25%, transparent 25%, transparent 50%, rgba(174, 199, 232, 0.4) 50%, rgba(174, 199, 232, 0.4) 75%, transparent 75%, transparent);
-        background-size: 4px 4px;
-      }
-      .ytd-bar-label {
-        font-size: 8px;
-        font-weight: 700;
-        color: #718096;
-        position: absolute;
-        top: -12px;
-        left: 50%;
-        transform: translateX(-50%);
-        white-space: nowrap;
-      }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -284,20 +282,41 @@
         <div class="legend-item"><div class="legend-color bud"></div> Orçado (Budget)</div>
       </div>
 
-      <div class="chart-container-block">
-        <div class="chart-area" id="chartArea">
-          <svg class="svg-overlay" id="svgOverlay">
-            <defs>
-              <marker id="arrow-neutral" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#718096"/>
-              </marker>
-            </defs>
-          </svg>
+      <div class="main-visualization-layout">
+        <div class="visualization-column monthly-col">
+          <div class="chart-container-block">
+            <div class="chart-area" id="chartArea">
+              <svg class="svg-overlay" id="svgOverlay">
+                <defs>
+                  <marker id="arrow-neutral" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#718096"/>
+                  </marker>
+                </defs>
+              </svg>
+            </div>
+          </div>
+          <div class="axis-x-block">
+            <div class="axis-x" id="axisX"></div>
+          </div>
         </div>
-      </div>
-      
-      <div class="axis-x-block">
-        <div class="axis-x" id="axisX"></div>
+
+        <div class="visualization-column ytd-col">
+          <div class="ytd-chart-header-title">Evolução YTD Acumulada</div>
+          <div class="chart-container-block">
+            <div class="chart-area" id="ytdChartArea">
+              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
+              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
+            </div>
+          </div>
+          <div class="axis-x-block">
+            <div class="axis-x" id="ytdAxisX">
+              <div class="axis-label" id="ytd-axis-lbl-prev">Ano Ant.</div>
+              <div class="axis-label" id="ytd-axis-lbl-act">Ano Atual</div>
+              <div class="axis-label">Meta YTD</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="insight-grid" id="insightGrid" style="display: none;">
@@ -348,14 +367,8 @@
                 <td class="num-cell bold-val" id="ytd-prev-abs-row">-</td>
                 <td class="num-cell bold-val"><span class="status-badge-finance" id="ytd-prev-pct-lbl">-</span></td>
               </tr>
-              <tr>
-                <td colspan="3" style="padding: 4px 8px;">
-                  <div class="ytd-embedded-chart">
-                    <div class="ytd-sub-bar prev" id="mini-bar-prev"><span class="ytd-bar-label" id="mini-lbl-prev">-</span></div>
-                    <div class="ytd-sub-bar current" id="mini-bar-act"><span class="ytd-bar-label" id="mini-lbl-act">-</span></div>
-                    <div class="ytd-sub-bar budget" id="mini-bar-bud"><span class="ytd-bar-label" id="mini-lbl-bud">-</span></div>
-                  </div>
-                </td>
+              <tr style="visibility: hidden; pointer-events: none;">
+                <td>Spacer Row</td><td class="num-cell">-</td><td>-</td>
               </tr>
             </tbody>
           </table>
@@ -410,7 +423,6 @@
         this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
         this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
 
-        // Ponteiros para as microbarras do gráfico YTD embutido
         this._miniBarPrev = this._shadowRoot.getElementById("mini-bar-prev");
         this._miniBarAct = this._shadowRoot.getElementById("mini-bar-act");
         this._miniBarBud = this._shadowRoot.getElementById("mini-bar-bud");
@@ -799,12 +811,6 @@
       const diffMonthYoY = actualVal - prevYearMonthVal;
       let pctMonthYoY = prevYearMonthVal !== 0 ? (diffMonthYoY / prevYearMonthVal) * 100 : 0;
       const isMonthYoYRetraction = actualVal < prevYearMonthVal;
-      
-      if (isMonthYoYRetraction && pctMonthYoY > 0) {
-        pctMonthYoY = -pctMonthYoY;
-      } else if (!isMonthYoYRetraction && pctMonthYoY < 0) {
-        pctMonthYoY = Math.abs(pctMonthYoY);
-      }
 
       this._lblPrevMonthRow.textContent = `Mesmo Mês Ano Ant. (${previousYear})`;
       this._valPrevMonthRow.textContent = formatM(prevYearMonthVal);
@@ -846,16 +852,19 @@
       this._ytdPrevPctLbl.textContent = formatPercent(pctYoY);
       this._ytdPrevPctLbl.className = "status-badge-finance " + (isYoYRetraction ? "success" : "warning");
 
-      // REQUISITO CUMPRIDO: Atualização da altura e dos rótulos do mini chart YTD (Lado Direito - image_6caaf6.png)
-      const maxSubVal = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) || 1;
+      // POSICIONAMENTO E CALCULO DO NOVO GRÁFICO DE COLUNAS YTD (LADO DIREITO SUPERIOR)
+      const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.25 || 1;
       
-      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxSubVal) * 100}%`;
-      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxSubVal) * 100}%`;
-      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxSubVal) * 100}%`;
+      this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
+      this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
+      this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
-      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(1) + "M";
-      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(1) + "M";
-      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(1) + "M";
+      this._miniLblPrev.textContent = (totalRealizadoYTDAntigo / 1000000).toFixed(2) + "M";
+      this._miniLblAct.textContent = (totalRealizadoYTDAtual / 1000000).toFixed(2) + "M";
+      this._miniLblBud.textContent = (totalBudgetYTDCompleto / 1000000).toFixed(2) + "M";
+
+      this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
+      this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
       this._insightGrid.style.display = "flex";
     }
