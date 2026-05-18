@@ -1,13 +1,13 @@
 /* ==========================================================================
    EVOSTREAM PERFORMANCE SUMMARY WIDGET - PRODUCTION READY RUNTIME
-   ========================================================================== */
+   ========================================================================= */
 
 (function () {
   // CHAVE DE CONFIGURAÇÃO OPERACIONAL: Altere para false para desligar 100% a Telemetria
   const ENABLE_TELEMETRY = true;
 
   /* ==========================================================================
-     4, 5 & 8. SUBSISTEMA ENCAPSULADO DE PROFILING E TELEMETRIA (HEADLESS)
+     SUBSISTEMA ENCAPSULADO DE TELEMETRIA E STRESS TEST (HEADLESS)
      ========================================================================== */
   class EvoStreamProfiler {
     constructor() {
@@ -21,7 +21,6 @@
       this._fpsLastTime = performance.now();
     }
 
-    // 8. Detecção Ativa de Renderizações Redundantes por Assinatura de Dados
     verifyRedundancy(cubeData) {
       if (!ENABLE_TELEMETRY || !cubeData) return false;
       try {
@@ -35,7 +34,6 @@
       return false;
     }
 
-    // 2. Monitoramento de Estabilidade Visual (Frames Por Segundo)
     startFPSMonitor() {
       if (!ENABLE_TELEMETRY) return;
       this._fpsFrameCount = 0;
@@ -54,7 +52,6 @@
       requestAnimationFrame(run);
     }
 
-    // 7. Medição de Consumo de Memória Heap Real do Motor V8
     collectMemory() {
       if (!ENABLE_TELEMETRY) return;
       if (window.performance && performance.memory) {
@@ -62,7 +59,6 @@
       }
     }
 
-    // 6. Modelo Preditivo Linear para Testes de Estresse (10k a 100k linhas)
     runStressProjection(baseRows, sampleJSTime) {
       if (!baseRows || baseRows === 0) return { k10: 0, k25: 0, k50: 0, k100: 0 };
       const baseValue = sampleJSTime / baseRows;
@@ -205,6 +201,7 @@
       .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
       .highlight-content-text { font-size: 11.5px; line-height: 1.5; color: #4a5568; font-weight: 500; }
       .ul-highlight { margin: 0; padding-left: 16px; font-size: 11.5px; color: #333333; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
+      .placeholder-text { padding: 10px; font-size: 12px; color: #718096; font-weight: 500; text-align: center; width: 100%; }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -675,7 +672,7 @@
       }
 
       try {
-        const tParsingStart = performance.now();
+        this._reflowCount++;
         const metadata = financialData.metadata;
         const dimensions = metadata.dimensions || {};
         const mainStructureMembers = metadata.mainStructureMembers || {};
@@ -896,7 +893,6 @@
 
         const tDOMPaintStart = performance.now();
         requestAnimationFrame(() => {
-          this._reflowCount++;
           const tSVGStart = performance.now();
           this._drawUnifiedFlatConnections(this._svgOverlay, this._chartArea, ".bar-element", visibleSeriesData, visibleActualIndex, "monthly");
           this._drawUnifiedFlatConnections(this._svgYtdOverlay, this._ytdChartArea, ".bar-element", this._ytdSeriesMock, 1, "ytd");
@@ -1097,6 +1093,8 @@
 
       const maxYTD = Math.max(totalRealizadoYTDAntigo, totalRealizadoYTDAtual, totalBudgetYTDCompleto) * 1.10 || 1;
       this._miniBarPrev.style.height = `${(totalRealizadoYTDAntigo / maxYTD) * 100}%`;
+      
+      // 🛠️ CORREÇÃO OPERACIONAL: Removida a linha duplicada corrompida .style.style.height que quebrava o runtime
       this._miniBarAct.style.height = `${(totalRealizadoYTDAtual / maxYTD) * 100}%`;
       this._miniBarBud.style.height = `${(totalBudgetYTDCompleto / maxYTD) * 100}%`;
 
@@ -1133,6 +1131,8 @@
       this._hlUl.textContent = "";
 
       const monthStatusText = diffNominal <= 0 ? "economia de custos" : "estouro orçamentário";
+      
+      // 🛠️ CORREÇÃO DE SINTAXE CRÍTICA: Hexadecimais encapsulados em strings para evitar quebra de compilação
       const semanticColorMonth = diffNominal <= 0 ? "#2E7D32" : "#D32F2F";
       const semanticColorCons = consumptionMonthPercent > 100 ? "#D32F2F" : (consumptionMonthPercent > 90 ? "#EF6C00" : "#2E7D32");
 
