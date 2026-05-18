@@ -124,7 +124,7 @@
       
       .bar-element {
         width: 100%;
-        max-width: 48px;
+        max-width: 50px;
         border-radius: 4px 4px 0 0;
         position: relative;
         display: flex;
@@ -137,7 +137,7 @@
       
       .bar-element.actual {
         background-color: var(--color-actual);
-        box-shadow: 0 0 12px rgba(31, 119, 180, 0.3);
+        box-shadow: 0 0 12px rgba(31, 119, 180, 0.4);
         border: 1px solid #15517b;
       }
       
@@ -214,7 +214,7 @@
         border-color: #feebc8;
       }
 
-      /* SEÇÃO INFERIOR: GRID DE KPI + TEXTO COMPLEMENTAR (Inspirado em image_5fec14.png) */
+      /* SEÇÃO INFERIOR ESTRUTURADA DE FORMA ESTÁTICA NO DOM (Prevenção de Timeout) */
       .insight-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -302,13 +302,8 @@
         border-left: 3px solid #cbd5e0;
       }
 
-      .text-insight-holder.saving {
-        border-left-color: #34a853;
-      }
-
-      .text-insight-holder.increase {
-        border-left-color: #f9ab00;
-      }
+      .text-insight-holder.saving { border-left-color: #34a853; }
+      .text-insight-holder.increase { border-left-color: #f9ab00; }
 
       .insight-paragraph {
         margin: 0;
@@ -321,7 +316,6 @@
         font-weight: 700;
         padding: 1px 4px;
         border-radius: 3px;
-        display: inline;
       }
 
       .inline-highlight.saving {
@@ -376,8 +370,23 @@
                 <th class="num-cell">Var. Nominal</th>
               </tr>
             </thead>
-            <tbody id="tableBody">
-              </tbody>
+            <tbody>
+              <tr class="highlighted-row">
+                <td class="row-title" id="lbl-act-row">Realizado</td>
+                <td class="num-cell bold-val" id="val-act-row">-</td>
+                <td class="num-cell">—</td>
+              </tr>
+              <tr>
+                <td class="row-title">Orçado (Budget)</td>
+                <td class="num-cell" id="val-bud-row">-</td>
+                <td class="num-cell">—</td>
+              </tr>
+              <tr>
+                <td class="row-title">Desvio Geral</td>
+                <td class="num-cell bold-val" id="val-diff-row">-</td>
+                <td class="num-cell bold-val" id="val-pct-row">-</td>
+              </tr>
+            </tbody>
           </table>
         </div>
         <div class="text-insight-holder" id="textInsightBox">
@@ -390,10 +399,12 @@
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
+      // O construtor permanece com escopo limpo de acordo com as Diretrizes Técnicas (Fim do Timeout)
       this._props = {};
       this._currentData = null;
       this._animationFrameId = null;
       this._shadowRoot = null;
+      this._resizeTimeout = null;
     }
 
     connectedCallback() {
@@ -405,15 +416,24 @@
         this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
-        this._tableBody = this._shadowRoot.getElementById("tableBody");
+        
+        // Ponteiros atômicos do Shadow DOM estático
+        this._lblActRow = this._shadowRoot.getElementById("lbl-act-row");
+        this._valActRow = this._shadowRoot.getElementById("val-act-row");
+        this._valBudRow = this._shadowRoot.getElementById("val-bud-row");
+        this._valDiffRow = this._shadowRoot.getElementById("val-diff-row");
+        this._valPctRow = this._shadowRoot.getElementById("val-pct-row");
         this._textInsightBox = this._shadowRoot.getElementById("textInsightBox");
         this._insightTextDesc = this._shadowRoot.getElementById("insightTextDesc");
       }
 
       this._resizeObserver = new ResizeObserver(() => {
         if (document.contains(this)) {
-          cancelAnimationFrame(this._animationFrameId);
-          this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+          clearTimeout(this._resizeTimeout);
+          this._resizeTimeout = setTimeout(() => {
+            cancelAnimationFrame(this._animationFrameId);
+            this._animationFrameId = requestAnimationFrame(() => this.renderChart());
+          }, 60);
         }
       });
       this._resizeObserver.observe(this._chartArea);
@@ -422,10 +442,11 @@
     disconnectedCallback() {
       if (this._resizeObserver) this._resizeObserver.disconnect();
       cancelAnimationFrame(this._animationFrameId);
+      clearTimeout(this._resizeTimeout);
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
-      this._props = { ......this._props, ...changedProperties };
+      this._props = { ...this._props, ...changedProperties };
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
@@ -468,7 +489,6 @@
       paths.forEach(el => el.remove());
       objects.forEach(el => el.remove());
 
-      this._tableBody.innerHTML = "";
       this._insightGrid.style.display = "none";
     }
 
@@ -610,7 +630,7 @@
 
         this._drawUnifiedFlatConnections(barElements, seriesData, actualIndex);
         
-        // EXECUÇÃO DA NOVA CAMADA DA TABELA E HIGHLIGHTS LATERAIS
+        // Chamada atômica de reidratação de texto (Diretriz de Performance Primária)
         this._renderInsightPanel(targetBudgetSource.label, targetBudgetSource.realizado, calculatedBudget);
 
       } catch (error) {
@@ -643,6 +663,7 @@
         if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight;
       });
 
+      // UNIFICAÇÃO HORIZONTAL PERFEITA: Sem quebras horizontais no teto
       const globalCeilingY = containerHeight - maxBarHeight - 45;
 
       pairsToConnect.forEach((pair) => {
@@ -701,7 +722,7 @@
       });
     }
 
-    // NOVA FUNÇÃO: GERAÇÃO DO PAINEL DE INSIGHTS COM TABELA E HIGHLIGHTS TEXTUAIS
+    // ATUALIZAÇÃO ATÔMICA DA TABELA E HIGHLIGHTS (Bypass do innerHTML síncrono recorrente)
     _renderInsightPanel(monthLabel, actualVal, budgetVal) {
       const diffNominal = actualVal - budgetVal;
       const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
@@ -710,27 +731,15 @@
       const formatNominal = (v) => (v >= 0 ? "+" : "") + (v / 1000000).toFixed(2) + "M";
       const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
 
-      // 1. Alimentação da Minitabela Dinâmica
-      this._tableBody.innerHTML = `
-        <tr class="highlighted-row">
-          <td class="row-title">Realizado (${monthLabel})</td>
-          <td class="num-cell bold-val">${formatM(actualVal)}</td>
-          <td class="num-cell">—</td>
-        </tr>
-        <tr>
-          <td class="row-title">Orçado (Budget)</td>
-          <td class="num-cell">${formatM(budgetVal)}</td>
-          <td class="num-cell">—</td>
-        </tr>
-        <tr>
-          <td class="row-title">Desvio Geral</td>
-          <td class="num-cell bold-val">${formatM(diffNominal)}</td>
-          <td class="num-cell bold-val">${formatPercent(diffPercent)}</td>
-        </tr>
-      `;
+      // 1. Reidratação atômica direta via textContent (Diretriz de Performance)
+      this._lblActRow.textContent = `Realizado (${monthLabel})`;
+      this._valActRow.textContent = formatM(actualVal);
+      this._valBudRow.textContent = formatM(budgetVal);
+      this._valDiffRow.textContent = formatM(diffNominal);
+      this._valPctRow.textContent = formatPercent(diffPercent);
 
-      // 2. Inteligência de Negócio e Geração de Highlights Semânticos
-      this._textInsightBox.classList.remove("saving", "increase");
+      // 2. Manipulação de classes e injeção do sumário descritivo (Inspirado em image_5fec14.png)
+      this._textInsightBox.className = "text-insight-holder";
       
       let semClass = "saving";
       let statusText = "eficiência operacional";
@@ -744,7 +753,6 @@
 
       this._textInsightBox.classList.add(semClass);
 
-      // Texto estruturado dinamicamente com as tags de destaque inline pastéis
       this._insightTextDesc.innerHTML = `
         A performance consolidada de <span class="bold-val">${monthLabel}</span> fechou em 
         <span class="bold-val">${formatM(actualVal)}</span>. Comparado ao orçamento (Budget) estipulado, 
@@ -754,7 +762,6 @@
         ${relatoFim}
       `;
 
-      // Exibe a seção inferior no grid fluido
       this._insightGrid.style.display = "grid";
     }
 
