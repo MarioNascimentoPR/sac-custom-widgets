@@ -10,7 +10,7 @@
       .control-group { margin-bottom: 12px; }
       label { display: block; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
       input[type="color"] { display: block; width: 100%; height: 28px; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer; background: #ffffff; }
-      input[type="number"] { width: 100%; height: 26px; border: 1px solid #cbd5e0; border-radius: 4px; padding-left: 6px; box-shadow: none; box-sizing: border-box; }
+      input[type="number"] { width: 100%; height: 26px; border: 1px solid #cbd5e0; border-radius: 4px; padding-left: 6px; box-sizing: border-box; }
     </style>
     <div id="root">
       <div class="control-group">
@@ -33,12 +33,19 @@
       super();
       this._shadowRoot = this.attachShadow({ mode: "open" });
       this._shadowRoot.appendChild(templateStyling.content.cloneNode(true));
+      
+      // Proteção de escopo para os listeners
       this._changeProperty = this._changeProperty.bind(this);
 
-      this._shadowRoot.getElementById("cls-act").addEventListener("change", (e) => this._changeProperty("colorActualMonth", e.target.value));
-      this._shadowRoot.getElementById("cls-hist").addEventListener("change", (e) => this._changeProperty("colorHistorical", e.target.value));
-      this._shadowRoot.getElementById("cls-bud").addEventListener("change", (e) => this._changeProperty("colorBudget", e.target.value));
-      this._shadowRoot.getElementById("font-size-lbl").addEventListener("change", (e) => this._changeProperty("fontSizeLabels", parseInt(e.target.value)));
+      const inputAct = this._shadowRoot.getElementById("cls-act");
+      const inputHist = this._shadowRoot.getElementById("cls-hist");
+      const inputBud = this._shadowRoot.getElementById("cls-bud");
+      const inputFont = this._shadowRoot.getElementById("font-size-lbl");
+
+      if (inputAct) inputAct.addEventListener("change", (e) => this._changeProperty("colorActualMonth", e.target.value));
+      if (inputHist) inputHist.addEventListener("change", (e) => this._changeProperty("colorHistorical", e.target.value));
+      if (inputBud) inputBud.addEventListener("change", (e) => this._changeProperty("colorBudget", e.target.value));
+      if (inputFont) inputFont.addEventListener("change", (e) => this._changeProperty("fontSizeLabels", parseInt(e.target.value) || 12));
     }
 
     _changeProperty(name, value) {
@@ -48,17 +55,22 @@
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
+      if (!this._shadowRoot) return;
       if (changedProperties.colorActualMonth !== undefined) {
-        this._shadowRoot.getElementById("cls-act").value = changedProperties.colorActualMonth;
+        const el = this._shadowRoot.getElementById("cls-act");
+        if (el) el.value = changedProperties.colorActualMonth;
       }
       if (changedProperties.colorHistorical !== undefined) {
-        this._shadowRoot.getElementById("cls-hist").value = changedProperties.colorHistorical;
+        const el = this._shadowRoot.getElementById("cls-hist");
+        if (el) el.value = changedProperties.colorHistorical;
       }
       if (changedProperties.colorBudget !== undefined) {
-        this._shadowRoot.getElementById("cls-bud").value = changedProperties.colorBudget;
+        const el = this._shadowRoot.getElementById("cls-bud");
+        if (el) el.value = changedProperties.colorBudget;
       }
       if (changedProperties.fontSizeLabels !== undefined) {
-        this._shadowRoot.getElementById("font-size-lbl").value = changedProperties.fontSizeLabels;
+        const el = this._shadowRoot.getElementById("font-size-lbl");
+        if (el) el.value = changedProperties.fontSizeLabels;
       }
     }
   }
