@@ -593,7 +593,7 @@
         return bar.parentElement.offsetLeft + bar.offsetLeft + (bar.offsetWidth / 2);
       };
 
-      const ceilingY = 20;
+      const ceilingY = -13;
       const floorY = containerHeight; 
       
       pairs.forEach((pair) => {
