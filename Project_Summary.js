@@ -24,7 +24,8 @@
         box-sizing: border-box;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         position: relative;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
       }
 
       .widget-header {
@@ -56,7 +57,7 @@
       .widget-legend {
         display: flex;
         gap: 16px;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         font-size: 11px;
         font-weight: 600;
         color: #4a5568;
@@ -83,11 +84,18 @@
         box-sizing: border-box;
       }
       
+      .chart-container-block {
+        position: relative;
+        height: 180px;
+        margin-bottom: 24px;
+        flex-shrink: 0;
+      }
+
       .chart-area {
-        flex: 1;
+        width: 100%;
+        height: 100%;
         display: flex;
         position: relative;
-        margin-bottom: 24px;
         align-items: flex-end;
         justify-content: space-between;
       }
@@ -116,7 +124,7 @@
       
       .bar-element {
         width: 100%;
-        max-width: 50px;
+        max-width: 48px;
         border-radius: 4px 4px 0 0;
         position: relative;
         display: flex;
@@ -129,7 +137,7 @@
       
       .bar-element.actual {
         background-color: var(--color-actual);
-        box-shadow: 0 0 12px rgba(31, 119, 180, 0.4);
+        box-shadow: 0 0 12px rgba(31, 119, 180, 0.3);
         border: 1px solid #15517b;
       }
       
@@ -163,6 +171,7 @@
         padding-top: 8px;
         height: 24px;
         flex-shrink: 0;
+        margin-bottom: 24px;
       }
       
       .axis-label {
@@ -204,6 +213,126 @@
         color: #b06000;
         border-color: #feebc8;
       }
+
+      /* SEÇÃO INFERIOR: GRID DE KPI + TEXTO COMPLEMENTAR (Inspirado em image_5fec14.png) */
+      .insight-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: auto;
+        padding-top: 16px;
+        border-top: 1px solid #f0f0f0;
+        flex-shrink: 0;
+      }
+
+      @media (max-width: 580px) {
+        .insight-grid {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+      }
+
+      .data-table-holder {
+        width: 100%;
+      }
+
+      .kpi-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--font-size-labels);
+        text-align: left;
+      }
+
+      .kpi-table th {
+        color: #718096;
+        font-weight: 600;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #edf2f7;
+      }
+
+      .kpi-table td {
+        padding: 10px 0;
+        border-bottom: 1px solid #edf2f7;
+        color: #2d3748;
+        font-weight: 500;
+      }
+
+      .kpi-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .kpi-table .row-title {
+        font-weight: 600;
+        color: #4a5568;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .kpi-table .row-title::before {
+        content: '';
+        width: 4px;
+        height: 12px;
+        background: #cbd5e0;
+        border-radius: 2px;
+        display: inline-block;
+      }
+
+      .kpi-table tr.highlighted-row .row-title::before {
+        background: var(--color-actual);
+      }
+
+      .kpi-table .num-cell {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .kpi-table .bold-val {
+        font-weight: 700;
+        color: #1a202c;
+      }
+
+      .text-insight-holder {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        background-color: #f8fafc;
+        border-radius: 6px;
+        padding: 12px 14px;
+        border-left: 3px solid #cbd5e0;
+      }
+
+      .text-insight-holder.saving {
+        border-left-color: #34a853;
+      }
+
+      .text-insight-holder.increase {
+        border-left-color: #f9ab00;
+      }
+
+      .insight-paragraph {
+        margin: 0;
+        font-size: calc(var(--font-size-labels) + 0.5px);
+        line-height: 1.5;
+        color: #4a5568;
+      }
+
+      .inline-highlight {
+        font-weight: 700;
+        padding: 1px 4px;
+        border-radius: 3px;
+        display: inline;
+      }
+
+      .inline-highlight.saving {
+        background-color: #e6f4ea;
+        color: #137333;
+      }
+
+      .inline-highlight.increase {
+        background-color: #fef7e0;
+        color: #b06000;
+      }
       
       .placeholder-text {
         padding: 10px;
@@ -223,23 +352,44 @@
         <div class="legend-item"><div class="legend-color bud"></div> Orçado (Budget)</div>
       </div>
 
-      <div class="chart-area" id="chartArea">
-        <svg class="svg-overlay" id="svgOverlay">
-          <defs>
-            <marker id="arrow-neutral" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#718096"/>
-            </marker>
-          </defs>
-        </svg>
+      <div class="chart-container-block">
+        <div class="chart-area" id="chartArea">
+          <svg class="svg-overlay" id="svgOverlay">
+            <defs>
+              <marker id="arrow-neutral" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#718096"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
       </div>
+      
       <div class="axis-x" id="axisX"></div>
+
+      <div class="insight-grid" id="insightGrid" style="display: none;">
+        <div class="data-table-holder">
+          <table class="kpi-table">
+            <thead>
+              <tr>
+                <th>Cenário Comercial</th>
+                <th class="num-cell">Valor Absoluto</th>
+                <th class="num-cell">Var. Nominal</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              </tbody>
+          </table>
+        </div>
+        <div class="text-insight-holder" id="textInsightBox">
+          <p class="insight-paragraph" id="insightTextDesc"></p>
+        </div>
+      </div>
     </div>
   `;
 
   class EvoSummaryWidget extends HTMLElement {
     constructor() {
       super();
-      // O construtor inicializa apenas propriedades de escopo leve (Padrão Pró-Performance)
       this._props = {};
       this._currentData = null;
       this._animationFrameId = null;
@@ -247,7 +397,6 @@
     }
 
     connectedCallback() {
-      // Criação tardia e síncrona do DOM apenas quando acoplado à tela ativa (Garante aceleração)
       if (!this._shadowRoot) {
         this._shadowRoot = this.attachShadow({ mode: "open" });
         this._shadowRoot.appendChild(template.content.cloneNode(true));
@@ -255,6 +404,10 @@
         this._chartArea = this._shadowRoot.getElementById("chartArea");
         this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
         this._axisX = this._shadowRoot.getElementById("axisX");
+        this._insightGrid = this._shadowRoot.getElementById("insightGrid");
+        this._tableBody = this._shadowRoot.getElementById("tableBody");
+        this._textInsightBox = this._shadowRoot.getElementById("textInsightBox");
+        this._insightTextDesc = this._shadowRoot.getElementById("insightTextDesc");
       }
 
       this._resizeObserver = new ResizeObserver(() => {
@@ -272,7 +425,7 @@
     }
 
     onCustomWidgetBeforeUpdate(changedProperties) {
-      this._props = { ...this._props, ...changedProperties };
+      this._props = { ......this._props, ...changedProperties };
     }
 
     onCustomWidgetAfterUpdate(changedProperties) {
@@ -314,6 +467,9 @@
       const objects = svg.querySelectorAll('foreignObject');
       paths.forEach(el => el.remove());
       objects.forEach(el => el.remove());
+
+      this._tableBody.innerHTML = "";
+      this._insightGrid.style.display = "none";
     }
 
     renderChart() {
@@ -414,9 +570,11 @@
         }
 
         const targetBudgetSource = sortedMonths[actualIndex];
+        const calculatedBudget = targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado;
+        
         seriesData.push({
           label: `budget - ${targetBudgetSource.label}`,
-          value: targetBudgetSource.orcado > 0 ? targetBudgetSource.orcado : targetBudgetSource.realizado,
+          value: calculatedBudget,
           type: "budget"
         });
 
@@ -451,6 +609,9 @@
         });
 
         this._drawUnifiedFlatConnections(barElements, seriesData, actualIndex);
+        
+        // EXECUÇÃO DA NOVA CAMADA DA TABELA E HIGHLIGHTS LATERAIS
+        this._renderInsightPanel(targetBudgetSource.label, targetBudgetSource.realizado, calculatedBudget);
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
@@ -477,12 +638,9 @@
         };
       };
 
-      // EXTRAÇÃO SÍNCRONA DO PONTO MÁXIMO DA SÉRIE (Acaba com o efeito escada definitivamente)
       let maxBarHeight = 0;
       barElements.forEach(bar => {
-        if (bar.offsetHeight > maxBarHeight) {
-          maxBarHeight = bar.offsetHeight;
-        }
+        if (bar.offsetHeight > maxBarHeight) maxBarHeight = bar.offsetHeight;
       });
 
       const globalCeilingY = containerHeight - maxBarHeight - 45;
@@ -543,6 +701,63 @@
       });
     }
 
+    // NOVA FUNÇÃO: GERAÇÃO DO PAINEL DE INSIGHTS COM TABELA E HIGHLIGHTS TEXTUAIS
+    _renderInsightPanel(monthLabel, actualVal, budgetVal) {
+      const diffNominal = actualVal - budgetVal;
+      const diffPercent = budgetVal !== 0 ? (diffNominal / budgetVal) * 100 : 0;
+      
+      const formatM = (v) => (v / 1000000).toFixed(2) + "M";
+      const formatNominal = (v) => (v >= 0 ? "+" : "") + (v / 1000000).toFixed(2) + "M";
+      const formatPercent = (v) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+
+      // 1. Alimentação da Minitabela Dinâmica
+      this._tableBody.innerHTML = `
+        <tr class="highlighted-row">
+          <td class="row-title">Realizado (${monthLabel})</td>
+          <td class="num-cell bold-val">${formatM(actualVal)}</td>
+          <td class="num-cell">—</td>
+        </tr>
+        <tr>
+          <td class="row-title">Orçado (Budget)</td>
+          <td class="num-cell">${formatM(budgetVal)}</td>
+          <td class="num-cell">—</td>
+        </tr>
+        <tr>
+          <td class="row-title">Desvio Geral</td>
+          <td class="num-cell bold-val">${formatM(diffNominal)}</td>
+          <td class="num-cell bold-val">${formatPercent(diffPercent)}</td>
+        </tr>
+      `;
+
+      // 2. Inteligência de Negócio e Geração de Highlights Semânticos
+      this._textInsightBox.classList.remove("saving", "increase");
+      
+      let semClass = "saving";
+      let statusText = "eficiência operacional";
+      let relatoFim = "abaixo da meta orçada.";
+
+      if (diffNominal > 0) {
+        semClass = "increase";
+        statusText = "aumento de custos";
+        relatoFim = "acima do teto projetado para o período comercial.";
+      }
+
+      this._textInsightBox.classList.add(semClass);
+
+      // Texto estruturado dinamicamente com as tags de destaque inline pastéis
+      this._insightTextDesc.innerHTML = `
+        A performance consolidada de <span class="bold-val">${monthLabel}</span> fechou em 
+        <span class="bold-val">${formatM(actualVal)}</span>. Comparado ao orçamento (Budget) estipulado, 
+        o desvio nominal foi registrado em <span class="inline-highlight ${semClass}">${formatNominal(diffNominal)}</span>, 
+        o que representa uma variação de <span class="inline-highlight ${semClass}">${formatPercent(diffPercent)}</span>. 
+        Este comportamento indica um quadro de <span class="bold-val">${statusText}</span> vindo diretamente 
+        ${relatoFim}
+      `;
+
+      // Exibe a seção inferior no grid fluido
+      this._insightGrid.style.display = "grid";
+    }
+
     getColorActualMonth() { return this._props.colorActualMonth; }
     setColorActualMonth(val) { this._props.colorActualMonth = val; }
 
@@ -552,7 +767,7 @@
     getColorBudget() { return this._props.colorBudget; }
     setColorBudget(val) { this._props.colorBudget = val; }
 
-    getFontSizeLabels() { return this._props.props.fontSizeLabels; }
+    getFontSizeLabels() { return this._props.fontSizeLabels; }
     setFontSizeLabels(val) { this._props.fontSizeLabels = val; }
   }
 
