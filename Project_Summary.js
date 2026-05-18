@@ -50,10 +50,13 @@
         color: #2c3e50;
       }
 
+      /* CONTAINER DO NOVO FILTRO HIERÁRQUICO COMPACTO */
       .filter-container-finance {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 6px;
+        z-index: 10;
       }
 
       .filter-label-finance {
@@ -62,43 +65,101 @@
         color: #4a5568;
       }
 
-      .filter-select-finance {
+      .tree-dropdown-trigger {
         font-size: 11px;
         font-weight: 700;
         color: #2d3748;
         background-color: #f8fafc;
         border: 1px solid #cbd5e0;
         border-radius: 6px;
-        padding: 3px 28px 3px 8px;
+        padding: 4px 28px 4px 10px;
         cursor: pointer;
-        outline: none;
-        font-family: inherit;
-        appearance: none;
+        min-width: 120px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 8px center;
         background-size: 12px;
-        min-width: 115px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        transition: border-color 0.2s ease;
+        user-select: none;
       }
 
-      .filter-select-finance:focus {
-        border-color: var(--color-actual);
-      }
-
-      /* Estilização corporativa para os grupos de ano e opções */
-      .filter-select-finance optgroup {
-        font-weight: 700;
-        color: #718096;
-        background: #edf2f7;
-        font-style: normal;
-      }
-      
-      .filter-select-finance option {
-        font-weight: 600;
-        color: #2d3748;
+      .tree-dropdown-content {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
         background: #ffffff;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        max-height: 260px;
+        overflow-y: auto;
+        min-width: 160px;
+        padding: 6px 0;
+      }
+
+      .tree-dropdown-content.show {
+        display: block;
+      }
+
+      /* CLASSES DA ESTRUTURA EM ÁRVORE HIERÁRQUICA */
+      .tree-year-node {
+        font-weight: 700;
+        color: #2d3748;
+        padding: 4px 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        user-select: none;
+      }
+
+      .tree-year-node:hover {
+        background-color: #edf2f7;
+      }
+
+      .tree-year-node::before {
+        content: '▶';
+        font-size: 8px;
+        color: #718096;
+        transition: transform 0.2s ease;
+        display: inline-block;
+      }
+
+      .tree-year-node.expanded::before {
+        transform: rotate(90deg);
+      }
+
+      .tree-months-container {
+        display: none;
+        flex-direction: column;
+        padding-left: 14px;
+        background: #f7fafc;
+      }
+
+      .tree-months-container.show {
+        display: flex;
+      }
+
+      .tree-month-item {
+        font-size: 11px;
+        font-weight: 600;
+        color: #4a5568;
+        padding: 5px 12px;
+        cursor: pointer;
+      }
+
+      .tree-month-item:hover {
+        background-color: #e2e8f0;
+        color: var(--color-actual);
+      }
+
+      .tree-month-item.selected {
+        background-color: #edf2f7;
+        color: var(--color-actual);
+        font-weight: 700;
       }
 
       .scale-tag {
@@ -384,7 +445,8 @@
         </div>
         <div class="filter-container-finance">
           <span class="filter-label-finance">Corte:</span>
-          <select class="filter-select-finance" id="dateCutoffSelect"></select>
+          <div class="tree-dropdown-trigger" id="treeDropdownTrigger">Selecionar...</div>
+          <div class="tree-dropdown-content" id="treeDropdownContent"></div>
         </div>
       </div>
       
@@ -480,7 +542,8 @@
         this._svgOverlay = this._shadowRoot.getElementById("svgOverlay");
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
-        this._dateCutoffSelect = this._shadowRoot.getElementById("dateCutoffSelect");
+        this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
+        this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
         
         this._titleColCurrent = this._shadowRoot.getElementById("title-col-current");
         this._lblActRow = this._shadowRoot.getElementById("lbl-act-row");
@@ -498,9 +561,14 @@
         this._ytdPrevAbsRow = this._shadowRoot.getElementById("ytd-prev-abs-row");
         this._ytdPrevPctLbl = this._shadowRoot.getElementById("ytd-prev-pct-lbl");
 
-        this._dateCutoffSelect.addEventListener("change", (e) => {
-          this._selectedCutoffId = e.target.value;
-          this.renderChart();
+        // Evento para abrir/fechar a árvore hierárquica lateral
+        this._treeDropdownTrigger.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this._treeDropdownContent.classList.toggle("show");
+        });
+
+        document.addEventListener("click", () => {
+          if (this._treeDropdownContent) this._treeDropdownContent.classList.remove("show");
         });
       }
 
@@ -531,8 +599,8 @@
       if ("performanceCube" in changedProperties && this.performanceCube) {
         this._currentData = this.performanceCube;
         this._selectedCutoffId = null;
-        this._dateCutoffSelect.innerHTML = ""; // Limpa os nós de agrupamento antigos para reconstrução limpa
         if (this._shadowRoot) {
+          this._treeDropdownContent.innerHTML = ""; // Força reconstrução da árvore hierárquica
           cancelAnimationFrame(this._animationFrameId);
           this._animationFrameId = requestAnimationFrame(() => this.renderChart());
         }
@@ -627,54 +695,110 @@
         if (sortedMonths.length === 0) { this._clearDOM(); return; }
 
         const monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
-        let currentYearCounter = new Date().getFullYear() - 1; let lastMonthIndex = 0;
-
+        
         const fullSeriesData = [];
         let defaultActualIndex = -1;
 
-        sortedMonths.forEach((m, idx) => {
-          const type = m.isCurrentMonth ? "actual" : "historical"; 
-          if (type === "actual") defaultActualIndex = idx;
+        sortedMonths.forEach((m) => {
+          // RESOLUÇÃO DE ANO ASSINCRONO: Captura o ano de forma imutável e direta do ID nativo da SAP
+          let parsedYear = new Date().getFullYear();
+          const matches = m.id.match(/\d{4}/);
+          if (matches) {
+            parsedYear = parseInt(matches[0]);
+          } else {
+            const labelDigits = m.label.match(/\d{4}/);
+            if (labelDigits) parsedYear = parseInt(labelDigits[0]);
+          }
+
+          // TRAVA DE SEGURANÇA EXECUTIVA (Saneamento Hardcoded de Range: Restrito de 2022 até 2028)
+          if (parsedYear < 2022 || parsedYear > 2028) return;
 
           const cleanLabelUpper = String(m.label).substring(0, 3).toUpperCase();
           const targetMonthIndex = monthOrderMap[cleanLabelUpper] || 1;
+          const alignedLabel = `${m.label.substring(0,3)} ${String(parsedYear).substring(2, 4)}`;
 
-          if (idx > 0 && targetMonthIndex <= lastMonthIndex) { currentYearCounter++; }
-          lastMonthIndex = targetMonthIndex;
+          fullSeriesData.push({ 
+            id: m.id, 
+            label: alignedLabel, 
+            value: m.realizado, 
+            type: m.isCurrentMonth ? "actual" : "historical", 
+            originalNode: m, 
+            yearValue: parsedYear, 
+            monthNum: targetMonthIndex, 
+            rawRow: m.rowContext 
+          });
+        });
 
-          const shortYearString = String(currentYearCounter).substring(2, 4);
-          const alignedLabel = `${m.label} ${shortYearString}`;
+        // Ordenação cronológica estrita por ano e mês para evitar distorções no gráfico
+        fullSeriesData.sort((a, b) => {
+          if (a.yearValue !== b.yearValue) return a.yearValue - b.yearValue;
+          return a.monthNum - b.monthNum;
+        });
 
-          fullSeriesData.push({ id: m.id, label: alignedLabel, value: m.realizado, type, originalNode: m, yearValue: currentYearCounter, monthNum: targetMonthIndex, rawRow: m.rowContext });
+        fullSeriesData.forEach((d, idx) => {
+          if (d.type === "actual") defaultActualIndex = idx;
         });
 
         if (defaultActualIndex === -1 && fullSeriesData.length > 0) {
           defaultActualIndex = fullSeriesData.length - 1;
         }
 
-        // LÓGICA DE MONTAGEM DO DROPDOWN AGRUPADO POR NOS DE ANO (Fim da lista extensa e incompleta)
-        if (this._dateCutoffSelect.children.length === 0) {
-          const yearGroupsMap = {};
+        // MONTAGEM DO FILTRO EM ÁRVORE COLAPSÁVEL NATIVA (Hierarquia Pura)
+        if (this._treeDropdownContent.children.length === 0 && fullSeriesData.length > 0) {
+          const yearsMap = {};
           
           fullSeriesData.forEach(d => {
-            if (!yearGroupsMap[d.yearValue]) {
-              const group = document.createElement("optgroup");
-              group.setAttribute("label", `EXERCÍCIO ${d.yearValue}`);
-              yearGroupsMap[d.yearValue] = group;
-              this._dateCutoffSelect.appendChild(group);
+            if (!yearsMap[d.yearValue]) {
+              // Cria o nó de nível Pai (Ano)
+              const yearNode = document.createElement("div");
+              yearNode.className = "tree-year-node";
+              yearNode.textContent = `Ano ${d.yearValue}`;
+              
+              // Cria o contêiner de Filhos (Meses), inicialmente oculto
+              const monthsContainer = document.createElement("div");
+              monthsContainer.className = "tree-months-container";
+              
+              yearNode.addEventListener("click", (e) => {
+                e.stopPropagation();
+                yearNode.classList.toggle("expanded");
+                monthsContainer.classList.toggle("show");
+              });
+
+              this._treeDropdownContent.appendChild(yearNode);
+              this._treeDropdownContent.appendChild(monthsContainer);
+              
+              yearsMap[d.yearValue] = monthsContainer;
             }
-            const opt = document.createElement("option");
-            opt.value = d.id;
-            opt.textContent = d.label;
-            yearGroupsMap[d.yearValue].appendChild(opt);
+
+            // Injeta o item Filho (Mês) dentro do respectivo Ano
+            const monthItem = document.createElement("div");
+            monthItem.className = "tree-month-item";
+            monthItem.textContent = d.label;
+            monthItem.setAttribute("data-id", d.id);
+            
+            monthItem.addEventListener("click", (e) => {
+              e.stopPropagation();
+              this._selectedCutoffId = d.id;
+              this._treeDropdownContent.remove(); // Limpa e fecha a árvore
+              this._treeDropdownContent.innerHTML = ""; 
+              this.renderChart();
+            });
+
+            yearsMap[d.yearValue].appendChild(monthItem);
           });
 
-          this._selectedCutoffId = fullSeriesData[defaultActualIndex].id;
-          this._dateCutoffSelect.value = this._selectedCutoffId;
+          if (!this._selectedCutoffId && fullSeriesData[defaultActualIndex]) {
+            this._selectedCutoffId = fullSeriesData[defaultActualIndex].id;
+          }
         }
 
         let actualIndex = fullSeriesData.findIndex(d => d.id === this._selectedCutoffId);
         if (actualIndex === -1) actualIndex = defaultActualIndex;
+
+        // Atualiza o texto do gatilho com o mês/ano selecionado ativo
+        if (fullSeriesData[actualIndex]) {
+          this._treeDropdownTrigger.textContent = fullSeriesData[actualIndex].label;
+        }
 
         fullSeriesData.forEach((d, idx) => {
           d.type = (idx === actualIndex) ? "actual" : "historical";
@@ -685,7 +809,7 @@
 
         this._clearDOM();
 
-        // Isolamento de janela móvel para plotar as barras na tela
+        // Limitador de visualização de barras (Janela móvel de 12 meses até a data ativa)
         let visibleSeriesData = [];
         const startIndex = Math.max(0, actualIndex - 11);
         visibleSeriesData = fullSeriesData.slice(startIndex, actualIndex + 1);
