@@ -238,10 +238,10 @@
       .view-panel.active { display: flex; }
       .executive-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
       .executive-kpi {
-        display: flex; flex-direction: column; gap: 5px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 13px; background: #ffffff;
+        display: flex; flex-direction: column; gap: 6px; border: 1px solid #dbe3ec; border-radius: 8px; padding: 13px 14px; background: #ffffff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
       }
       .executive-kpi-label { font-size: var(--small-font-size); font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.55px; }
-      .executive-kpi-value { font-size: calc(var(--title-font-size) + 1px); line-height: 1.15; font-weight: 700; color: #0f172a; }
+      .executive-kpi-value { font-size: calc(var(--title-font-size) + 2px); line-height: 1.12; font-weight: 800; color: #0f172a; min-height: 24px; }
       .executive-kpi-sub { font-size: var(--small-font-size); color: #475569; }
       .risk-pill {
         display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-width: 88px; border-radius: 999px; padding: 5px 10px; font-size: var(--small-font-size); font-weight: 700; border: 1px solid transparent;
@@ -249,9 +249,9 @@
       .risk-pill.good { background: #e6f4ea; color: #137333; border-color: #ceead6; }
       .risk-pill.watch { background: #fff4e5; color: #b45309; border-color: #fed7aa; }
       .risk-pill.alert { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
-      .executive-grid { display: grid; grid-template-columns: minmax(280px, 1.2fr) minmax(0, 1fr); gap: var(--layout-gap); align-items: stretch; }
+      .executive-grid { display: grid; grid-template-columns: minmax(360px, 1.55fr) minmax(260px, 0.85fr); gap: var(--layout-gap); align-items: stretch; }
       .executive-panel {
-        border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0;
+        border: 1px solid #dbe3ec; border-radius: 8px; background: #ffffff; padding: var(--panel-padding); display: flex; flex-direction: column; min-width: 0; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
       }
       .executive-panel-title { font-size: var(--small-font-size); font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 12px; }
       .waterfall-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
@@ -259,17 +259,28 @@
       .waterfall-mode-tabs { display: inline-flex; border: 1px solid #dbe3ec; border-radius: 7px; background: #f8fafc; padding: 2px; gap: 2px; }
       .waterfall-mode-btn { border: none; background: transparent; color: #475569; font-size: var(--small-font-size); font-weight: 700; border-radius: 5px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
       .waterfall-mode-btn.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
-      .waterfall-caption { font-size: var(--small-font-size); color: #64748b; margin-bottom: 8px; min-height: 16px; }
-      .waterfall-chart { position: relative; display: flex; align-items: stretch; gap: 10px; min-height: 240px; height: 240px; overflow-x: auto; padding: 8px 4px 2px; border-top: 1px solid #eef2f6; }
-      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 82px; height: 100%; position: relative; }
-      .waterfall-value { height: 24px; display: flex; align-items: flex-start; justify-content: center; font-size: var(--small-font-size); font-weight: 700; color: #334155; white-space: nowrap; font-variant-numeric: tabular-nums; }
-      .waterfall-bar-wrap { position: relative; flex: 1; width: 100%; border-bottom: 1px solid #dbe3ec; }
-      .waterfall-bar { position: absolute; left: 10%; right: 10%; width: 80%; border-radius: 5px 5px 0 0; min-height: 4px; box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.08); }
+      .waterfall-caption { font-size: var(--small-font-size); color: #64748b; margin-bottom: 10px; min-height: 16px; }
+      .waterfall-chart {
+        position: relative; display: flex; align-items: stretch; gap: 12px; min-height: 270px; height: 270px; overflow-x: auto; padding: 12px 12px 8px;
+        border: 1px solid #e8eef5; border-radius: 8px; background: repeating-linear-gradient(to top, #ffffff 0, #ffffff 39px, #f6f9fc 40px);
+      }
+      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 96px; height: 100%; position: relative; }
+      .waterfall-value {
+        height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: var(--small-font-size); font-weight: 800; color: #0f172a;
+        white-space: nowrap; font-variant-numeric: tabular-nums; background: #ffffff; border: 1px solid #dbe3ec; border-radius: 999px; padding: 2px 7px; box-sizing: border-box;
+      }
+      .waterfall-bar-wrap { position: relative; flex: 1; width: 100%; border-bottom: 2px solid #cbd5e0; margin-top: 4px; }
+      .waterfall-bar {
+        position: absolute; left: 8%; right: 8%; width: 84%; border-radius: 7px 7px 2px 2px; min-height: 6px;
+        box-shadow: 0 6px 12px rgba(15, 23, 42, 0.12), inset 0 -1px 0 rgba(15, 23, 42, 0.12); cursor: help; transition: transform 0.15s ease, filter 0.15s ease;
+      }
+      .waterfall-bar:hover { transform: translateY(-2px); filter: brightness(1.04); }
       .waterfall-bar.total { background: #1f77b4; }
-      .waterfall-bar.positive { background: #d32f2f; }
-      .waterfall-bar.negative { background: #2e7d32; }
-      .waterfall-label { margin-top: 7px; font-size: var(--small-font-size); font-weight: 600; color: #475569; text-align: center; line-height: 1.2; min-height: 34px; max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+      .waterfall-bar.positive { background: #c5221f; }
+      .waterfall-bar.negative { background: #137333; }
+      .waterfall-label { margin-top: 8px; font-size: var(--small-font-size); font-weight: 700; color: #334155; text-align: center; line-height: 1.2; min-height: 34px; max-width: 104px; overflow: hidden; text-overflow: ellipsis; }
       .waterfall-empty { align-self: center; color: #64748b; font-size: var(--ui-font-size); padding: 20px; }
+      .waterfall-tooltip-note { margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: var(--small-font-size); }
       .executive-summary-list { margin: 0; padding-left: 18px; color: #334155; font-size: var(--ui-font-size); line-height: 1.6; display: flex; flex-direction: column; gap: 10px; }
       .supplier-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
       .supplier-kpi { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; padding: 12px 13px; display: flex; flex-direction: column; gap: 5px; }
@@ -461,17 +472,17 @@
             <div class="executive-kpi-sub" id="execActualYtdSub">-</div>
           </div>
           <div class="executive-kpi">
-            <div class="executive-kpi-label">Forecast Fechamento</div>
+            <div class="executive-kpi-label">Consumo do Orçamento</div>
             <div class="executive-kpi-value" id="execForecast">-</div>
             <div class="executive-kpi-sub" id="execForecastSub">-</div>
           </div>
           <div class="executive-kpi">
-            <div class="executive-kpi-label">Desvio Projetado</div>
+            <div class="executive-kpi-label">Principal Driver</div>
             <div class="executive-kpi-value" id="execProjectedGap">-</div>
             <div class="executive-kpi-sub" id="execProjectedGapSub">-</div>
           </div>
           <div class="executive-kpi">
-            <div class="executive-kpi-label">Semáforo</div>
+            <div class="executive-kpi-label">Risco Executivo</div>
             <div class="executive-kpi-value"><span class="risk-pill" id="execRiskPill">-</span></div>
             <div class="executive-kpi-sub" id="execRiskSub">-</div>
           </div>
@@ -959,6 +970,9 @@
       this._boundBarEnter = (e) => this._handleBarHover(e);
       this._boundBarMove = (e) => this._handleBarHover(e);
       this._boundBarLeave = () => this._hideBarTooltip();
+      this._boundWaterfallEnter = (e) => this._handleWaterfallHover(e);
+      this._boundWaterfallMove = (e) => this._handleWaterfallHover(e);
+      this._boundWaterfallLeave = () => this._hideBarTooltip();
     }
 
     connectedCallback() {
@@ -1566,6 +1580,7 @@
           endValue,
           rows: filteredRows,
           totalDelta: endValue - startValue,
+          context,
           caption: previousNode
             ? `Ponte da variação mensal do realizado: ${previousNode.label} para ${context.currentBarNode.label}.`
             : "Sem mês anterior disponível para calcular MoM realizado."
@@ -1589,31 +1604,127 @@
         endValue: context.totalRealizadoYTDAtual,
         rows: filteredRows,
         totalDelta: context.totalRealizadoYTDAtual - context.totalBudgetYTDCompleto,
+        context,
         caption: "Ponte entre orçamento acumulado e realizado acumulado, explicada pelos principais drivers filtrados."
       };
     }
 
-    _getForecastSummary(context) {
-      const elapsedMonths = Math.max(1, context.currentBarNode.monthNum);
-      const remainingMonths = Math.max(0, 12 - elapsedMonths);
-      const monthlyRunRate = context.totalRealizadoYTDAtual / elapsedMonths;
-      const monthlyBudgetRunRate = context.totalBudgetYTDCompleto / elapsedMonths;
-      const projectedActual = context.totalRealizadoYTDAtual + (monthlyRunRate * remainingMonths);
-      const projectedBudget = context.totalBudgetYTDCompleto + (monthlyBudgetRunRate * remainingMonths);
-      const projectedGap = projectedActual - projectedBudget;
-      const projectedPct = projectedBudget !== 0 ? (projectedGap / projectedBudget) * 100 : 0;
-      return { elapsedMonths, remainingMonths, projectedActual, projectedBudget, projectedGap, projectedPct };
+    _getWaterfallAccountRows(model, itemName) {
+      const context = model.context;
+      if (!context || !itemName || !this._contaContabilDimId || !this._currentData || !Array.isArray(this._currentData.data)) return [];
+      const accounts = new Map();
+      const ensureAccount = (name) => {
+        if (!accounts.has(name)) accounts.set(name, { name, realizado: 0, orcado: 0, current: 0, previous: 0 });
+        return accounts.get(name);
+      };
+
+      const currentId = context.currentBarNode ? String(context.currentBarNode.id) : "";
+      const previousNode = context.currentBarNode ? context.currentBarNode.previousSeriesData : null;
+      const previousId = previousNode ? String(previousNode.id) : "";
+      const currentYear = context.currentBarNode ? context.currentBarNode.yearValue : null;
+      const cutoffMonth = context.currentBarNode ? context.currentBarNode.monthNum : null;
+
+      this._currentData.data.forEach(row => {
+        const rowItemName = this._getRowMemberLabel(row, this._itemFinanceiroDimId, "Outros");
+        if (rowItemName !== itemName) return;
+        const contaName = this._getRowMemberLabel(row, this._contaContabilDimId, "Geral");
+        if (this._shouldIgnoreCompositionMember(contaName)) return;
+
+        const tempoObj = this._tempoDimId ? row[this._tempoDimId] : null;
+        if (!tempoObj) return;
+        const timeId = String(tempoObj.id);
+        const rawValue = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+        const isBudget = this._versaoDimId ? this._isBudgetVersionObject(row[this._versaoDimId]) : false;
+        const bucket = ensureAccount(contaName);
+
+        if (model.mode === "mom") {
+          if (isBudget) return;
+          if (timeId === currentId) bucket.current += rawValue;
+          else if (timeId === previousId) bucket.previous += rawValue;
+          return;
+        }
+
+        const seriesNode = context.fullSeriesById ? context.fullSeriesById.get(timeId) : null;
+        if (!seriesNode || seriesNode.yearValue !== currentYear || seriesNode.monthNum > cutoffMonth) return;
+        if (isBudget) bucket.orcado += rawValue;
+        else bucket.realizado += rawValue;
+      });
+
+      return Array.from(accounts.values())
+        .map(row => ({
+          name: row.name,
+          value: model.mode === "mom" ? row.current - row.previous : row.realizado - row.orcado,
+          current: row.current,
+          previous: row.previous,
+          realizado: row.realizado,
+          orcado: row.orcado
+        }))
+        .filter(row => Math.abs(row.value) > 0.00001)
+        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+        .slice(0, 6);
     }
 
-    _getRiskState(context, forecastSummary) {
-      const absProjectedPct = Math.abs(forecastSummary.projectedPct);
-      if (forecastSummary.projectedGap <= 0 && absProjectedPct <= 5) {
-        return { label: "Controlado", className: "good", description: "Forecast dentro do orçamento projetado." };
+    _buildWaterfallTooltipPayload(model, step, shownValue) {
+      const accountRows = step.itemName ? this._getWaterfallAccountRows(model, step.itemName) : [];
+      return {
+        key: `waterfall|${model.mode}|${step.label}|${shownValue}`,
+        title: step.label,
+        subtitle: model.mode === "mom" ? "Contas por variação MoM" : "Contas por desvio YTD",
+        total: shownValue,
+        rows: accountRows
+      };
+    }
+
+    _renderWaterfallTooltip(payload) {
+      if (!this._barTooltip || !payload) return;
+      const rows = payload.rows.length
+        ? payload.rows.map(item => `<div class="bar-tooltip-row"><span class="bar-tooltip-name">${this._escapeHtml(item.name)}</span><span class="bar-tooltip-value-wrap"><span class="bar-tooltip-value">${this._escapeHtml(this._formatTooltipValue(item.value))}</span></span></div>`).join("")
+        : `<div class="bar-tooltip-empty">Sem abertura por conta contábil disponível.</div>`;
+      this._barTooltip.innerHTML = `
+        <div class="bar-tooltip-title">${this._escapeHtml(payload.title)}<span class="bar-tooltip-subtitle">${this._escapeHtml(payload.subtitle)}</span></div>
+        <div class="bar-tooltip-list">${rows}</div>
+        <div class="waterfall-tooltip-note">Impacto total da barra: ${this._escapeHtml(this._formatTooltipValue(payload.total))}</div>
+      `;
+      this._barTooltip.classList.add("show");
+      this._barTooltip.setAttribute("aria-hidden", "false");
+    }
+
+    _handleWaterfallHover(event) {
+      const payload = event.currentTarget ? event.currentTarget._waterfallPayload : null;
+      if (!payload) {
+        this._hideBarTooltip();
+        return;
       }
-      if (forecastSummary.projectedGap <= 0 || absProjectedPct <= 10) {
-        return { label: "Acompanhar", className: "watch", description: "Pressão moderada no fechamento projetado." };
+      if (this._activeTooltipPayload !== payload.key) {
+        this._renderWaterfallTooltip(payload);
+        this._activeTooltipPayload = payload.key;
       }
-      return { label: "Atenção", className: "alert", description: "Risco material de estouro no fechamento." };
+      this._pendingTooltipPosition = { clientX: event.clientX, clientY: event.clientY };
+      if (!this._tooltipMoveQueued) {
+        this._tooltipMoveQueued = true;
+        requestAnimationFrame(() => {
+          this._tooltipMoveQueued = false;
+          if (!this._pendingTooltipPosition || !this._activeTooltipPayload) return;
+          this._positionBarTooltip(this._pendingTooltipPosition.clientX, this._pendingTooltipPosition.clientY);
+        });
+      }
+    }
+
+    _getRiskState(context) {
+      const absYtdPct = Math.abs(context.diffYtdPercent || 0);
+      const consumption = context.consumoBudgetPercent || 0;
+      if (context.diffYtdNominal <= 0 && consumption <= 100) {
+        return { label: "Controlado", className: "good", description: "YTD dentro do orçamento e sem pressão material." };
+      }
+      if (absYtdPct <= 5 || consumption <= 105) {
+        return { label: "Acompanhar", className: "watch", description: "Desvio moderado, requer acompanhamento dos drivers." };
+      }
+      return { label: "Atenção", className: "alert", description: "Desvio material no YTD, priorizar plano de ação." };
+    }
+
+    _getExecutiveDriver(context) {
+      const rows = context.analysis && context.analysis.waterfallTable ? context.analysis.waterfallTable : [];
+      return [...rows].sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio))[0] || null;
     }
 
     _renderAnalyticsViews() {
@@ -1634,24 +1745,24 @@
     _renderExecutiveView(context, filteredRows) {
       if (!this._executiveView) return;
       const formatM = (value) => `${value >= 0 ? "" : "-"}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
-      const forecast = this._getForecastSummary(context);
-      const risk = this._getRiskState(context, forecast);
+      const risk = this._getRiskState(context);
+      const mainDriver = this._getExecutiveDriver(context);
       const ytdGapText = `${context.diffYtdNominal >= 0 ? "+" : ""}${(context.diffYtdNominal / 1000000).toFixed(2)}M`;
-      const forecastGapText = `${forecast.projectedGap >= 0 ? "+" : ""}${(forecast.projectedGap / 1000000).toFixed(2)}M`;
+      const driverText = mainDriver ? `${mainDriver.desvio >= 0 ? "+" : ""}${(mainDriver.desvio / 1000000).toFixed(2)}M` : "-";
 
-      this._setText(this._execActualYtd, formatM(context.totalRealizadoYTDAtual));
-      this._setText(this._execActualYtdSub, `Desvio atual ${ytdGapText} vs orçamento YTD`);
-      this._setText(this._execForecast, formatM(forecast.projectedActual));
-      this._setText(this._execForecastSub, `Baseado em run rate de ${forecast.elapsedMonths} mês(es)`);
-      this._setText(this._execProjectedGap, formatM(forecast.projectedGap));
-      this._setText(this._execProjectedGapSub, `${forecastGapText} vs orçamento projetado`);
+      this._setText(this._execActualYtd, formatM(context.diffYtdNominal));
+      this._setText(this._execActualYtdSub, `${ytdGapText} (${context.diffYtdPercent.toFixed(1)}%) vs orçamento YTD`);
+      this._setText(this._execForecast, `${context.consumoBudgetPercent.toFixed(1)}%`);
+      this._setText(this._execForecastSub, `${formatM(context.totalRealizadoYTDAtual)} consumidos de ${formatM(context.totalBudgetYTDCompleto)}`);
+      this._setText(this._execProjectedGap, mainDriver ? this._compactWaterfallLabel(mainDriver.itemName) : "-");
+      this._setText(this._execProjectedGapSub, mainDriver ? `${driverText} de impacto YTD` : "Sem driver material identificado");
       this._setClass(this._execRiskPill, `risk-pill ${risk.className}`);
       this._setText(this._execRiskPill, risk.label);
       this._setText(this._execRiskSub, risk.description);
 
       const waterfallModel = this._getWaterfallModel(context);
       this._renderWaterfall(waterfallModel);
-      this._renderExecutiveSummary(context, filteredRows, forecast, risk, waterfallModel);
+      this._renderExecutiveSummary(context, filteredRows, risk, waterfallModel);
     }
 
     _renderWaterfall(model) {
@@ -1671,7 +1782,7 @@
       const residualGap = model.totalDelta - explainedGap;
       const steps = [
         { label: model.startLabel, value: model.startValue, type: "total" },
-        ...model.rows.map(item => ({ label: item.itemName, delta: item.delta, type: item.delta >= 0 ? "positive" : "negative" })),
+        ...model.rows.map(item => ({ label: item.itemName, itemName: item.itemName, delta: item.delta, type: item.delta >= 0 ? "positive" : "negative" })),
         ...(Math.abs(residualGap) > 0.00001 ? [{ label: "Demais itens", delta: residualGap, type: residualGap >= 0 ? "positive" : "negative" }] : []),
         { label: model.endLabel, value: model.endValue, type: "total" }
       ];
@@ -1721,6 +1832,12 @@
         barEl.className = `waterfall-bar ${step.type}`;
         barEl.style.bottom = `${bottomPct}%`;
         barEl.style.height = `${heightPct}%`;
+        if (step.itemName) {
+          barEl._waterfallPayload = this._buildWaterfallTooltipPayload(model, step, shownValue);
+          barEl.addEventListener("mouseenter", this._boundWaterfallEnter);
+          barEl.addEventListener("mousemove", this._boundWaterfallMove);
+          barEl.addEventListener("mouseleave", this._boundWaterfallLeave);
+        }
         const labelEl = document.createElement("div");
         labelEl.className = "waterfall-label";
         labelEl.textContent = this._compactWaterfallLabel(step.label);
@@ -1741,7 +1858,7 @@
       return `${text.slice(0, 16)}…`;
     }
 
-    _renderExecutiveSummary(context, filteredRows, forecast, risk, waterfallModel) {
+    _renderExecutiveSummary(context, filteredRows, risk, waterfallModel) {
       if (!this._executiveSummaryList) return;
       this._executiveSummaryList.textContent = "";
       const fragment = document.createDocumentFragment();
@@ -1754,7 +1871,7 @@
         : `No YTD Real x Orçado, a ponte explica ${(waterfallModel.totalDelta >= 0 ? "+" : "")}${(waterfallModel.totalDelta / 1000000).toFixed(2)}M de variação acumulada.`;
       const bullets = [
         `O YTD encerra com ${context.diffYtdNominal <= 0 ? "variação favorável" : "variação desfavorável"} de R$ ${Math.abs(context.diffYtdNominal / 1000000).toFixed(2)}M.`,
-        `O forecast projeta R$ ${(forecast.projectedActual / 1000000).toFixed(2)}M no fechamento e mantém o status ${risk.label.toLowerCase()}.`,
+        `O consumo acumulado está em ${context.consumoBudgetPercent.toFixed(1)}% do orçamento, com status ${risk.label.toLowerCase()}.`,
         waterfallText,
         topDrivers.length > 0
           ? `Os ${topDrivers.length} maiores drivers explicam ${Math.min(concentration, 999).toFixed(1)}% da variação YTD.`
@@ -2947,6 +3064,7 @@
         fullSeriesById: fullSeriesData._byIdMap,
         diffYtdNominal,
         diffYtdPercent,
+        consumoBudgetPercent,
         totalRealizadoYTDAtual,
         totalRealizadoYTDAntigo,
         totalBudgetYTDCompleto,
