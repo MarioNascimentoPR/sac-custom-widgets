@@ -13,7 +13,6 @@
         --color-increase: #c5221f;
         --color-increase-bg: #fce8e6;
         --color-increase-border: #fad2cf;
-        --color-border-axis: #cbd5e0;
         
         display: block;
         width: 100%;
@@ -144,50 +143,26 @@
         padding-bottom: 6px;
       }
       
-      /* CONTAINER DO GRÁFICO: Ajustado para acomodar a pista de desvio estática */
+      /* CONTAINER PRINCIPAL DO GRÁFICO */
       .chart-container-block { 
         position: relative; 
         height: 185px; 
-        padding-top: 55px; 
+        padding-top: 45px; 
         box-sizing: border-box; 
         width: 100%; 
       }
+      .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; }
       
-      /* PISTA DE DESVIO FIXA: Cria as linhas estruturais sem depender de cálculos JS de pixels */
-      .variance-track-container {
-        position: absolute;
-        top: 14px;
-        left: 0;
-        width: 100%;
-        height: 35px;
-        pointer-events: none;
-        display: flex;
-        justify-content: center;
-        z-index: 2;
+      /* REESTRUTURAÇÃO COMPLETA: Inserção fluida de tags entre as colunas sem SVG */
+      .bar-wrapper { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        width: 46px; 
+        height: 100%; 
+        justify-content: flex-end; 
+        position: relative; 
       }
-      
-      /* ESTRUTURA DOS CONECTORES NATIVOS: Alinhamento garantido por CSS */
-      .variance-connector-group {
-        display: flex;
-        position: relative;
-        align-items: flex-start;
-      }
-      
-      .connector-stem {
-        position: absolute;
-        border-top: 1.25px solid var(--color-border-axis);
-        border-left: 1.25px solid var(--color-border-axis);
-        border-right: 1.25px solid var(--color-border-axis);
-        top: 0;
-        height: 25px;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-      }
-      
-      .chart-area { width: 100%; height: 100%; display: flex; position: relative; align-items: flex-end; justify-content: center; gap: 20px; z-index: 1; }
-      
-      .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 46px; height: 100%; justify-content: flex-end; position: relative; }
       .bar-element { width: 100%; max-width: 46px; border-radius: 3px 3px 0 0; position: relative; display: flex; justify-content: center; bottom: 0px; }
       .bar-element.historical { background-color: var(--color-historical); }
       .bar-element.actual { background-color: var(--color-actual); box-shadow: 0 0 10px rgba(31, 119, 180, 0.35); border: 1px solid #15517b; box-sizing: border-box; }
@@ -197,22 +172,39 @@
         background-size: 6px 6px;
       }
       
-      /* RÓTULOS DE DADOS DA COLUNA: Mantidos travados em cima da respectiva barra */
       .kpi-label { position: absolute; top: -22px; font-size: calc(var(--font-size-labels) - 1px); font-weight: 700; color: #2d3748; white-space: nowrap; }
       .bar-element.actual .kpi-label { color: #1a202c; background: #edf2f7; padding: 1px 4px; border-radius: 4px; top: -24px; }
       
+      /* INTER-COLUMN VARIANCE TAG: Posicionada cirurgicamente à esquerda do wrapper correspondente */
+      .inter-column-tag-wrapper {
+        position: absolute;
+        top: -42px; /* Força o desvio a ficar acima do rótulo numérico sem esmagamento */
+        left: -33px; /* Centraliza perfeitamente no gap de 20px entre as colunas */
+        width: 66px;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
+
+      .variance-tag {
+        font-size: calc(var(--font-size-labels) - 2px); 
+        font-weight: 700; 
+        padding: 2px 6px; 
+        border-radius: 4px; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08); 
+        white-space: nowrap; 
+        border: 1px solid transparent;
+        background-color: #ffffff;
+      }
+      .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
+      .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
+
       .axis-x-block { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #cbd5e0; padding-top: 6px; width: 100%; }
       .axis-x { display: flex; justify-content: center; gap: 20px; height: 18px; }
       .axis-label { width: 46px; text-align: center; font-size: calc(var(--font-size-labels) - 1px); font-weight: 600; color: #718096; white-space: nowrap; }
       .axis-label.actual-month { color: var(--color-actual); font-weight: 700; }
       
-      .variance-tag {
-        font-size: calc(var(--font-size-labels) - 2px); font-weight: 700; padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; border: 1px solid transparent; display: inline-block; margin-top: -10px; background-color: #ffffff;
-      }
-      .variance-tag.saving { background-color: var(--color-saving-bg); color: var(--color-saving); border-color: var(--color-saving-border); }
-      .variance-tag.increase { background-color: var(--color-increase-bg); color: var(--color-increase); border-color: var(--color-increase-border); }
-
-      /* GRID INFERIOR REESTRUTURADO */
+      /* GRID INFERIOR EXECUTIVO */
       .insight-grid {
         display: grid;
         grid-template-columns: 1.1fr 1fr;
@@ -353,7 +345,6 @@
 
       <div class="main-visualization-layout">
         <div class="monthly-col visualization-column">
-          <div class="variance-track-container" id="monthlyTrack"></div>
           <div class="chart-container-block">
             <div class="chart-area" id="chartArea"></div>
           </div>
@@ -364,12 +355,11 @@
 
         <div class="visualization-column ytd-col">
           <div class="ytd-chart-header-title" id="ytd-chart-header-title">Evolução YTD Acumulada</div>
-          <div class="variance-track-container" id="ytdTrack"></div>
           <div class="chart-container-block">
             <div class="chart-area" id="ytdChartArea">
-              <div class="bar-wrapper"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
-              <div class="bar-wrapper"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
-              <div class="bar-wrapper"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
+              <div class="bar-wrapper" id="ytdWrapperPrev"><div class="bar-element historical" id="mini-bar-prev"><span class="kpi-label" id="mini-lbl-prev">-</span></div></div>
+              <div class="bar-wrapper" id="ytdWrapperAct"><div class="bar-element actual" id="mini-bar-act"><span class="kpi-label" id="mini-lbl-act">-</span></div></div>
+              <div class="bar-wrapper" id="ytdWrapperBud"><div class="bar-element budget" id="mini-bar-bud"><span class="kpi-label" id="mini-lbl-bud">-</span></div></div>
             </div>
           </div>
           <div class="axis-x-block">
@@ -454,8 +444,6 @@
         
         this._chartArea = this._shadowRoot.getElementById("chartArea");
         this._ytdChartArea = this._shadowRoot.getElementById("ytdChartArea");
-        this._monthlyTrack = this._shadowRoot.getElementById("monthlyTrack");
-        this._ytdTrack = this._shadowRoot.getElementById("ytdTrack");
         this._axisX = this._shadowRoot.getElementById("axisX");
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
@@ -482,6 +470,10 @@
         this._miniLblPrev = this._shadowRoot.getElementById("mini-lbl-prev");
         this._miniLblAct = this._shadowRoot.getElementById("mini-lbl-act");
         this._miniLblBud = this._shadowRoot.getElementById("mini-lbl-bud");
+
+        this._ytdWrapperPrev = this._shadowRoot.getElementById("ytdWrapperPrev");
+        this._ytdWrapperAct = this._shadowRoot.getElementById("ytdWrapperAct");
+        this._ytdWrapperBud = this._shadowRoot.getElementById("ytdWrapperBud");
 
         this._treeDropdownTrigger.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -559,8 +551,11 @@
       const existingBars = this._chartArea.querySelectorAll(".bar-wrapper");
       existingBars.forEach(el => el.remove());
       this._axisX.textContent = "";
-      this._monthlyTrack.textContent = "";
-      this._ytdTrack.textContent = "";
+
+      // Limpa os ganchos injetados anteriormente nas barras YTD fixas
+      const oldYtdTags = this._shadowRoot.querySelectorAll(".ytd-col .inter-column-tag-wrapper");
+      oldYtdTags.forEach(el => el.remove());
+
       this._insightGrid.style.display = "none";
     }
 
@@ -755,77 +750,60 @@
         });
 
         const maxVal = Math.max(...visibleSeriesData.map(d => d.value)) * 1.25 || 1;
-        const barElements = [];
 
-        visibleSeriesData.forEach((d) => {
-          const barWrapper = document.createElement("div"); barWrapper.className = "bar-wrapper";
-          const barElement = document.createElement("div"); barElement.className = "bar-element";
-          barElement.style.height = `${(d.value / maxVal) * 100}%`; barElement.classList.add(d.type);
-          const kpiLabel = document.createElement("span"); kpiLabel.className = "kpi-label"; kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
-          barElement.appendChild(kpiLabel); barWrapper.appendChild(barElement); this._chartArea.appendChild(barWrapper); barElements.push(barElement);
+        // RENDERIZAÇÃO DAS BARRAS MENSAL COM INJEÇÃO ESTRUTURAL DA TAG DE VARIAÇÃO
+        visibleSeriesData.forEach((d, idx) => {
+          const barWrapper = document.createElement("div"); 
+          barWrapper.className = "bar-wrapper";
           
-          const axisLabel = document.createElement("div"); axisLabel.className = "axis-label"; axisLabel.textContent = d.label;
+          const barElement = document.createElement("div"); 
+          barElement.className = "bar-element";
+          barElement.style.height = `${(d.value / maxVal) * 100}%`; 
+          barElement.classList.add(d.type);
+          
+          const kpiLabel = document.createElement("span"); 
+          kpiLabel.className = "kpi-label"; 
+          kpiLabel.textContent = (d.value / 1000000).toFixed(2) + "M";
+          barElement.appendChild(kpiLabel);
+
+          // INJEÇÃO DA TAG: Vinculada de forma limpa à coluna correspondente (Evita desalinhamentos CDN)
+          if (idx === visibleActualIndex && idx > 0) {
+            const valPrev = visibleSeriesData[idx - 1].value;
+            const diffM = d.value - valPrev;
+            const pctM = valPrev !== 0 ? (diffM / valPrev) * 100 : 0;
+            const isSavingM = diffM <= 0;
+
+            const tagWrapper = document.createElement("div");
+            tagWrapper.className = "inter-column-tag-wrapper";
+            tagWrapper.innerHTML = `<span class="variance-tag ${isSavingM ? 'saving' : 'increase'}">${isSavingM ? '▼' : '▲'} ${Math.abs(pctM).toFixed(2)}%</span>`;
+            barWrapper.appendChild(tagWrapper);
+          }
+          else if (idx === visibleActualIndex + 1 && idx < visibleSeriesData.length) {
+            const valAct = visibleSeriesData[idx - 1].value;
+            const diffB = d.value - valAct;
+            const pctB = valAct !== 0 ? (diffB / valAct) * 100 : 0;
+            const isSavingB = diffB >= 0;
+
+            const tagWrapper = document.createElement("div");
+            tagWrapper.className = "inter-column-tag-wrapper";
+            tagWrapper.innerHTML = `<span class="variance-tag ${isSavingB ? 'saving' : 'increase'}">${isSavingB ? '▼' : '▲'} ${Math.abs(pctB).toFixed(2)}%</span>`;
+            barWrapper.appendChild(tagWrapper);
+          }
+
+          barWrapper.appendChild(barElement); 
+          this._chartArea.appendChild(barWrapper);
+          
+          const axisLabel = document.createElement("div"); 
+          axisLabel.className = "axis-label"; 
+          axisLabel.textContent = d.label;
           if (d.type === "actual") axisLabel.classList.add("actual-month");
           this._axisX.appendChild(axisLabel);
         });
 
-        this._renderCSSBasedConnectors(visibleSeriesData, visibleActualIndex);
         this._renderDoubleFinancePanel(fullSeriesData, actualIndex, calculatedBudget);
 
       } catch (error) {
         console.error("Erro interno no processamento visual:", error);
-      }
-    }
-
-    /* ==========================================================================
-       SOLUÇÃO DEFINITIVA CONTRA DESCASED: CONECTORES ZERADOS VIA GRID/CSS 
-       ========================================================================== */
-    _renderCSSBasedConnectors(visibleSeriesData, visibleActualIndex) {
-      // 1. Conector Gráfico Mensal (Ancorado estruturalmente nas últimas 3 colunas)
-      const numTotalBars = visibleSeriesData.length;
-      if (numTotalBars >= 3 && visibleActualIndex !== -1) {
-        const idxPrev = numTotalBars - 3;
-        const idxAct = numTotalBars - 2;
-        const idxBud = numTotalBars - 1;
-
-        const valPrev = visibleSeriesData[idxPrev].value;
-        const valAct = visibleSeriesData[idxAct].value;
-        const valBud = visibleSeriesData[idxBud].value;
-
-        // Cálculo de Variação Mensal (Histórico vs Atual)
-        const diffM = valAct - valPrev;
-        const pctM = valPrev !== 0 ? (diffM / valPrev) * 100 : 0;
-        const isSavingM = diffM <= 0;
-        const tagClassM = isSavingM ? "saving" : "increase";
-        const textM = (isSavingM ? "▼ " : "▲ ") + Math.abs(pctM).toFixed(2) + "%";
-
-        // Cálculo de Variação Budget (Atual vs Orçado)
-        const diffB = valBud - valAct;
-        const pctB = valAct !== 0 ? (diffB / valAct) * 100 : 0;
-        const isSavingB = diffB >= 0; // Se o orçado for maior que o real, é positivo (saving)
-        const tagClassB = isSavingB ? "saving" : "increase";
-        const textB = (isSavingB ? "▼ " : "▲ ") + Math.abs(pctB).toFixed(2) + "%";
-
-        // Montagem estrutural via CSS Grid combinando perfeitamente com os gaps nativos de 20px
-        this._monthlyTrack.style.display = "grid";
-        this._monthlyTrack.style.gridTemplateColumns = `repeat(${numTotalBars - 3}, 46px) 46px 46px 46px`;
-        this._monthlyTrack.style.gap = "20px";
-
-        this._monthlyTrack.innerHTML = `
-          <div style="grid-column: 1 / span ${numTotalBars - 3};"></div>
-          <div class="variance-connector-group" style="grid-column: span 2; width: 112px;">
-            <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
-            <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
-              <span class="variance-tag ${tagClassM}">${textM}</span>
-            </div>
-          </div>
-          <div class="variance-connector-group" style="grid-column: span 2; width: 112px; margin-left: -46px;">
-            <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
-            <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
-              <span class="variance-tag ${tagClassB}">${textB}</span>
-            </div>
-          </div>
-        `;
       }
     }
 
@@ -897,30 +875,20 @@
       this._shadowRoot.getElementById("ytd-axis-lbl-prev").textContent = `Ant. (${previousYear})`;
       this._shadowRoot.getElementById("ytd-axis-lbl-act").textContent = `Atual (${currentYear})`;
 
-      // 2. Conector Gráfico YTD (Fixo em 3 colunas estruturais)
+      // INJEÇÃO DA TAG DE VARIAÇÃO NO GRÁFICO DO YTD (TOTALMENTE ANCORADA VIA DOM FLUIDO)
       const diffYTD_YoY = totalRealizadoYTDAtual - totalRealizadoYTDAntigo;
       const pctYTD_YoY = totalRealizadoYTDAntigo !== 0 ? (diffYTD_YoY / totalRealizadoYTDAntigo) * 100 : 0;
       const isSavingYTD_YoY = diffYTD_YoY <= 0;
-      const tagClassYTD_M = isSavingYTD_YoY ? "saving" : "increase";
-      const textYTD_M = (isSavingYTD_YoY ? "▼ " : "▲ ") + Math.abs(pctYTD_YoY).toFixed(2) + "%";
 
-      this._ytdTrack.style.display = "grid";
-      this._ytdTrack.style.gridTemplateColumns = "46px 46px 46px";
-      this._ytdTrack.style.gap = "20px";
-      this._ytdTrack.innerHTML = `
-        <div class="variance-connector-group" style="grid-column: span 2; width: 112px;">
-          <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
-          <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
-            <span class="variance-tag ${tagClassYTD_M}">${textYTD_M}</span>
-          </div>
-        </div>
-        <div class="variance-connector-group" style="grid-column: span 2; width: 112px; margin-left: -46px;">
-          <div class="connector-stem" style="width: 100%; border-bottom: none; left: 23px; width: 66px;"></div>
-          <div style="width: 100%; display: flex; justify-content: center; position: relative; z-index: 5; margin-left: 23px; width: 66px;">
-            <span class="variance-tag ${isYtdSaving ? "saving" : "increase"}">${formatPercent(diffYtdPercent, isYtdSaving)}</span>
-          </div>
-        </div>
-      `;
+      const tagWrapperYtd_YoY = document.createElement("div");
+      tagWrapperYtd_YoY.className = "inter-column-tag-wrapper";
+      tagWrapperYtd_YoY.innerHTML = `<span class="variance-tag ${isSavingYTD_YoY ? 'saving' : 'increase'}">${isSavingYTD_YoY ? '▼' : '▲'} ${Math.abs(pctYTD_YoY).toFixed(2)}%</span>`;
+      this._ytdWrapperAct.appendChild(tagWrapperYtd_YoY);
+
+      const tagWrapperYtd_Bud = document.createElement("div");
+      tagWrapperYtd_Bud.className = "inter-column-tag-wrapper";
+      tagWrapperYtd_Bud.innerHTML = `<span class="variance-tag ${isYtdSaving ? 'saving' : 'increase'}">${isYtdSaving ? '▼' : '▲'} ${Math.abs(diffYtdPercent).toFixed(2)}%</span>`;
+      this._ytdWrapperBud.appendChild(tagWrapperYtd_Bud);
 
       const monthStatusLabel = isMonthSaving ? "economia de custos" : "incremento de despesas";
       const ytdStatusLabel = isYtdSaving ? "abaixo do teto orçamentário (eficiência)" : "acima da meta estabelecida (atenção)";
