@@ -242,13 +242,44 @@
                     return;
                 }
 
-                const calcDimKey = dimKeys[0];
-                const ccDimKey = dimKeys[1];
-                const contaDimKey = dimKeys[2];
-                const colDimKey = dimKeys[3];
+                const getName = (obj) => obj ? (obj.label || obj.description || obj.id || "N/D") : "N/D";
+                const normalizeText = (value) => String(value || "")
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toUpperCase();
+                const isVersionMember = (value) => {
+                    const normalized = normalizeText(value);
+                    return normalized.includes("ORCADO") || normalized.includes("REALIZADO");
+                };
+
+                let colDimKey = dimKeys.find(dimKey =>
+                    financialData.data.some(row => isVersionMember(getName(row[dimKey])))
+                ) || dimKeys[3];
+
+                const hierarchyDimKeys = dimKeys.filter(dimKey => dimKey !== colDimKey);
+                if (hierarchyDimKeys.length < 3) {
+                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Não foi possível identificar a dimensão de versão (Orçado/Realizado). Verifique se uma dimensão contém os membros Orçado e Realizado.</div>";
+                    return;
+                }
+
+                const getDimensionMetadataName = (dimKey) => normalizeText(getName(dimensions[dimKey]));
+                const detectedCcDimKey = hierarchyDimKeys.find(dimKey => {
+                    const dimName = getDimensionMetadataName(dimKey);
+                    return dimName.includes("CENTRO") || /\bCC\b/.test(dimName);
+                });
+                const detectedContaDimKey = hierarchyDimKeys.find(dimKey => {
+                    const dimName = getDimensionMetadataName(dimKey);
+                    return dimName.includes("CONTA");
+                });
+                const detectedCalcDimKey = hierarchyDimKeys.find(dimKey =>
+                    dimKey !== detectedCcDimKey && dimKey !== detectedContaDimKey
+                );
+
+                const calcDimKey = detectedCalcDimKey || hierarchyDimKeys[0];
+                const ccDimKey = detectedCcDimKey || hierarchyDimKeys[1];
+                const contaDimKey = detectedContaDimKey || hierarchyDimKeys[2];
                 const measureKey = measureKeys[0];
 
-                const getName = (obj) => obj ? (obj.label || obj.description || obj.id || "N/D") : "N/D";
                 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
                     '&': '&amp;',
                     '<': '&lt;',
