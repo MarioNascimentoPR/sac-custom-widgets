@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.2.6 - simplified budget governance.
+// Evo GA Executive Oversight Engine v1.2.8 - governed budget oversight.
 (function () {
     const ENABLE_TELEMETRY = true;
 
@@ -111,6 +111,209 @@
                 k50: baseValue * 50000 * 1.08,
                 k100: baseValue * 100000 * 1.12
             };
+        }
+    }
+
+    const EVO_GA_HIERARCHY = [
+        { key: "vp", label: "VP" },
+        { key: "diretoria", label: "Diretoria" },
+        { key: "gerencia", label: "Gerência" },
+        { key: "departamento", label: "Departamento" },
+        { key: "conta", label: "Conta Contábil" }
+    ];
+
+    const EVO_GA_MATERIALITY_CONFIG = {
+        minimumMaterialityThreshold: 0.20,
+        noiseVariancePct: 2,
+        noiseVarianceAbs: 100000
+    };
+
+    const EVO_GA_TREND_LABELS = {
+        worsening: "deterioração",
+        acceleration: "aceleração",
+        improving: "melhora",
+        normalization: "normalização",
+        stable: "estável"
+    };
+
+    const EVO_GA_RECURRENCE_LABELS = {
+        persistent: "recorrente longa",
+        recurring: "recorrente",
+        isolated: "isolada",
+        none: "sem recorrência"
+    };
+
+    class EvoGATrendEngine {
+        static buildProfile(monthlyValues) {
+            const series = (monthlyValues || []).map(item => item.actual - item.budget);
+            const positives = series.map(value => value > 0);
+            let recurrenceMonths = 0;
+            for (let i = positives.length - 1; i >= 0 && positives[i]; i--) recurrenceMonths++;
+            const last3 = series.slice(-3);
+            let trendDirection = "stable";
+            if (last3.length >= 3 && last3[0] < last3[1] && last3[1] < last3[2]) trendDirection = "worsening";
+            else if (last3.length >= 3 && last3[0] > last3[1] && last3[1] > last3[2]) trendDirection = "improving";
+            else if (last3.length >= 2 && last3[last3.length - 1] > last3[last3.length - 2] * 1.15) trendDirection = "acceleration";
+            else if (recurrenceMonths === 0 && positives.slice(0, -1).some(Boolean)) trendDirection = "normalization";
+            const recurrenceType = recurrenceMonths >= 6 ? "persistent" : (recurrenceMonths >= 3 ? "recurring" : (recurrenceMonths >= 1 ? "isolated" : "none"));
+            return { trendDirection, recurrenceType, recurrenceMonths };
+        }
+
+        static formatTrend(value) {
+            return EVO_GA_TREND_LABELS[value] || value || "-";
+        }
+
+        static formatRecurrence(value) {
+            return EVO_GA_RECURRENCE_LABELS[value] || value || "-";
+        }
+    }
+
+    class EvoGAAggregationEngine {
+        static addValue(valuesMap, col, value) {
+            valuesMap[col] = (valuesMap[col] || 0) + value;
+        }
+
+        static addRow(dataMap, rowContext, col, value) {
+            const { calcNode, ccNivel1, ccNivel2, ccNivel3, conta } = rowContext;
+            if (!dataMap[calcNode]) {
+                dataMap[calcNode] = { totals: {}, ccNivel1: {} };
+            }
+            if (!dataMap[calcNode].ccNivel1[ccNivel1]) {
+                dataMap[calcNode].ccNivel1[ccNivel1] = { totals: {}, ccNivel2: {} };
+            }
+            if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2]) {
+                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2] = { totals: {}, ccNivel3: {} };
+            }
+            if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3]) {
+                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3] = { totals: {}, contas: {} };
+            }
+            if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta]) {
+                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta] = {};
+            }
+
+            EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta], col, value);
+            EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].totals, col, value);
+            EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals, col, value);
+            EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].totals, col, value);
+            EvoGAAggregationEngine.addValue(dataMap[calcNode].totals, col, value);
+        }
+
+        static buildRowMetrics(name, valuesMap, uniqueCols, level = 0, path = []) {
+            let valOrcado = 0;
+            let valRealizado = 0;
+            let numValues = {};
+
+            uniqueCols.forEach(col => {
+                const val = valuesMap[col] || 0;
+                numValues[col] = val;
+                const normalizedCol = String(col || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                if (normalizedCol.includes("ORCADO")) valOrcado += val;
+                else if (normalizedCol.includes("REALIZADO")) valRealizado += val;
+            });
+
+            const desvio = valRealizado - valOrcado;
+            const percentConsumption = valOrcado > 0 ? (valRealizado / valOrcado) * 100 : (valRealizado > 0 ? Infinity : 0);
+            return {
+                name,
+                level,
+                hierarchyLabel: EVO_GA_HIERARCHY[level] ? EVO_GA_HIERARCHY[level].label : "Nível",
+                hierarchyPath: path,
+                accountabilityPath: path.join(" > "),
+                valOrcado,
+                valRealizado,
+                desvio,
+                percentConsumption,
+                numValues
+            };
+        }
+
+        static collectNodes(nodes) {
+            const allNodes = [];
+            const collect = (node) => {
+                allNodes.push(node);
+                (node.children || []).forEach(collect);
+            };
+            nodes.forEach(collect);
+            return allNodes;
+        }
+    }
+
+    class EvoGAMaterialityEngine {
+        static classifyBudgetStatus(budget, actual, varianceAbs, variancePct) {
+            if (budget === 0 && actual === 0) return "Sem movimento";
+            if (budget === 0 && actual > 0) return "Sem orçamento";
+            if (varianceAbs <= 0) return "Aderente";
+            if (Math.abs(variancePct) < EVO_GA_MATERIALITY_CONFIG.noiseVariancePct &&
+                Math.abs(varianceAbs) < EVO_GA_MATERIALITY_CONFIG.noiseVarianceAbs) return "Monitorar";
+            if (variancePct >= 10 || varianceAbs >= 500000) return "Acima";
+            return "Atenção";
+        }
+
+        static annotate(nodes, totalBudget, totalActual) {
+            const maxVarianceAbs = Math.max(1, ...nodes.map(node => Math.abs(node.desvio || 0)));
+            nodes.forEach(node => {
+                const varianceAbs = node.desvio || 0;
+                const variancePct = node.valOrcado > 0 ? ((node.valRealizado - node.valOrcado) / node.valOrcado) * 100 : 0;
+                const normalizedVariancePct = Math.min(Math.abs(variancePct) / 100, 1);
+                const normalizedVarianceAbs = Math.min(Math.abs(varianceAbs) / maxVarianceAbs, 1);
+                const budgetWeight = totalBudget > 0 ? node.valOrcado / totalBudget : 0;
+                const organizationalWeight = totalActual > 0 ? node.valRealizado / totalActual : 0;
+                const materialityScore =
+                    (normalizedVariancePct * 0.35) +
+                    (normalizedVarianceAbs * 0.35) +
+                    (budgetWeight * 0.20) +
+                    (organizationalWeight * 0.10);
+
+                node.varianceAbs = varianceAbs;
+                node.variancePct = variancePct;
+                node.budgetWeight = budgetWeight;
+                node.organizationalWeight = organizationalWeight;
+                node.materialityScore = materialityScore;
+                node.materialityValue = Math.abs(varianceAbs);
+                node.executiveSeverity = EvoGAMaterialityEngine.classifyBudgetStatus(node.valOrcado, node.valRealizado, varianceAbs, variancePct);
+                node.varianceDirection = varianceAbs > 0 ? "negative" : (varianceAbs < 0 ? "positive" : "neutral");
+                node.varianceSeverity = node.executiveSeverity.toLowerCase();
+                node.isExecutiveNoise =
+                    Math.abs(variancePct) < EVO_GA_MATERIALITY_CONFIG.noiseVariancePct &&
+                    Math.abs(varianceAbs) < EVO_GA_MATERIALITY_CONFIG.noiseVarianceAbs &&
+                    materialityScore < EVO_GA_MATERIALITY_CONFIG.minimumMaterialityThreshold;
+            });
+        }
+    }
+
+    class EvoGANarrativeEngine {
+        static build(drivers, totalDesvio, totalPct) {
+            const driverNames = drivers.slice(0, 3).map(item => item.accountabilityPath || item.name);
+            const driverText = driverNames.length ? driverNames.join("; ") : "sem concentração material";
+            const topDriver = drivers[0];
+            const topTrend = topDriver ? EvoGATrendEngine.formatTrend(topDriver.trendDirection) : "estável";
+            const trendText = topDriver && topDriver.recurrenceMonths > 0
+                ? `${topTrend} por ${topDriver.recurrenceMonths} período(s) recente(s)`
+                : topTrend;
+            const directionText = totalDesvio > 0 ? "pressão administrativa acima do orçamento" : "aderência orçamentária no período";
+            const recommendation = totalDesvio > 0 && drivers.length
+                ? "Priorizar revisão executiva das estruturas oficiais com maior desvio, validar recorrência no ciclo de forecast e pactuar plano de contenção com os responsáveis."
+                : "Manter acompanhamento no ciclo de forecast e preservar disciplina de aprovação para despesas recorrentes.";
+            return {
+                headline: totalDesvio > 0 ? "DISCIPLINA ORÇAMENTÁRIA G&A: PRESSÃO ACIMA DO PLANEJADO" : "DISCIPLINA ORÇAMENTÁRIA G&A: ADERÊNCIA AO PLANEJADO",
+                keyDrivers: `Principais ofensores oficiais: ${driverText}.`,
+                rootCause: topDriver ? `A concentração está em ${topDriver.accountabilityPath || topDriver.name}, conforme estrutura governada do modelo.` : "Não há vetor oficial dominante com desvio relevante.",
+                trend: `Tendência: ${trendText}.`,
+                recommendation,
+                riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A.`
+            };
+        }
+    }
+
+    class EvoGAUIRenderer {
+        static driverValueClass(value) {
+            if (value > 0) return "driver-value-alert";
+            if (value < 0) return "driver-value-saving";
+            return "driver-value-neutral";
+        }
+
+        static statusClass(statusText, normalizeText) {
+            return `status-${normalizeText(statusText).toLowerCase().replace(/\s+/g, "-")}`;
         }
     }
 
@@ -593,6 +796,11 @@
                 padding-left: 42px;
                 color: #444444;
             }
+            tr.row-cc-nivel-3 td { background-color: #F8FAFC; }
+            tr.row-cc-nivel-3 td:first-child {
+                padding-left: 58px;
+                color: #475569;
+            }
             .expand-icon { 
                 display: inline-block; 
                 width: 14px; 
@@ -625,7 +833,7 @@
             }
 
             tr.row-conta td:first-child { 
-                padding-left: 70px;
+                padding-left: 86px;
                 font-weight: 400; 
                 color: #555555; 
                 position: relative;
@@ -634,7 +842,7 @@
             tr.row-conta td:first-child::before { 
                 content: '↳'; 
                 position: absolute; 
-                left: 52px; 
+                left: 68px; 
                 top: 50%;
                 transform: translateY(-50%);
                 color: #CCCCCC;
@@ -698,6 +906,10 @@
             .status-alto { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; }
             .status-critica { background-color: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
             .status-critico { background-color: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
+            .status-aderente { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; }
+            .status-monitorar { background-color: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+            .status-sem-movimento { background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+            .status-sem-orcamento { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; }
         </style>
         <div id="widget-wrapper">
             <div id="header-container"></div>
@@ -1063,8 +1275,8 @@
                 const dimKeys = Object.keys(dimensions);
                 const measureKeys = Object.keys(measures);
 
-                if (dimKeys.length < 5 || measureKeys.length < 1) {
-                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 5 dimensões (1. Dimensão Calculada, 2. Centro de Custo Nível 1, 3. Centro de Custo Nível 2, 4. Conta Contábil, 5. Orçado/Realizado) e 1 medida.</div>";
+                if (dimKeys.length < 6 || measureKeys.length < 1) {
+                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 6 dimensões (1. Dimensão Calculada/VP, 2. Centro de Custo Nível 1/Diretoria, 3. Centro de Custo Nível 2/Gerência, 4. Centro de Custo Nível 3/Departamento, 5. Conta Contábil, 6. Orçado/Realizado) e 1 medida. A dimensão de mês é opcional.</div>";
                     return;
                 }
 
@@ -1103,27 +1315,17 @@
                 ) || dimKeys[dimKeys.length - 1];
 
                 const candidateHierarchyDimKeys = dimKeys.filter(dimKey => dimKey !== colDimKey);
-                const ccDimKeys = candidateHierarchyDimKeys.filter(dimKey => {
-                    const dimName = getDimensionMetadataName(dimKey);
-                    return dimName.includes("CENTRO") || /\bCC\b/.test(dimName);
-                });
-                const detectedContaDimKey = candidateHierarchyDimKeys.find(dimKey => {
-                    const dimName = getDimensionMetadataName(dimKey);
-                    return dimName.includes("CONTA");
-                });
-                const detectedMonthDimKey = candidateHierarchyDimKeys.find(dimKey => isMonthDimension(dimKey)) ||
-                    candidateHierarchyDimKeys.find(dimKey => !ccDimKeys.includes(dimKey) && dimKey !== detectedContaDimKey &&
-                        financialData.data.some(row => isMonthLikeMember(getName(row[dimKey]))));
-                const detectedCalcDimKey = candidateHierarchyDimKeys.find(dimKey =>
-                    !ccDimKeys.includes(dimKey) && dimKey !== detectedContaDimKey && dimKey !== detectedMonthDimKey
-                );
-                const fallbackHierarchyDimKeys = candidateHierarchyDimKeys.filter(dimKey => dimKey !== detectedMonthDimKey);
-                const calcDimKey = detectedCalcDimKey || fallbackHierarchyDimKeys[0];
-                const ccNivel1DimKey = ccDimKeys[0] || fallbackHierarchyDimKeys[1];
-                const ccNivel2DimKey = ccDimKeys[1] || fallbackHierarchyDimKeys[2];
-                const contaDimKey = detectedContaDimKey || fallbackHierarchyDimKeys[3];
-                const usedCoreDimKeys = [calcDimKey, ccNivel1DimKey, ccNivel2DimKey, contaDimKey].filter(Boolean);
-                const fallbackMonthDimKey = candidateHierarchyDimKeys.find(dimKey => !usedCoreDimKeys.includes(dimKey));
+                const detectedMonthDimKey = candidateHierarchyDimKeys.find(dimKey => isMonthDimension(dimKey));
+                const orderedWithoutMonth = candidateHierarchyDimKeys.filter(dimKey => dimKey !== detectedMonthDimKey);
+                const calcDimKey = orderedWithoutMonth[0];
+                const ccNivel1DimKey = orderedWithoutMonth[1];
+                const ccNivel2DimKey = orderedWithoutMonth[2];
+                const ccNivel3DimKey = orderedWithoutMonth[3];
+                const contaDimKey = orderedWithoutMonth[4];
+                const fallbackMonthDimKey = orderedWithoutMonth[5] &&
+                    financialData.data.some(row => isMonthLikeMember(getName(row[orderedWithoutMonth[5]])))
+                    ? orderedWithoutMonth[5]
+                    : null;
                 const monthDimKey = detectedMonthDimKey || fallbackMonthDimKey || null;
                 const monthOptions = monthDimKey
                     ? this._sortMonthOptions(Array.from(new Set(financialData.data.map(row => getName(row[monthDimKey])).filter(Boolean))))
@@ -1143,9 +1345,9 @@
                     ? financialData.data.filter(row => getName(row[monthDimKey]) === this._selectedMonth)
                     : financialData.data;
 
-                const hierarchyDimKeys = [calcDimKey, ccNivel1DimKey, ccNivel2DimKey, contaDimKey].filter(Boolean);
-                if (hierarchyDimKeys.length < 4) {
-                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Não foi possível identificar a dimensão de versão (Orçado/Realizado). Verifique se uma dimensão contém os membros Orçado e Realizado.</div>";
+                const hierarchyDimKeys = [calcDimKey, ccNivel1DimKey, ccNivel2DimKey, ccNivel3DimKey, contaDimKey].filter(Boolean);
+                if (hierarchyDimKeys.length < EVO_GA_HIERARCHY.length) {
+                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Não foi possível identificar a hierarquia oficial VP > Diretoria > Gerência > Departamento > Conta Contábil. Verifique a ordem das dimensões no Builder e a dimensão de versão Orçado/Realizado.</div>";
                     return;
                 }
                 const measureKey = measureKeys[0];
@@ -1186,66 +1388,8 @@
                     if (absNum >= 1000) return (absNum / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "K";
                     return absNum.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
                 };
-                
+
                 const formatPercentage = (val) => val === 0 ? "-" : (val === Infinity ? "∞" : val.toFixed(1) + "%");
-                const isExecutiveNoiseCandidate = (variancePct, varianceAbs) => Math.abs(variancePct) < 2 && Math.abs(varianceAbs) < 100000;
-                const classifyBudgetStatus = (budget, actual, varianceAbs, variancePct) => {
-                    if (budget === 0 && actual === 0) return "Sem movimento";
-                    if (budget === 0 && actual > 0) return "Sem orçamento";
-                    if (varianceAbs <= 0) return "Aderente";
-                    if (Math.abs(variancePct) < 2 && Math.abs(varianceAbs) < 100000) return "Monitorar";
-                    if (variancePct >= 10 || varianceAbs >= 500000) return "Acima";
-                    return "Atenção";
-                };
-                const classifyAccountNature = (name) => {
-                    const text = normalizeText(name);
-                    if (text.includes("COMPLIANCE") || text.includes("AUDITORIA") || text.includes("CONTROLES")) return "Compliance";
-                    if (text.includes("JURID") || text.includes("LEGAL") || text.includes("ADVOC")) return "Legal";
-                    if (text.includes("TI") || text.includes("TECNOLOG") || text.includes("SISTEMA") || text.includes("SOFTWARE") || text.includes("LICEN")) return "Corporate IT";
-                    if (text.includes("FACILIT") || text.includes("ALUG") || text.includes("PREDIAL") || text.includes("CONDOM") || text.includes("MANUTEN")) return "Facilities";
-                    if (text.includes("PESSO") || text.includes("FOLHA") || text.includes("SALARIO") || text.includes("BENEF") || text.includes("RH")) return "People";
-                    if (text.includes("CONSULT") || text.includes("TERCEIR") || text.includes("SERVICO")) return "Consulting";
-                    if (text.includes("TREIN") || text.includes("CAPACIT")) return "Training";
-                    if (text.includes("VIAGEM") || text.includes("HOSPED") || text.includes("PASSAGEM") || text.includes("DESLOC")) return "Travel";
-                    if (text.includes("SHARED") || text.includes("CENTRO DE SERV") || text.includes("CSC")) return "Shared Services";
-                    if (text.includes("BACKOFFICE") || text.includes("ADMINISTR")) return "Backoffice";
-                    return "SG&A";
-                };
-                const buildTrendProfile = (monthlyValues) => {
-                    const series = (monthlyValues || []).map(item => item.actual - item.budget);
-                    const positives = series.map(value => value > 0);
-                    let recurrenceMonths = 0;
-                    for (let i = positives.length - 1; i >= 0 && positives[i]; i--) recurrenceMonths++;
-                    const last3 = series.slice(-3);
-                    let trendDirection = "stable";
-                    if (last3.length >= 3 && last3[0] < last3[1] && last3[1] < last3[2]) trendDirection = "worsening";
-                    else if (last3.length >= 3 && last3[0] > last3[1] && last3[1] > last3[2]) trendDirection = "improving";
-                    else if (last3.length >= 2 && last3[last3.length - 1] > last3[last3.length - 2] * 1.15) trendDirection = "acceleration";
-                    else if (recurrenceMonths === 0 && positives.slice(0, -1).some(Boolean)) trendDirection = "normalization";
-                    const recurrenceType = recurrenceMonths >= 6 ? "persistent" : (recurrenceMonths >= 3 ? "recurring" : (recurrenceMonths >= 1 ? "isolated" : "none"));
-                    return { trendDirection, recurrenceType, recurrenceMonths };
-                };
-                const buildExecutiveNarrative = (drivers, totalDesvio, totalPct) => {
-                    const driverNames = drivers.slice(0, 3).map(item => item.accountNature || item.name);
-                    const uniqueDrivers = Array.from(new Set(driverNames));
-                    const driverText = uniqueDrivers.length ? uniqueDrivers.join(", ") : "sem concentração material";
-                    const topDriver = drivers[0];
-                    const trendText = topDriver && topDriver.trendDirection === "worsening"
-                        ? `deterioração recorrente em ${topDriver.recurrenceMonths || 3} períodos recentes`
-                        : (topDriver && topDriver.trendDirection === "acceleration" ? "aceleração no período corrente" : "comportamento sob controle relativo");
-                    const directionText = totalDesvio > 0 ? "pressão administrativa acima do esperado" : "aderência orçamentária com oportunidade de preservação de saving";
-                    const recommendation = totalDesvio > 0 && drivers.length
-                        ? "Priorizar revisão executiva dos vetores materiais, validar recorrência contratual e pactuar plano de contenção com responsáveis administrativos."
-                        : "Manter acompanhamento no ciclo de forecast e preservar disciplina de aprovação para despesas recorrentes.";
-                    return {
-                        headline: totalDesvio > 0 ? "DISCIPLINA ORÇAMENTÁRIA G&A: PRESSÃO ACIMA DO PLANEJADO" : "DISCIPLINA ORÇAMENTÁRIA G&A: ADERÊNCIA AO PLANEJADO",
-                        keyDrivers: `Principais vetores: ${driverText}.`,
-                        rootCause: topDriver ? `A leitura aponta concentração em ${topDriver.accountNature}, com desvio relevante no período.` : "Não há vetor administrativo dominante com desvio relevante.",
-                        trend: `Tendência: ${trendText}.`,
-                        recommendation,
-                        riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A.`
-                    };
-                };
 
                 const headerName = getName(dimensions[calcDimKey]);
 
@@ -1303,29 +1447,14 @@
                     const calcNode = getName(row[calcDimKey]);
                     const ccNivel1 = getName(row[ccNivel1DimKey]);
                     const ccNivel2 = getName(row[ccNivel2DimKey]);
+                    const ccNivel3 = getName(row[ccNivel3DimKey]);
                     const conta = getName(row[contaDimKey]);
                     const col = getName(row[colDimKey]);
                     uniqueColsSet.add(col);
                     
                     const numVal = getMeasureValueFromRow(row);
 
-                    if (!dataMap[calcNode]) {
-                        dataMap[calcNode] = { totals: {}, ccNivel1: {} };
-                    }
-                    if (!dataMap[calcNode].ccNivel1[ccNivel1]) {
-                        dataMap[calcNode].ccNivel1[ccNivel1] = { totals: {}, ccNivel2: {} };
-                    }
-                    if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2]) {
-                        dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2] = { totals: {}, contas: {} };
-                    }
-                    if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta]) {
-                        dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta] = {};
-                    }
-
-                    dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta][col] = (dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta][col] || 0) + numVal;
-                    dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals[col] = (dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals[col] || 0) + numVal;
-                    dataMap[calcNode].ccNivel1[ccNivel1].totals[col] = (dataMap[calcNode].ccNivel1[ccNivel1].totals[col] || 0) + numVal;
-                    dataMap[calcNode].totals[col] = (dataMap[calcNode].totals[col] || 0) + numVal;
+                    EvoGAAggregationEngine.addRow(dataMap, { calcNode, ccNivel1, ccNivel2, ccNivel3, conta }, col, numVal);
                 });
 
                 if (monthDimKey) {
@@ -1333,6 +1462,7 @@
                         const calcNode = getName(row[calcDimKey]);
                         const ccNivel1 = getName(row[ccNivel1DimKey]);
                         const ccNivel2 = getName(row[ccNivel2DimKey]);
+                        const ccNivel3 = getName(row[ccNivel3DimKey]);
                         const conta = getName(row[contaDimKey]);
                         const col = getName(row[colDimKey]);
                         const month = getName(row[monthDimKey]);
@@ -1340,42 +1470,35 @@
                         addMonthlyValue(`calc:${calcNode}`, month, col, numVal);
                         addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}`, month, col, numVal);
                         addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}`, month, col, numVal);
-                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|conta:${conta}`, month, col, numVal);
+                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`, month, col, numVal);
+                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}|conta:${conta}`, month, col, numVal);
                     });
                 }
 
                 const uniqueCols = Array.from(uniqueColsSet);
 
-                const buildRowMetrics = (name, valuesMap) => {
-                    let valOrcado = 0;
-                    let valRealizado = 0;
-                    let numValues = {};
-
-                    uniqueCols.forEach(col => {
-                        let val = valuesMap[col] || 0;
-                        numValues[col] = val;
-                        if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) valOrcado += val;
-                        else if (col.toUpperCase().includes("REALIZADO")) valRealizado += val;
-                    });
-
-                    const desvio = valRealizado - valOrcado;
-                    const percentConsumption = valOrcado > 0 ? (valRealizado / valOrcado) * 100 : (valRealizado > 0 ? Infinity : 0);
-                    return { name, valOrcado, valRealizado, desvio, percentConsumption, numValues };
-                };
+                const buildRowMetrics = (name, valuesMap, level = 0, path = []) =>
+                    EvoGAAggregationEngine.buildRowMetrics(name, valuesMap, uniqueCols, level, path);
 
                 let tableData = Object.keys(dataMap).map(calcNodeName => {
-                    let calcNode = buildRowMetrics(calcNodeName, dataMap[calcNodeName].totals);
+                    let calcNode = buildRowMetrics(calcNodeName, dataMap[calcNodeName].totals, 0, [calcNodeName]);
                     calcNode.key = `calc:${calcNodeName}`;
                     calcNode.children = Object.keys(dataMap[calcNodeName].ccNivel1).map(ccNivel1 => {
-                        let ccNivel1Node = buildRowMetrics(ccNivel1, dataMap[calcNodeName].ccNivel1[ccNivel1].totals);
+                        let ccNivel1Node = buildRowMetrics(ccNivel1, dataMap[calcNodeName].ccNivel1[ccNivel1].totals, 1, [calcNodeName, ccNivel1]);
                         ccNivel1Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}`;
                         ccNivel1Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2).map(ccNivel2 => {
-                            let ccNivel2Node = buildRowMetrics(ccNivel2, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals);
+                            let ccNivel2Node = buildRowMetrics(ccNivel2, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals, 2, [calcNodeName, ccNivel1, ccNivel2]);
                             ccNivel2Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}`;
-                            ccNivel2Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas).map(conta => {
-                                let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta]);
-                                contaNode.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|conta:${conta}`;
-                                return contaNode;
+                            ccNivel2Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3).map(ccNivel3 => {
+                                let ccNivel3Node = buildRowMetrics(ccNivel3, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].totals, 3, [calcNodeName, ccNivel1, ccNivel2, ccNivel3]);
+                                ccNivel3Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`;
+                                ccNivel3Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas).map(conta => {
+                                    let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta], 4, [calcNodeName, ccNivel1, ccNivel2, ccNivel3, conta]);
+                                    contaNode.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}|conta:${conta}`;
+                                    return contaNode;
+                                });
+                                ccNivel3Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                                return ccNivel3Node;
                             });
                             ccNivel2Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
                             return ccNivel2Node;
@@ -1398,51 +1521,29 @@
                 const varianceType = totalGlobalDesvio > 0 ? "desvio" : "saving";
                 const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
-                const allNodes = [];
-                const collectNodes = (node) => {
-                    allNodes.push(node);
-                    (node.children || []).forEach(collectNodes);
-                };
-                tableData.forEach(collectNodes);
+                const allNodes = EvoGAAggregationEngine.collectNodes(tableData);
                 const monthlyProfileFor = (key) => {
                     const monthMap = monthlyIndex[key] || {};
                     return this._sortMonthOptions(Object.keys(monthMap)).map(month => monthMap[month]);
                 };
                 const annotateNode = (node) => {
                     (node.children || []).forEach(annotateNode);
-                    const varianceAbs = node.desvio;
-                    const variancePct = node.valOrcado > 0 ? ((node.valRealizado - node.valOrcado) / node.valOrcado) * 100 : 0;
-                    const budgetWeight = totalGlobalOrcado > 0 ? node.valOrcado / totalGlobalOrcado : 0;
-                    const organizationalWeight = totalGlobalRealizado > 0 ? node.valRealizado / totalGlobalRealizado : 0;
-                    const materialityValue = Math.abs(varianceAbs);
-                    const childrenByMateriality = [...(node.children || [])].sort((a, b) => (b.materialityValue || 0) - (a.materialityValue || 0));
-                    const inheritedNature = childrenByMateriality[0] && childrenByMateriality[0].accountNature;
-                    const accountNature = node.children && node.children.length ? (inheritedNature || classifyAccountNature(node.name)) : classifyAccountNature(node.name);
-                    const trendProfile = buildTrendProfile(monthlyProfileFor(node.key));
-                    const budgetStatus = classifyBudgetStatus(node.valOrcado, node.valRealizado, varianceAbs, variancePct);
-                    node.varianceAbs = varianceAbs;
-                    node.variancePct = variancePct;
-                    node.budgetWeight = budgetWeight;
-                    node.organizationalWeight = organizationalWeight;
-                    node.materialityValue = materialityValue;
-                    node.executiveSeverity = budgetStatus;
-                    node.varianceDirection = varianceAbs > 0 ? "negative" : (varianceAbs < 0 ? "positive" : "neutral");
-                    node.varianceSeverity = node.executiveSeverity.toLowerCase();
+                    const trendProfile = EvoGATrendEngine.buildProfile(monthlyProfileFor(node.key));
                     node.trendDirection = trendProfile.trendDirection;
-                    node.businessCriticality = "administrative";
                     node.recurrenceType = trendProfile.recurrenceType;
                     node.recurrenceMonths = trendProfile.recurrenceMonths;
-                    node.accountNature = accountNature;
-                    node.isExecutiveNoise = isExecutiveNoiseCandidate(variancePct, varianceAbs);
                 };
                 tableData.forEach(annotateNode);
+                EvoGAMaterialityEngine.annotate(allNodes, totalGlobalOrcado, totalGlobalRealizado);
 
-                const centrosDeCusto = tableData.flatMap(item =>
-                    item.children.flatMap(ccNivel1 => ccNivel1.children)
+                const departamentos = tableData.flatMap(item =>
+                    item.children.flatMap(ccNivel1 =>
+                        ccNivel1.children.flatMap(ccNivel2 => ccNivel2.children)
+                    )
                 );
-                const ofensores = [...centrosDeCusto]
+                const ofensores = [...departamentos]
                     .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
-                    .sort((a, b) => b.materialityValue - a.materialityValue)
+                    .sort((a, b) => b.materialityScore - a.materialityScore || b.materialityValue - a.materialityValue)
                     .slice(0, 3);
 
                 ofensores.forEach(item => item.isOfensor = true);
@@ -1450,18 +1551,18 @@
                 let ofensoresText = "";
                 if (ofensores.length > 0) {
                     const names = ofensores.map(o => escapeHtml(o.name));
-                    if (names.length === 1) ofensoresText = ` O principal ofensor que exige atenção é o centro de custo <strong>${names[0]}</strong>.`;
+                    if (names.length === 1) ofensoresText = ` O principal ofensor que exige atenção é o departamento <strong>${names[0]}</strong>.`;
                     else if (names.length === 2) ofensoresText = ` Os principais ofensores que exigem atenção são <strong>${names[0]}</strong> e <strong>${names[1]}</strong>.`;
                     else ofensoresText = ` Os 3 principais ofensores que exigem atenção são <strong>${names[0]}</strong>, <strong>${names[1]}</strong> e <strong>${names[2]}</strong>.`;
                 } else {
-                    ofensoresText = " Não foram identificados centros de custo operando acima do orçamento.";
+                    ofensoresText = " Não foram identificados departamentos operando acima do orçamento.";
                 }
-                const executiveDrivers = [...centrosDeCusto]
+                const executiveDrivers = [...departamentos]
                     .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
-                    .sort((a, b) => b.materialityValue - a.materialityValue)
+                    .sort((a, b) => b.materialityScore - a.materialityScore || b.materialityValue - a.materialityValue)
                     .slice(0, 5);
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
-                const executiveNarrative = buildExecutiveNarrative(executiveDrivers, totalGlobalDesvio, totalVariancePct);
+                const executiveNarrative = EvoGANarrativeEngine.build(executiveDrivers, totalGlobalDesvio, totalVariancePct);
                 const oversightClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
                 const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
@@ -1470,12 +1571,12 @@
                 const ytdLabel = this._selectedMonth === "__all__" ? "Base completa disponível" : `YTD até ${selectedMonthDisplay}`;
                 const periodLabel = this._selectedMonth === "__all__" ? "Base completa" : selectedMonthDisplay;
                 const driversListHtml = executiveDrivers.length ? executiveDrivers.slice(0, 5).map((driver, index) => {
-                    const driverValueClass = driver.desvio > 0 ? "driver-value-alert" : (driver.desvio < 0 ? "driver-value-saving" : "driver-value-neutral");
+                    const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.desvio);
                     return `
                         <div class="driver-row">
                             <div>
                                 <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
-                                <div class="driver-meta">${escapeHtml(driver.accountNature)} · ${escapeHtml(driver.trendDirection)} · ${escapeHtml(driver.recurrenceType)}</div>
+                                <div class="driver-meta">${escapeHtml(driver.accountabilityPath)} · ${escapeHtml(EvoGATrendEngine.formatTrend(driver.trendDirection))} · ${escapeHtml(EvoGATrendEngine.formatRecurrence(driver.recurrenceType))}</div>
                             </div>
                             <div class="driver-metric"><span class="executive-label">Desvio</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</span></div>
                             <div class="driver-metric"><span class="executive-label">% vs orçamento</span><span class="driver-value ${driverValueClass}">${driver.variancePct.toFixed(1)}%</span></div>
@@ -1491,15 +1592,15 @@
                                 <div class="driver-row"><div class="driver-name">Desvio absoluto</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div><div class="driver-meta">Realizado - Orçado</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Desvio percentual</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${totalVariancePct.toFixed(1)}%</span></div><div class="driver-meta">Sobre orçamento G&A</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Consumo do orçamento</div><div class="driver-metric"><span class="driver-value">${escapeHtml(kpiConsumptionText)}</span></div><div class="driver-meta">Realizado / Orçado</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ofensores considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Ordenados por desvio absoluto</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ofensores considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Ordenados por materialidade financeira</div><div></div></div>
                             </div>
                         </div>
                         <div class="executive-section">
                             <div class="section-title">Leitura Operacional</div>
                             <div class="driver-list">
                                 <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div class="driver-metric"><span class="driver-value">${financialData.data.length}</span></div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div class="driver-metric"><span class="driver-value">${centrosDeCusto.filter(item => item.isExecutiveNoise).length}</span></div><div class="driver-meta">Critério 2% e R$100k</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Tendência principal</div><div class="driver-metric"><span class="driver-value">${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].trendDirection) : "-"}</span></div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].recurrenceType) : "Sem ofensor material"}</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div class="driver-metric"><span class="driver-value">${departamentos.filter(item => item.isExecutiveNoise).length}</span></div><div class="driver-meta">Critério 2%, R$100k e baixa materialidade</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Tendência principal</div><div class="driver-metric"><span class="driver-value">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatTrend(executiveDrivers[0].trendDirection)) : "-"}</span></div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatRecurrence(executiveDrivers[0].recurrenceType)) : "Sem ofensor material"}</div><div></div></div>
                             </div>
                         </div>
                     </div>
@@ -1591,14 +1692,15 @@
                     if (level === 0) rowClass = "row-cc";
                     else if (level === 1) rowClass = "row-cc row-cc-nivel-1";
                     else if (level === 2) rowClass = "row-cc row-cc-nivel-2";
+                    else if (level === 3) rowClass = "row-cc row-cc-nivel-3";
                     let expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
                     let dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
                     
                     let html = `<tr class="${rowClass} ${expandClass}" ${dataAttr}>`;
                     
-                    let flagHtml = (level === 2 && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
+                    let flagHtml = (level === 3 && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
                     let safeName = escapeHtml(rowObj.name);
-                    let nameCell = level === 3 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
+                    let nameCell = level === 4 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                     
                     html += `<td>${nameCell}</td>`;
                     
@@ -1627,10 +1729,10 @@
                     </td>`;
 
                     let statusText = rowObj.executiveSeverity || "-";
-                    let statusPillClass = `status-${normalizeText(statusText).toLowerCase()}`;
+                    let statusPillClass = EvoGAUIRenderer.statusClass(statusText, normalizeText);
                     if (rowObj.isExecutiveNoise) { statusText = "Baixa"; statusPillClass = "status-baixa"; }
 
-                    let statusTitle = `Desvio ${formatNumber(Math.abs(rowObj.desvio), true, true, rowObj.desvio)} | ${rowObj.variancePct.toFixed(1)}% vs orçamento | ${rowObj.accountNature}`;
+                    let statusTitle = `Desvio ${formatNumber(Math.abs(rowObj.desvio), true, true, rowObj.desvio)} | ${rowObj.variancePct.toFixed(1)}% vs orçamento | ${rowObj.hierarchyLabel}: ${rowObj.name}`;
                     let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}" title="${escapeHtml(statusTitle)}">${statusText}</span>` : "-";
                     html += `<td class="center cell-status">${statusHtml}</td></tr>`;
                     
@@ -1653,9 +1755,15 @@
                                     if (!hasVisibleSignal(ccNivel2Row, 2)) return;
                                     tableHtml += renderRowHtml(ccNivel2Row, 2);
                                     if (this._expandedRows.has(ccNivel2Row.key)) {
-                                        ccNivel2Row.children.forEach(contaRow => {
-                                            if (!hasVisibleSignal(contaRow, 3)) return;
-                                            tableHtml += renderRowHtml(contaRow, 3);
+                                        ccNivel2Row.children.forEach(ccNivel3Row => {
+                                            if (!hasVisibleSignal(ccNivel3Row, 3)) return;
+                                            tableHtml += renderRowHtml(ccNivel3Row, 3);
+                                            if (this._expandedRows.has(ccNivel3Row.key)) {
+                                                ccNivel3Row.children.forEach(contaRow => {
+                                                    if (!hasVisibleSignal(contaRow, 4)) return;
+                                                    tableHtml += renderRowHtml(contaRow, 4);
+                                                });
+                                            }
                                         });
                                     }
                                 });
@@ -1675,8 +1783,8 @@
                 let totalConsumptionText = totalPercentConsumption === Infinity ? "∞" : (totalPercentConsumption === 0 ? "-" : formatPercentage(totalPercentConsumption));
                 if(totalGlobalOrcado === 0 && totalGlobalRealizado === 0) totalBarFillWidth = 0;
 
-                let totalStatusText = classifyBudgetStatus(totalGlobalOrcado, totalGlobalRealizado, totalGlobalDesvio, totalVariancePct);
-                let totalStatusPillClass = `status-${normalizeText(totalStatusText).toLowerCase()}`;
+                let totalStatusText = EvoGAMaterialityEngine.classifyBudgetStatus(totalGlobalOrcado, totalGlobalRealizado, totalGlobalDesvio, totalVariancePct);
+                let totalStatusPillClass = EvoGAUIRenderer.statusClass(totalStatusText, normalizeText);
 
                 tableHtml += `<tfoot><tr><td>TOTAL GERAL</td>`;
                 uniqueCols.forEach(col => {
