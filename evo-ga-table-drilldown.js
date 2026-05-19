@@ -136,7 +136,10 @@
             #table-container {
                 width: 100%;
                 flex-grow: 1;
-                overflow: auto;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
             }
             .table-title {
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -166,6 +169,8 @@
                 align-items: center;
                 gap: 8px;
                 margin: 0 0 8px 0;
+                position: relative;
+                z-index: 40;
             }
             .panel-filter-label {
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -175,7 +180,7 @@
                 text-transform: uppercase;
                 letter-spacing: 0.4px;
             }
-            .month-filter {
+            .month-filter-trigger {
                 min-width: 132px;
                 height: 28px;
                 border: 1px solid #CBD5E0;
@@ -187,12 +192,52 @@
                 font-weight: 600;
                 padding: 0 8px;
                 cursor: pointer;
+                text-align: left;
+                display: inline-flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
             }
-            .month-filter:disabled {
+            .month-filter-trigger::after {
+                content: '▾';
+                color: #64748B;
+                font-size: 10px;
+            }
+            .month-filter-trigger:disabled {
                 color: #94A3B8;
                 background: #F8FAFC;
                 cursor: not-allowed;
             }
+            .month-filter-menu {
+                display: none;
+                position: absolute;
+                top: 32px;
+                left: 116px;
+                min-width: 160px;
+                max-height: 220px;
+                overflow: auto;
+                background: #FFFFFF;
+                border: 1px solid #CBD5E0;
+                border-radius: 4px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+                z-index: 1200;
+                padding: 4px 0;
+            }
+            .month-filter-menu.show { display: block; }
+            .month-filter-item {
+                width: 100%;
+                border: 0;
+                background: transparent;
+                color: #334155;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 11.5px;
+                font-weight: 600;
+                padding: 7px 10px;
+                text-align: left;
+                cursor: pointer;
+            }
+            .month-filter-item:hover { background: #F1F5F9; }
+            .month-filter-item.selected { background: #E2E8F0; color: #0F172A; }
             .telemetry-btn {
                 height: 28px;
                 border: 1px solid #CBD5E0;
@@ -338,6 +383,113 @@
                 margin-bottom: 2px;
             }
             .executive-text strong { color: #0F172A; }
+            .view-tabs {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                padding: 0 10px 8px 10px;
+                border-bottom: 1px solid #E2E8F0;
+                flex-shrink: 0;
+            }
+            .view-tab {
+                height: 30px;
+                border: 1px solid transparent;
+                background: transparent;
+                color: #475569;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 11.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.35px;
+                padding: 0 10px;
+                cursor: pointer;
+            }
+            .view-tab:hover { background: #F1F5F9; }
+            .view-tab.active {
+                background: #E2E8F0;
+                color: #0F172A;
+                border-color: #CBD5E0;
+                border-radius: 4px;
+            }
+            .view-panel {
+                display: none;
+                padding: 10px;
+                overflow: auto;
+                flex-grow: 1;
+                min-height: 0;
+            }
+            .view-panel.active { display: block; }
+            .executive-kpi-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(130px, 1fr));
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .executive-kpi {
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                padding: 9px 10px;
+                background: #FFFFFF;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            }
+            .kpi-label {
+                font-size: 10px;
+                font-weight: 800;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: 0.35px;
+                margin-bottom: 4px;
+            }
+            .kpi-value {
+                font-size: 16px;
+                font-weight: 800;
+                color: #0F172A;
+                font-variant-numeric: tabular-nums;
+            }
+            .kpi-sub {
+                margin-top: 2px;
+                font-size: 11px;
+                color: #64748B;
+            }
+            .executive-section {
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                background: #FFFFFF;
+                padding: 10px 12px;
+                margin-bottom: 10px;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            }
+            .section-title {
+                font-size: 11px;
+                font-weight: 800;
+                color: #334155;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                margin-bottom: 8px;
+            }
+            .driver-list { display: grid; gap: 6px; }
+            .driver-row {
+                display: grid;
+                grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr;
+                gap: 8px;
+                align-items: center;
+                font-size: 11.5px;
+                border-bottom: 1px solid #F1F5F9;
+                padding-bottom: 6px;
+            }
+            .driver-row:last-child { border-bottom: 0; padding-bottom: 0; }
+            .driver-name { font-weight: 700; color: #0F172A; }
+            .driver-meta { color: #64748B; }
+            .diagnostic-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(220px, 1fr));
+                gap: 10px;
+            }
+            @media (max-width: 900px) {
+                .executive-kpi-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+                .diagnostic-grid { grid-template-columns: 1fr; }
+                .driver-row { grid-template-columns: 1fr; }
+            }
             @media (max-width: 760px) {
                 .executive-grid { grid-template-columns: 1fr; }
                 .executive-headline { flex-direction: column; gap: 2px; }
@@ -548,6 +700,8 @@
             this._expandedRows = new Set();
             this._currentData = null;
             this._selectedMonth = "__all__";
+            this._activeView = "executive";
+            this._isMonthDropdownOpen = false;
             this._profiler = new EvoGATableProfiler();
             this._telemetryModal = this._shadowRoot.getElementById("telemetryModal");
             this._closeTelemetry = this._shadowRoot.getElementById("closeTelemetry");
@@ -590,6 +744,11 @@
             if (element) element.textContent = String(value);
         }
 
+        _setActiveView(viewName) {
+            this._activeView = viewName;
+            this.renderTable();
+        }
+
         _sortMonthOptions(options) {
             const monthOrder = {
                 "JAN": 1, "JANEIRO": 1, "01": 1, "1": 1,
@@ -626,27 +785,52 @@
         }
 
         _bindHeaderControls(monthOptions, hasMonthFilter) {
-            const monthSelect = this._shadowRoot.getElementById("monthFilter");
+            const monthTrigger = this._shadowRoot.getElementById("monthFilterTrigger");
+            const monthMenu = this._shadowRoot.getElementById("monthFilterMenu");
             const telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
-            if (monthSelect) {
-                monthSelect.addEventListener("change", (event) => {
-                    this._selectedMonth = event.target.value || "__all__";
-                    this.dispatchEvent(new CustomEvent("monthFilterChanged", {
-                        detail: {
-                            selectedMonth: this._selectedMonth === "__all__" ? null : this._selectedMonth,
-                            isAllMonths: this._selectedMonth === "__all__"
-                        }
-                    }));
-                    this.renderTable();
+            if (monthTrigger && monthMenu) {
+                monthTrigger.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    if (!hasMonthFilter) return;
+                    this._isMonthDropdownOpen = !this._isMonthDropdownOpen;
+                    monthMenu.classList.toggle("show", this._isMonthDropdownOpen);
+                });
+                monthMenu.querySelectorAll("[data-month-value]").forEach(item => {
+                    item.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        this._selectedMonth = event.currentTarget.getAttribute("data-month-value") || "__all__";
+                        this._isMonthDropdownOpen = false;
+                        this.dispatchEvent(new CustomEvent("monthFilterChanged", {
+                            detail: {
+                                selectedMonth: this._selectedMonth === "__all__" ? null : this._selectedMonth,
+                                isAllMonths: this._selectedMonth === "__all__"
+                            }
+                        }));
+                        this.renderTable();
+                    });
                 });
             }
+            this._shadowRoot.querySelectorAll("[data-view]").forEach(tab => {
+                tab.addEventListener("click", (event) => {
+                    const nextView = event.currentTarget.getAttribute("data-view");
+                    if (nextView) this._setActiveView(nextView);
+                });
+            });
             if (telemetryBtn && ENABLE_TELEMETRY) {
                 telemetryBtn.addEventListener("click", (event) => {
                     event.stopPropagation();
                     this._telemetryModal.classList.toggle("show");
                 });
             }
-            if (!hasMonthFilter && monthSelect) monthSelect.disabled = true;
+        }
+
+        _dispatchMonthFilterChanged() {
+                    this.dispatchEvent(new CustomEvent("monthFilterChanged", {
+                        detail: {
+                            selectedMonth: this._selectedMonth === "__all__" ? null : this._selectedMonth,
+                            isAllMonths: this._selectedMonth === "__all__"
+                        }
+                    }));
         }
 
         _updateTelemetry(tStart, tDOMStart, tEndJS, sourceRows, filteredRows) {
@@ -897,15 +1081,7 @@
                     if (isVersionMember(col) && normalizeText(col).includes("ORCADO")) monthlyIndex[key][month].budget += value;
                     else if (isVersionMember(col) && normalizeText(col).includes("REALIZADO")) monthlyIndex[key][month].actual += value;
                 };
-
-                rowsForRender.forEach(row => {
-                    const calcNode = getName(row[calcDimKey]);
-                    const ccNivel1 = getName(row[ccNivel1DimKey]);
-                    const ccNivel2 = getName(row[ccNivel2DimKey]);
-                    const conta = getName(row[contaDimKey]);
-                    const col = getName(row[colDimKey]);
-                    uniqueColsSet.add(col);
-                    
+                const getMeasureValueFromRow = (row) => {
                     let value = "-";
                     if (row[measureKey] && (row[measureKey].formattedValue !== undefined || row[measureKey].raw !== undefined)) {
                         value = row[measureKey].raw !== undefined ? row[measureKey].raw : row[measureKey].formattedValue;
@@ -918,8 +1094,33 @@
                             }
                         }
                     }
+                    return parseNumber(value);
+                };
+                const selectedMonthIndex = this._selectedMonth === "__all__" ? -1 : monthOptions.indexOf(this._selectedMonth);
+                const ytdRows = monthDimKey && selectedMonthIndex >= 0
+                    ? financialData.data.filter(row => {
+                        const rowMonthIndex = monthOptions.indexOf(getName(row[monthDimKey]));
+                        return rowMonthIndex >= 0 && rowMonthIndex <= selectedMonthIndex;
+                    })
+                    : rowsForRender;
+                const sumRowsByVersion = (rows) => rows.reduce((acc, row) => {
+                    const col = getName(row[colDimKey]);
+                    const numVal = getMeasureValueFromRow(row);
+                    if (normalizeText(col).includes("ORCADO")) acc.budget += numVal;
+                    else if (normalizeText(col).includes("REALIZADO")) acc.actual += numVal;
+                    return acc;
+                }, { budget: 0, actual: 0 });
+                const ytdTotals = sumRowsByVersion(ytdRows);
 
-                    const numVal = parseNumber(value);
+                rowsForRender.forEach(row => {
+                    const calcNode = getName(row[calcDimKey]);
+                    const ccNivel1 = getName(row[ccNivel1DimKey]);
+                    const ccNivel2 = getName(row[ccNivel2DimKey]);
+                    const conta = getName(row[contaDimKey]);
+                    const col = getName(row[colDimKey]);
+                    uniqueColsSet.add(col);
+                    
+                    const numVal = getMeasureValueFromRow(row);
 
                     if (!dataMap[calcNode]) {
                         dataMap[calcNode] = { totals: {}, ccNivel1: {} };
@@ -948,11 +1149,7 @@
                         const conta = getName(row[contaDimKey]);
                         const col = getName(row[colDimKey]);
                         const month = getName(row[monthDimKey]);
-                        let value = "-";
-                        if (row[measureKey] && (row[measureKey].formattedValue !== undefined || row[measureKey].raw !== undefined)) {
-                            value = row[measureKey].raw !== undefined ? row[measureKey].raw : row[measureKey].formattedValue;
-                        }
-                        const numVal = parseNumber(value);
+                        const numVal = getMeasureValueFromRow(row);
                         addMonthlyValue(`calc:${calcNode}`, month, col, numVal);
                         addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}`, month, col, numVal);
                         addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}`, month, col, numVal);
@@ -1090,13 +1287,51 @@
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
                 const executiveNarrative = buildExecutiveNarrative(consolidatedRiskLabel, consolidatedRiskScore, executiveDrivers, totalGlobalDesvio, totalVariancePct);
                 const riskClass = `risk-${normalizeText(consolidatedRiskLabel).toLowerCase()}`;
+                const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
+                const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
+                const kpiConsumptionText = totalGlobalOrcado > 0 ? `${((totalGlobalRealizado / totalGlobalOrcado) * 100).toFixed(1)}%` : "-";
+                const ytdLabel = this._selectedMonth === "__all__" ? "YTD disponível" : `YTD até ${this._selectedMonth}`;
+                const periodLabel = this._selectedMonth === "__all__" ? "Período disponível" : this._selectedMonth;
+                const driversListHtml = executiveDrivers.length ? executiveDrivers.slice(0, 5).map((driver, index) => `
+                    <div class="driver-row">
+                        <div>
+                            <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
+                            <div class="driver-meta">${escapeHtml(driver.accountNature)} · ${escapeHtml(driver.trendDirection)} · ${escapeHtml(driver.recurrenceType)}</div>
+                        </div>
+                        <div><span class="executive-label">Desvio</span>${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</div>
+                        <div><span class="executive-label">Materialidade</span>${(driver.materialityScore * 100).toFixed(1)}%</div>
+                        <div><span class="executive-label">Risco</span>${escapeHtml(driver.executiveRisk)}</div>
+                    </div>
+                `).join("") : `<div class="driver-meta">Não há ofensores materiais acima do limiar executivo no período selecionado.</div>`;
+                const diagnosticHtml = `
+                    <div class="diagnostic-grid">
+                        <div class="executive-section">
+                            <div class="section-title">Critérios de Materialidade</div>
+                            <div class="driver-list">
+                                <div class="driver-row"><div class="driver-name">Desvio percentual normalizado</div><div>35%</div><div class="driver-meta">Escala 0-1</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Desvio absoluto normalizado</div><div>35%</div><div class="driver-meta">Escala 0-1</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Peso no orçamento G&A</div><div>20%</div><div class="driver-meta">Budget / total</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Peso organizacional</div><div>10%</div><div class="driver-meta">Actual / total</div><div></div></div>
+                            </div>
+                        </div>
+                        <div class="executive-section">
+                            <div class="section-title">Leitura de Risco Executivo</div>
+                            <div class="driver-list">
+                                <div class="driver-row"><div class="driver-name">Risco consolidado</div><div>${escapeHtml(consolidatedRiskLabel)}</div><div>${(consolidatedRiskScore * 100).toFixed(1)}%</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div>${financialData.data.length}</div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ruído executivo ocultado</div><div>${centrosDeCusto.filter(item => item.isExecutiveNoise).length}</div><div class="driver-meta">Critério 2% / R$100k / baixa materialidade</div><div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
 
                 this._profiler.metrics.steps.aggregation = this._profiler._now() - tAggregationStart;
                 const tDOMStart = this._profiler._now();
-                const monthOptionsHtml = monthOptions.map(month =>
-                    `<option value="${escapeHtml(month)}" ${this._selectedMonth === month ? "selected" : ""}>${escapeHtml(month)}</option>`
-                ).join("");
-                const selectedAll = this._selectedMonth === "__all__" ? "selected" : "";
+                const monthItemsHtml = [`<button class="month-filter-item ${this._selectedMonth === "__all__" ? "selected" : ""}" type="button" data-month-value="__all__">Todos os meses</button>`]
+                    .concat(monthOptions.map(month =>
+                        `<button class="month-filter-item ${this._selectedMonth === month ? "selected" : ""}" type="button" data-month-value="${escapeHtml(month)}">${escapeHtml(month)}</button>`
+                    )).join("");
+                const selectedMonthLabel = this._selectedMonth === "__all__" ? "Todos os meses" : this._selectedMonth;
                 const monthDisabled = monthOptions.length ? "" : "disabled";
 
                 headerContainer.innerHTML = `
@@ -1108,39 +1343,12 @@
                     </div>
                     <div class="panel-filter-bar">
                         <span class="panel-filter-label">Filtro do painel:</span>
-                        <label>
-                            <select class="month-filter" id="monthFilter" ${monthDisabled} aria-label="Filtrar mês">
-                                <option value="__all__" ${selectedAll}>Todos os meses</option>
-                                ${monthOptionsHtml}
-                            </select>
-                        </label>
-                    </div>
-                    <div class="executive-oversight ${riskClass}">
-                        <div class="executive-headline">
-                            <span>${escapeHtml(executiveNarrative.headline)}</span>
-                            <span class="executive-score">Score ${(consolidatedRiskScore * 100).toFixed(0)}</span>
-                        </div>
-                        <div class="executive-grid">
-                            <div class="executive-text">
-                                <span class="executive-label">Contexto e Insight</span>
-                                ${escapeHtml(executiveNarrative.riskAssessment)} ${escapeHtml(executiveNarrative.keyDrivers)}
-                            </div>
-                            <div class="executive-text">
-                                <span class="executive-label">Tendência e Causa</span>
-                                ${escapeHtml(executiveNarrative.trend)} ${escapeHtml(executiveNarrative.rootCause)}
-                            </div>
-                            <div class="executive-text">
-                                <span class="executive-label">Recomendação</span>
-                                ${escapeHtml(executiveNarrative.recommendation)}
-                            </div>
+                        <button class="month-filter-trigger" id="monthFilterTrigger" type="button" ${monthDisabled} aria-label="Filtrar mês">${escapeHtml(selectedMonthLabel)}</button>
+                        <div class="month-filter-menu ${this._isMonthDropdownOpen ? "show" : ""}" id="monthFilterMenu">
+                            ${monthItemsHtml}
                         </div>
                     </div>
-                    <p class="table-summary ${varianceClass}">
-                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado, com filtro executivo de materialidade aplicado.${ofensoresText}
-                    </p>
                 `;
-                this._bindHeaderControls(monthOptions, Boolean(monthDimKey));
-
                 if (this._sortState.col) {
                     tableData.sort((a, b) => {
                         let valA = a[this._sortState.col] !== undefined ? a[this._sortState.col] : a.numValues[this._sortState.col];
@@ -1275,8 +1483,70 @@
                 tableHtml += `<td class="numeric cell-variance ${totalVarColorClass}">${totalGlobalDesvio !== 0 ? totalDesvioFormatted : "-"}</td>`;
                 tableHtml += `<td class="cell-consumption"><div class="consumption-wrapper"><div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div><div class="percent-value">${totalConsumptionText}</div></div></td>`;
                 tableHtml += `<td class="center cell-status">${totalStatusText !== "-" ? `<span class="status-pill ${totalStatusPillClass}">${totalStatusText}</span>` : "-"}</td></tr></tfoot></table>`;
-                
-                container.innerHTML = tableHtml;
+
+                const executivePanelHtml = `
+                    <div class="executive-kpi-grid">
+                        <div class="executive-kpi">
+                            <div class="kpi-label">Consumo Orçado G&A</div>
+                            <div class="kpi-value">${escapeHtml(kpiConsumptionText)}</div>
+                            <div class="kpi-sub">${escapeHtml(periodLabel)} · ${formatNumber(totalGlobalRealizado)} realizado</div>
+                        </div>
+                        <div class="executive-kpi">
+                            <div class="kpi-label">Desvio do Período</div>
+                            <div class="kpi-value">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</div>
+                            <div class="kpi-sub">${totalVariancePct.toFixed(1)}% vs orçamento</div>
+                        </div>
+                        <div class="executive-kpi">
+                            <div class="kpi-label">Desvio YTD</div>
+                            <div class="kpi-value">${formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio)}</div>
+                            <div class="kpi-sub">${escapeHtml(ytdLabel)} · ${ytdVariancePct.toFixed(1)}%</div>
+                        </div>
+                        <div class="executive-kpi">
+                            <div class="kpi-label">Risco Executivo</div>
+                            <div class="kpi-value">${escapeHtml(consolidatedRiskLabel)}</div>
+                            <div class="kpi-sub">Score ${(consolidatedRiskScore * 100).toFixed(0)}</div>
+                        </div>
+                    </div>
+                    <div class="executive-oversight ${riskClass}">
+                        <div class="executive-headline">
+                            <span>${escapeHtml(executiveNarrative.headline)}</span>
+                            <span class="executive-score">Score ${(consolidatedRiskScore * 100).toFixed(0)}</span>
+                        </div>
+                        <div class="executive-grid">
+                            <div class="executive-text">
+                                <span class="executive-label">Contexto e Insight</span>
+                                ${escapeHtml(executiveNarrative.riskAssessment)} ${escapeHtml(executiveNarrative.keyDrivers)}
+                            </div>
+                            <div class="executive-text">
+                                <span class="executive-label">Tendência e Causa</span>
+                                ${escapeHtml(executiveNarrative.trend)} ${escapeHtml(executiveNarrative.rootCause)}
+                            </div>
+                            <div class="executive-text">
+                                <span class="executive-label">Recomendação</span>
+                                ${escapeHtml(executiveNarrative.recommendation)}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="executive-section">
+                        <div class="section-title">Principais Ofensores do Período</div>
+                        <div class="driver-list">${driversListHtml}</div>
+                    </div>
+                    <p class="table-summary ${varianceClass}">
+                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado, com filtro executivo de materialidade aplicado.${ofensoresText}
+                    </p>
+                `;
+
+                container.innerHTML = `
+                    <div class="view-tabs">
+                        <button class="view-tab ${this._activeView === "executive" ? "active" : ""}" type="button" data-view="executive">Resumo Executivo</button>
+                        <button class="view-tab ${this._activeView === "diagnostic" ? "active" : ""}" type="button" data-view="diagnostic">Diagnóstico</button>
+                        <button class="view-tab ${this._activeView === "operational" ? "active" : ""}" type="button" data-view="operational">Operacional</button>
+                    </div>
+                    <div class="view-panel ${this._activeView === "executive" ? "active" : ""}" id="executiveView">${executivePanelHtml}</div>
+                    <div class="view-panel ${this._activeView === "diagnostic" ? "active" : ""}" id="diagnosticView">${diagnosticHtml}</div>
+                    <div class="view-panel ${this._activeView === "operational" ? "active" : ""}" id="operationalView">${tableHtml}</div>
+                `;
+                this._bindHeaderControls(monthOptions, Boolean(monthDimKey));
 
                 container.querySelectorAll('th.sortable').forEach(th => {
                     th.addEventListener('click', () => {
