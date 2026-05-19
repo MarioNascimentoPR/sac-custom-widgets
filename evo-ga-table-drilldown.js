@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.2.9 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.3.1 - governed budget oversight.
 (function () {
     const ENABLE_TELEMETRY = true;
 
@@ -450,6 +450,7 @@
                 height: 100%; 
                 background: #ffffff; 
                 box-sizing: border-box;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 --small-font-size: 11px;
                 --body-font-size: 12px;
                 --label-font-size: 10px;
@@ -480,10 +481,10 @@
                 min-height: 0;
             }
             .table-title {
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 14px;
                 font-weight: 700;
-                color: #222222;
+                color: #2c3e50;
                 margin: 0 0 8px 0;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
@@ -512,7 +513,7 @@
                 width: fit-content;
             }
             .filter-label-finance {
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: var(--small-font-size);
                 font-weight: 600;
                 color: #4A5568;
@@ -524,7 +525,7 @@
                 border-radius: 6px;
                 background-color: #F8FAFC;
                 color: #2D3748;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: var(--small-font-size);
                 font-weight: 700;
                 padding: 5px 28px 5px 10px;
@@ -562,7 +563,7 @@
             }
             .tree-dropdown-content.show { display: block; }
             .tree-year-node {
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: var(--small-font-size);
                 font-weight: 700;
                 color: #2D3748;
@@ -590,7 +591,7 @@
             }
             .tree-months-container.show { display: flex; }
             .tree-month-item {
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: var(--small-font-size);
                 font-weight: 600;
                 color: #4A5568;
@@ -606,7 +607,7 @@
                 border-radius: 4px;
                 background: #F1F5F9;
                 color: #475569;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: var(--small-font-size);
                 font-weight: 700;
                 padding: 0 10px;
@@ -626,7 +627,7 @@
                 box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
                 z-index: 1000;
                 padding: 14px;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 11px;
                 color: #334155;
             }
@@ -675,7 +676,7 @@
             .telemetry-label { font-weight: 600; color: #64748B; }
             .telemetry-val {
                 font-weight: 700;
-                color: #0F172A;
+                color: #1e293b;
                 font-variant-numeric: tabular-nums;
                 background: #F8FAFC;
                 padding: 1px 6px;
@@ -687,9 +688,9 @@
             .stress-table th { text-align: left; background: #E2E8F0; color: #334155; padding: 3px 6px; font-weight: 700; }
             .stress-table td { padding: 4px 6px; border-bottom: 1px solid #EDF2F7; font-weight: 600; }
             .table-summary {
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 11.5px; 
-                color: #444444;
+                color: #334155;
                 line-height: 1.5;
                 margin: 0;
                 background-color: #F8F9FA;
@@ -700,14 +701,14 @@
             .table-summary.summary-saving { border-left-color: #2E7D32; }
             .table-summary.summary-desvio { border-left-color: #D32F2F; }
             .executive-oversight {
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 margin: 0 0 8px 0;
                 background: #F8FAFC;
                 border: 1px solid #E2E8F0;
                 border-left: 4px solid #64748B;
                 border-radius: 4px;
                 padding: 10px 12px;
-                color: #1E293B;
+                color: #334155;
             }
             .executive-oversight.summary-saving { border-left-color: #2E7D32; }
             .executive-oversight.summary-desvio { border-left-color: #B91C1C; }
@@ -717,9 +718,9 @@
                 justify-content: space-between;
                 gap: 12px;
                 font-size: 12px;
-                font-weight: 800;
+                font-weight: 700;
                 text-transform: uppercase;
-                letter-spacing: 0.5px;
+                letter-spacing: 0.35px;
                 margin-bottom: 6px;
             }
             .executive-grid {
@@ -732,13 +733,13 @@
             .executive-label {
                 display: block;
                 font-size: 10px;
-                font-weight: 800;
-                color: #475569;
+                font-weight: 600;
+                color: #4a5568;
                 text-transform: uppercase;
-                letter-spacing: 0.4px;
+                letter-spacing: 0;
                 margin-bottom: 2px;
             }
-            .executive-text strong { color: #0F172A; }
+            .executive-text strong { color: #1e293b; font-weight: 700; }
             .view-tabs {
                 display: inline-flex;
                 align-items: center;
@@ -755,7 +756,7 @@
                 border: none;
                 background: transparent;
                 color: #475569;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: var(--small-font-size);
                 font-weight: 700;
                 border-radius: 5px;
@@ -765,7 +766,7 @@
             .view-tab:hover { background: #E2E8F0; color: #1E293B; }
             .view-tab.active {
                 background: #FFFFFF;
-                color: #1F4E79;
+                color: #0f172a;
                 box-shadow: 0 1px 3px rgba(15,23,42,0.08);
             }
             .view-panel {
@@ -774,42 +775,76 @@
                 overflow: auto;
                 flex-grow: 1;
                 min-height: 0;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: var(--body-font-size);
             }
             .view-panel.active { display: block; }
             .executive-kpi-grid {
                 display: grid;
-                grid-template-columns: repeat(4, minmax(130px, 1fr));
+                grid-template-columns: 1.35fr repeat(3, minmax(145px, 1fr));
                 gap: 8px;
                 margin-bottom: 10px;
             }
             .executive-kpi {
                 border: 1px solid #E2E8F0;
                 border-radius: 6px;
-                padding: 9px 10px;
+                padding: 10px 11px;
                 background: #FFFFFF;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                min-width: 0;
+            }
+            .executive-kpi.primary {
+                grid-row: span 2;
+                border-left: 4px solid #1F4E79;
+                background: #F8FAFC;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                min-height: 116px;
+            }
+            .executive-kpi.alert { border-left: 4px solid #B91C1C; }
+            .executive-kpi.saving { border-left: 4px solid #166534; }
+            .executive-kpi.neutral { border-left: 4px solid #64748B; }
+            .kpi-detail-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 8px;
+                margin-top: 6px;
+                padding-top: 6px;
+                border-top: 1px solid #E2E8F0;
+                font-size: 11px;
+                color: #475569;
+                font-weight: 600;
+            }
+            .kpi-detail-row span:last-child {
+                color: #1e293b;
+                font-weight: 700;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
             }
             .kpi-label {
                 font-size: 10px;
-                font-weight: 800;
-                color: #475569;
                 font-weight: 600;
+                color: #4a5568;
                 text-transform: uppercase;
-                letter-spacing: 0.35px;
+                letter-spacing: 0;
                 margin-bottom: 4px;
             }
             .kpi-value {
                 font-size: 16px;
-                font-weight: 800;
-                color: #0F172A;
+                font-weight: 700;
+                color: #1e293b;
                 font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            .executive-kpi.primary .kpi-value {
+                font-size: 20px;
             }
             .kpi-sub {
                 margin-top: 2px;
                 font-size: 11px;
-                color: #64748B;
+                color: #475569;
+                font-weight: 600;
             }
             .executive-section {
                 border: 1px solid #E2E8F0;
@@ -817,14 +852,14 @@
                 background: #FFFFFF;
                 padding: 10px 12px;
                 margin-bottom: 10px;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
             .section-title {
                 font-size: 11px;
-                font-weight: 800;
-                color: #334155;
+                font-weight: 700;
+                color: #4a5568;
                 text-transform: uppercase;
-                letter-spacing: 0.4px;
+                letter-spacing: 0.6px;
                 margin-bottom: 8px;
             }
             .driver-list { display: grid; gap: 8px; }
@@ -840,21 +875,21 @@
                 background: #FFFFFF;
             }
             .driver-row:last-child { padding-bottom: 8px; }
-            .driver-name { font-weight: 800; color: #0F172A; line-height: 1.3; }
-            .driver-meta { color: #475569; font-weight: 600; line-height: 1.35; }
+            .driver-name { font-weight: 700; color: #1e293b; line-height: 1.3; }
+            .driver-meta { color: #475569; font-weight: 500; line-height: 1.35; }
             .driver-metric { min-width: 0; text-align: right; }
             .driver-value {
                 display: block;
-                color: #0F172A;
+                color: #1e293b;
                 font-size: 12.5px;
-                font-weight: 800;
+                font-weight: 700;
                 line-height: 1.25;
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
             }
             .driver-value-alert { color: #B91C1C; }
             .driver-value-saving { color: #166534; }
-            .driver-value-neutral { color: #0F172A; }
+            .driver-value-neutral { color: #1e293b; }
             .diagnostic-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(220px, 1fr));
@@ -862,6 +897,7 @@
             }
             @media (max-width: 900px) {
                 .executive-kpi-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+                .executive-kpi.primary { grid-row: auto; grid-column: span 2; }
                 .diagnostic-grid { grid-template-columns: 1fr; }
                 .driver-row { grid-template-columns: 1fr; }
                 .driver-metric { text-align: left; }
@@ -869,13 +905,15 @@
             @media (max-width: 760px) {
                 .executive-grid { grid-template-columns: 1fr; }
                 .executive-headline { flex-direction: column; gap: 2px; }
+                .executive-kpi-grid { grid-template-columns: 1fr; }
+                .executive-kpi.primary { grid-column: auto; }
             }
 
             table { 
                 width: 100%; 
                 border-collapse: separate; 
                 border-spacing: 0;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
                 table-layout: auto;
             }
             th { 
@@ -883,7 +921,7 @@
                 top: 0;
                 background-color: #F4F6F9; 
                 z-index: 10;
-                color: #222222; 
+                color: #2d3748; 
                 font-size: 11px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
@@ -902,23 +940,23 @@
                 padding: 6px 10px; 
                 border-bottom: 1px solid #F0F0F0; 
                 font-size: 13px; 
-                color: #444444; 
+                color: #2d3748; 
                 vertical-align: middle;
             }
             td:first-child { text-align: left; }
             
             tr.row-cc { cursor: pointer; transition: background-color 0.15s; }
             tr.row-cc:hover { background-color: #F8F9FA; }
-            tr.row-cc td:first-child { font-weight: 600; color: #222222; }
+            tr.row-cc td:first-child { font-weight: 600; color: #2d3748; }
             tr.row-cc-nivel-1 td { background-color: #FCFCFC; }
             tr.row-cc-nivel-1 td:first-child {
                 padding-left: 26px;
-                color: #333333;
+                color: #334155;
             }
             tr.row-cc-nivel-2 td { background-color: #FAFAFA; }
             tr.row-cc-nivel-2 td:first-child {
                 padding-left: 42px;
-                color: #444444;
+                color: #475569;
             }
             tr.row-cc-nivel-3 td { background-color: #F8FAFC; }
             tr.row-cc-nivel-3 td:first-child {
@@ -959,7 +997,7 @@
             tr.row-conta td:first-child { 
                 padding-left: 86px;
                 font-weight: 400; 
-                color: #555555; 
+                color: #475569; 
                 position: relative;
             }
             
@@ -979,12 +1017,12 @@
                 background-color: #F4F6F9; 
                 z-index: 10;
                 font-weight: 700 !important;
-                color: #222222 !important;
+                color: #2d3748 !important;
                 box-shadow: 0 -2px 0 0 #CCCCCC; 
                 border-bottom: none;
                 padding: 10px 10px;
             }
-            tfoot td:first-child { color: #222222 !important; }
+            tfoot td:first-child { color: #2d3748 !important; }
 
             .numeric { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
             .center { text-align: center; }
@@ -996,7 +1034,7 @@
             .consumption-wrapper { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
             
             .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; }
-            .bar-container::after { content: ''; position: absolute; right: 0; top: -2px; height: 12px; width: 2px; background-color: #222222; z-index: 2; border-radius: 1px; }
+            .bar-container::after { content: ''; position: absolute; right: 0; top: -2px; height: 12px; width: 2px; background-color: #2d3748; z-index: 2; border-radius: 1px; }
             
             .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease; z-index: 1; }
             .fill-green { background-color: #2E7D32; }
@@ -1506,6 +1544,13 @@
                     return formatted;
                 };
 
+                const formatKpiCurrency = (num) => num.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+
                 const formatSummaryNumber = (num) => {
                     const absNum = Math.abs(num); // Garante que o sinal não vá para o texto resumo
                     if (absNum >= 1000000) return (absNum / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "Mi";
@@ -1716,6 +1761,15 @@
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
                 const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
                 const kpiConsumptionText = totalGlobalOrcado > 0 ? `${((totalGlobalRealizado / totalGlobalOrcado) * 100).toFixed(1)}%` : "-";
+                const currentPeriodTotal = totalGlobalRealizado;
+                const currentPeriodBudget = totalGlobalOrcado;
+                const previousMonthTotals = previousMoMMonth && monthDimKey
+                    ? sumRowsByVersion(financialData.data.filter(row => getName(row[monthDimKey]) === previousMoMMonth))
+                    : { budget: 0, actual: 0 };
+                const realizedMoMAbs = currentPeriodTotal - previousMonthTotals.actual;
+                const realizedMoMPct = previousMonthTotals.actual !== 0 ? (realizedMoMAbs / Math.abs(previousMonthTotals.actual)) * 100 : null;
+                const realizedMoMClass = realizedMoMAbs > 0 ? "alert" : (realizedMoMAbs < 0 ? "saving" : "neutral");
+                const realizedMoMText = realizedMoMPct === null ? "-" : `${realizedMoMPct.toFixed(1)}%`;
                 const selectedMonthDisplay = this._selectedMonth === "__all__" ? "Todos os anos" : this._getPeriodDisplayLabel(this._selectedMonth);
                 const ytdLabel = this._selectedMonth === "__all__" ? "Base completa disponível" : `YTD até ${selectedMonthDisplay}`;
                 const periodLabel = this._selectedMonth === "__all__" ? "Base completa" : selectedMonthDisplay;
@@ -1953,25 +2007,48 @@
 
                 const executivePanelHtml = `
                     <div class="executive-kpi-grid">
-                        <div class="executive-kpi">
-                            <div class="kpi-label">Consumo Orçado G&A</div>
-                            <div class="kpi-value">${escapeHtml(kpiConsumptionText)}</div>
-                            <div class="kpi-sub">${escapeHtml(periodLabel)} · ${formatNumber(totalGlobalRealizado)} realizado</div>
+                        <div class="executive-kpi primary">
+                            <div class="kpi-label">Total Realizado do Período</div>
+                            <div class="kpi-value">${formatKpiCurrency(currentPeriodTotal)}</div>
+                            <div class="kpi-sub">${escapeHtml(periodLabel)} · consumo ${escapeHtml(kpiConsumptionText)}</div>
+                            <div class="kpi-detail-row"><span>Orçado</span><span>${formatKpiCurrency(currentPeriodBudget)}</span></div>
+                            <div class="kpi-detail-row"><span>Desvio</span><span>${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div>
                         </div>
-                        <div class="executive-kpi">
+                        <div class="executive-kpi neutral">
+                            <div class="kpi-label">Orçado do Período</div>
+                            <div class="kpi-value">${formatKpiCurrency(currentPeriodBudget)}</div>
+                            <div class="kpi-sub">${escapeHtml(periodLabel)} · base de comparação</div>
+                            <div class="kpi-detail-row"><span>Realizado</span><span>${formatKpiCurrency(currentPeriodTotal)}</span></div>
+                        </div>
+                        <div class="executive-kpi ${totalGlobalDesvio > 0 ? "alert" : "saving"}">
                             <div class="kpi-label">Desvio do Período</div>
                             <div class="kpi-value">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</div>
                             <div class="kpi-sub">${totalVariancePct.toFixed(1)}% vs orçamento</div>
+                            <div class="kpi-detail-row"><span>Status</span><span>${escapeHtml(totalStatusText)}</span></div>
                         </div>
-                        <div class="executive-kpi">
-                            <div class="kpi-label">Desvio YTD</div>
-                            <div class="kpi-value">${formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio)}</div>
-                            <div class="kpi-sub">${escapeHtml(ytdLabel)} · ${ytdVariancePct.toFixed(1)}%</div>
+                        <div class="executive-kpi neutral">
+                            <div class="kpi-label">YTD Realizado</div>
+                            <div class="kpi-value">${formatKpiCurrency(ytdTotals.actual)}</div>
+                            <div class="kpi-sub">${escapeHtml(ytdLabel)}</div>
+                            <div class="kpi-detail-row"><span>YTD Orçado</span><span>${formatKpiCurrency(ytdTotals.budget)}</span></div>
                         </div>
-                        <div class="executive-kpi">
-                            <div class="kpi-label">Status Orçamentário</div>
-                            <div class="kpi-value">${escapeHtml(totalStatusText)}</div>
-                            <div class="kpi-sub">${executiveDrivers.length} departamentos no Pareto MoM</div>
+                        <div class="executive-kpi ${ytdDesvio > 0 ? "alert" : "saving"}">
+                            <div class="kpi-label">YTD Orçado e Desvio</div>
+                            <div class="kpi-value">${formatKpiCurrency(ytdTotals.budget)}</div>
+                            <div class="kpi-sub">Desvio YTD ${ytdVariancePct.toFixed(1)}%</div>
+                            <div class="kpi-detail-row"><span>Variação</span><span>${formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio)}</span></div>
+                        </div>
+                        <div class="executive-kpi ${realizedMoMClass}">
+                            <div class="kpi-label">Realizado vs Mês Anterior</div>
+                            <div class="kpi-value">${escapeHtml(realizedMoMText)}</div>
+                            <div class="kpi-sub">${escapeHtml(momPeriodLabel)}</div>
+                            <div class="kpi-detail-row"><span>Variação R$</span><span>${formatNumber(Math.abs(realizedMoMAbs), true, true, realizedMoMAbs)}</span></div>
+                        </div>
+                        <div class="executive-kpi neutral">
+                            <div class="kpi-label">Pareto MoM</div>
+                            <div class="kpi-value">${executiveDrivers.length}</div>
+                            <div class="kpi-sub">departamentos · cobertura ${escapeHtml(momCoverageText)}</div>
+                            <div class="kpi-detail-row"><span>Piora MoM</span><span>${formatNumber(Math.abs(momOffenderAnalysis.totalMoMDeviation), true, true, momOffenderAnalysis.totalMoMDeviation)}</span></div>
                         </div>
                     </div>
                     <div class="executive-oversight ${oversightClass}">
