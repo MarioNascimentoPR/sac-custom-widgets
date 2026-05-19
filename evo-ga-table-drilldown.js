@@ -159,8 +159,21 @@
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                position: relative;
                 flex-shrink: 0;
+            }
+            .panel-filter-bar {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 0 0 8px 0;
+            }
+            .panel-filter-label {
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 11px;
+                font-weight: 700;
+                color: #475569;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
             }
             .month-filter {
                 min-width: 132px;
@@ -279,6 +292,56 @@
             }
             .table-summary.summary-saving { border-left-color: #2E7D32; }
             .table-summary.summary-desvio { border-left-color: #D32F2F; }
+            .executive-oversight {
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                margin: 0 0 8px 0;
+                background: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-left: 4px solid #64748B;
+                border-radius: 4px;
+                padding: 10px 12px;
+                color: #1E293B;
+            }
+            .executive-oversight.risk-baixo { border-left-color: #2E7D32; }
+            .executive-oversight.risk-moderado { border-left-color: #EF6C00; }
+            .executive-oversight.risk-alto { border-left-color: #D32F2F; }
+            .executive-oversight.risk-critico { border-left-color: #7F1D1D; }
+            .executive-headline {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 12px;
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 6px;
+            }
+            .executive-score {
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            .executive-grid {
+                display: grid;
+                grid-template-columns: 1.2fr 1fr 1fr;
+                gap: 10px;
+                font-size: 11.5px;
+                line-height: 1.45;
+            }
+            .executive-label {
+                display: block;
+                font-size: 10px;
+                font-weight: 800;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                margin-bottom: 2px;
+            }
+            .executive-text strong { color: #0F172A; }
+            @media (max-width: 760px) {
+                .executive-grid { grid-template-columns: 1fr; }
+                .executive-headline { flex-direction: column; gap: 2px; }
+            }
 
             table { 
                 width: 100%; 
@@ -426,6 +489,14 @@
             .status-abaixo { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; } 
             .status-atencao { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; } 
             .status-acima { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; } 
+            .status-baixa { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; }
+            .status-baixo { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; }
+            .status-moderada { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+            .status-moderado { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+            .status-alta { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; }
+            .status-alto { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; }
+            .status-critica { background-color: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
+            .status-critico { background-color: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
         </style>
         <div id="widget-wrapper">
             <div id="header-container"></div>
@@ -560,6 +631,12 @@
             if (monthSelect) {
                 monthSelect.addEventListener("change", (event) => {
                     this._selectedMonth = event.target.value || "__all__";
+                    this.dispatchEvent(new CustomEvent("monthFilterChanged", {
+                        detail: {
+                            selectedMonth: this._selectedMonth === "__all__" ? null : this._selectedMonth,
+                            isAllMonths: this._selectedMonth === "__all__"
+                        }
+                    }));
                     this.renderTable();
                 });
             }
@@ -727,6 +804,84 @@
                 };
                 
                 const formatPercentage = (val) => val === 0 ? "-" : (val === Infinity ? "∞" : val.toFixed(1) + "%");
+                const minimumMaterialityThreshold = 0.20;
+                const classifySeverity = (score) => {
+                    if (score > 0.70) return "Crítica";
+                    if (score >= 0.45) return "Alta";
+                    if (score >= 0.20) return "Moderada";
+                    return "Baixa";
+                };
+                const classifyRisk = (score) => {
+                    if (score > 0.75) return "Crítico";
+                    if (score >= 0.50) return "Alto";
+                    if (score >= 0.25) return "Moderado";
+                    return "Baixo";
+                };
+                const classifyAccountNature = (name) => {
+                    const text = normalizeText(name);
+                    if (text.includes("COMPLIANCE") || text.includes("AUDITORIA") || text.includes("CONTROLES")) return "Compliance";
+                    if (text.includes("JURID") || text.includes("LEGAL") || text.includes("ADVOC")) return "Legal";
+                    if (text.includes("TI") || text.includes("TECNOLOG") || text.includes("SISTEMA") || text.includes("SOFTWARE") || text.includes("LICEN")) return "Corporate IT";
+                    if (text.includes("FACILIT") || text.includes("ALUG") || text.includes("PREDIAL") || text.includes("CONDOM") || text.includes("MANUTEN")) return "Facilities";
+                    if (text.includes("PESSO") || text.includes("FOLHA") || text.includes("SALARIO") || text.includes("BENEF") || text.includes("RH")) return "People";
+                    if (text.includes("CONSULT") || text.includes("TERCEIR") || text.includes("SERVICO")) return "Consulting";
+                    if (text.includes("TREIN") || text.includes("CAPACIT")) return "Training";
+                    if (text.includes("VIAGEM") || text.includes("HOSPED") || text.includes("PASSAGEM") || text.includes("DESLOC")) return "Travel";
+                    if (text.includes("SHARED") || text.includes("CENTRO DE SERV") || text.includes("CSC")) return "Shared Services";
+                    if (text.includes("BACKOFFICE") || text.includes("ADMINISTR")) return "Backoffice";
+                    return "SG&A";
+                };
+                const administrativeCriticalityWeight = (nature) => ({
+                    "Compliance": 1.0,
+                    "Legal": 0.9,
+                    "Corporate IT": 0.9,
+                    "Facilities": 0.7,
+                    "People": 0.7,
+                    "Consulting": 0.6,
+                    "Training": 0.4,
+                    "Travel": 0.3,
+                    "Shared Services": 0.6,
+                    "Backoffice": 0.6,
+                    "SG&A": 0.5
+                }[nature] || 0.5);
+                const buildTrendProfile = (monthlyValues) => {
+                    const series = (monthlyValues || []).map(item => item.actual - item.budget);
+                    const positives = series.map(value => value > 0);
+                    let recurrenceMonths = 0;
+                    for (let i = positives.length - 1; i >= 0 && positives[i]; i--) recurrenceMonths++;
+                    const last3 = series.slice(-3);
+                    let trendDirection = "stable";
+                    if (last3.length >= 3 && last3[0] < last3[1] && last3[1] < last3[2]) trendDirection = "worsening";
+                    else if (last3.length >= 3 && last3[0] > last3[1] && last3[1] > last3[2]) trendDirection = "improving";
+                    else if (last3.length >= 2 && last3[last3.length - 1] > last3[last3.length - 2] * 1.15) trendDirection = "acceleration";
+                    else if (recurrenceMonths === 0 && positives.slice(0, -1).some(Boolean)) trendDirection = "normalization";
+                    const recurrenceType = recurrenceMonths >= 6 ? "persistent" : (recurrenceMonths >= 3 ? "recurring" : (recurrenceMonths >= 1 ? "isolated" : "none"));
+                    const trendRisk = trendDirection === "worsening" || trendDirection === "acceleration" ? 1 : (trendDirection === "stable" ? 0.45 : 0.15);
+                    const recurrenceRisk = recurrenceMonths >= 6 ? 1 : (recurrenceMonths >= 3 ? 0.65 : (recurrenceMonths >= 1 ? 0.25 : 0));
+                    return { trendDirection, recurrenceType, trendRisk, recurrenceRisk, recurrenceMonths };
+                };
+                const buildExecutiveNarrative = (riskLabel, riskScore, drivers, totalDesvio, totalPct) => {
+                    const driverNames = drivers.slice(0, 3).map(item => item.accountNature || item.name);
+                    const uniqueDrivers = Array.from(new Set(driverNames));
+                    const driverText = uniqueDrivers.length ? uniqueDrivers.join(", ") : "sem concentração material";
+                    const topDriver = drivers[0];
+                    const trendText = topDriver && topDriver.trendDirection === "worsening"
+                        ? `deterioração recorrente em ${topDriver.recurrenceMonths || 3} períodos recentes`
+                        : (topDriver && topDriver.trendDirection === "acceleration" ? "aceleração no período corrente" : "comportamento sob controle relativo");
+                    const directionText = totalDesvio > 0 ? "pressão administrativa acima do esperado" : "aderência orçamentária com oportunidade de preservação de saving";
+                    const recommendation = riskScore >= 0.50
+                        ? "Priorizar revisão executiva dos vetores materiais, validar recorrência contratual e pactuar plano de contenção com responsáveis administrativos."
+                        : "Manter acompanhamento no ciclo de forecast e preservar disciplina de aprovação para despesas recorrentes.";
+                    return {
+                        headline: `RISCO ORÇAMENTÁRIO G&A: ${riskLabel.toUpperCase()}`,
+                        keyDrivers: `Principais vetores: ${driverText}.`,
+                        rootCause: topDriver ? `A leitura aponta concentração em ${topDriver.accountNature}, com materialidade ${(topDriver.materialityScore * 100).toFixed(0)}%.` : "Não há vetor administrativo dominante com materialidade executiva.",
+                        severity: riskLabel,
+                        trend: `Tendência: ${trendText}.`,
+                        recommendation,
+                        riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A.`
+                    };
+                };
 
                 const headerName = getName(dimensions[calcDimKey]);
 
@@ -734,6 +889,14 @@
                 const uniqueColsSet = new Set();
                 this._profiler.metrics.steps.parsing = this._profiler._now() - tParsingStart;
                 const tAggregationStart = this._profiler._now();
+                const monthlyIndex = {};
+                const addMonthlyValue = (key, month, col, value) => {
+                    if (!month) return;
+                    if (!monthlyIndex[key]) monthlyIndex[key] = {};
+                    if (!monthlyIndex[key][month]) monthlyIndex[key][month] = { budget: 0, actual: 0 };
+                    if (isVersionMember(col) && normalizeText(col).includes("ORCADO")) monthlyIndex[key][month].budget += value;
+                    else if (isVersionMember(col) && normalizeText(col).includes("REALIZADO")) monthlyIndex[key][month].actual += value;
+                };
 
                 rowsForRender.forEach(row => {
                     const calcNode = getName(row[calcDimKey]);
@@ -776,6 +939,26 @@
                     dataMap[calcNode].ccNivel1[ccNivel1].totals[col] = (dataMap[calcNode].ccNivel1[ccNivel1].totals[col] || 0) + numVal;
                     dataMap[calcNode].totals[col] = (dataMap[calcNode].totals[col] || 0) + numVal;
                 });
+
+                if (monthDimKey) {
+                    financialData.data.forEach(row => {
+                        const calcNode = getName(row[calcDimKey]);
+                        const ccNivel1 = getName(row[ccNivel1DimKey]);
+                        const ccNivel2 = getName(row[ccNivel2DimKey]);
+                        const conta = getName(row[contaDimKey]);
+                        const col = getName(row[colDimKey]);
+                        const month = getName(row[monthDimKey]);
+                        let value = "-";
+                        if (row[measureKey] && (row[measureKey].formattedValue !== undefined || row[measureKey].raw !== undefined)) {
+                            value = row[measureKey].raw !== undefined ? row[measureKey].raw : row[measureKey].formattedValue;
+                        }
+                        const numVal = parseNumber(value);
+                        addMonthlyValue(`calc:${calcNode}`, month, col, numVal);
+                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}`, month, col, numVal);
+                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}`, month, col, numVal);
+                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|conta:${conta}`, month, col, numVal);
+                    });
+                }
 
                 const uniqueCols = Array.from(uniqueColsSet);
 
@@ -831,13 +1014,58 @@
                 const varianceType = totalGlobalDesvio > 0 ? "desvio" : "saving";
                 const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
+                const allNodes = [];
+                const collectNodes = (node) => {
+                    allNodes.push(node);
+                    (node.children || []).forEach(collectNodes);
+                };
+                tableData.forEach(collectNodes);
+                const maxVarianceAbs = Math.max(...allNodes.map(node => Math.abs(node.desvio)), 1);
+                const monthlyProfileFor = (key) => {
+                    const monthMap = monthlyIndex[key] || {};
+                    return this._sortMonthOptions(Object.keys(monthMap)).map(month => monthMap[month]);
+                };
+                const annotateNode = (node) => {
+                    (node.children || []).forEach(annotateNode);
+                    const varianceAbs = node.desvio;
+                    const variancePct = node.valOrcado > 0 ? ((node.valRealizado - node.valOrcado) / node.valOrcado) * 100 : 0;
+                    const budgetWeight = totalGlobalOrcado > 0 ? node.valOrcado / totalGlobalOrcado : 0;
+                    const organizationalWeight = totalGlobalRealizado > 0 ? node.valRealizado / totalGlobalRealizado : 0;
+                    const normalizedVariancePct = Math.min(Math.abs(variancePct) / 100, 1);
+                    const normalizedVarianceAbs = Math.min(Math.abs(varianceAbs) / maxVarianceAbs, 1);
+                    const materialityScore = (normalizedVariancePct * 0.35) + (normalizedVarianceAbs * 0.35) + (budgetWeight * 0.20) + (organizationalWeight * 0.10);
+                    const childrenByMateriality = [...(node.children || [])].sort((a, b) => (b.materialityScore || 0) - (a.materialityScore || 0));
+                    const inheritedNature = childrenByMateriality[0] && childrenByMateriality[0].accountNature;
+                    const accountNature = node.children && node.children.length ? (inheritedNature || classifyAccountNature(node.name)) : classifyAccountNature(node.name);
+                    const trendProfile = buildTrendProfile(monthlyProfileFor(node.key));
+                    const administrativeCriticality = administrativeCriticalityWeight(accountNature);
+                    const executiveRiskScore = (materialityScore * 0.40) + (trendProfile.trendRisk * 0.25) + (trendProfile.recurrenceRisk * 0.20) + (administrativeCriticality * 0.15);
+                    node.varianceAbs = varianceAbs;
+                    node.variancePct = variancePct;
+                    node.budgetWeight = budgetWeight;
+                    node.organizationalWeight = organizationalWeight;
+                    node.materialityScore = materialityScore;
+                    node.executiveSeverity = classifySeverity(materialityScore);
+                    node.varianceDirection = varianceAbs > 0 ? "negative" : (varianceAbs < 0 ? "positive" : "neutral");
+                    node.varianceSeverity = node.executiveSeverity.toLowerCase();
+                    node.trendDirection = trendProfile.trendDirection;
+                    node.businessCriticality = "administrative";
+                    node.recurrenceType = trendProfile.recurrenceType;
+                    node.recurrenceMonths = trendProfile.recurrenceMonths;
+                    node.accountNature = accountNature;
+                    node.administrativeCriticality = administrativeCriticality;
+                    node.executiveRiskScore = executiveRiskScore;
+                    node.executiveRisk = classifyRisk(executiveRiskScore);
+                    node.isExecutiveNoise = Math.abs(variancePct) < 2 && Math.abs(varianceAbs) < 100000 && materialityScore < minimumMaterialityThreshold;
+                };
+                tableData.forEach(annotateNode);
 
                 const centrosDeCusto = tableData.flatMap(item =>
                     item.children.flatMap(ccNivel1 => ccNivel1.children)
                 );
                 const ofensores = [...centrosDeCusto]
-                    .filter(item => item.desvio > 0)
-                    .sort((a, b) => b.desvio - a.desvio)
+                    .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
+                    .sort((a, b) => b.materialityScore - a.materialityScore)
                     .slice(0, 3);
 
                 ofensores.forEach(item => item.isOfensor = true);
@@ -851,6 +1079,17 @@
                 } else {
                     ofensoresText = " Não foram identificados centros de custo operando acima do orçamento.";
                 }
+                const executiveDrivers = [...centrosDeCusto]
+                    .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
+                    .sort((a, b) => b.executiveRiskScore - a.executiveRiskScore || b.materialityScore - a.materialityScore)
+                    .slice(0, 5);
+                const consolidatedRiskScore = executiveDrivers.length
+                    ? Math.max(...executiveDrivers.map(item => item.executiveRiskScore))
+                    : (tableData[0] ? tableData[0].executiveRiskScore : 0);
+                const consolidatedRiskLabel = classifyRisk(consolidatedRiskScore);
+                const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
+                const executiveNarrative = buildExecutiveNarrative(consolidatedRiskLabel, consolidatedRiskScore, executiveDrivers, totalGlobalDesvio, totalVariancePct);
+                const riskClass = `risk-${normalizeText(consolidatedRiskLabel).toLowerCase()}`;
 
                 this._profiler.metrics.steps.aggregation = this._profiler._now() - tAggregationStart;
                 const tDOMStart = this._profiler._now();
@@ -862,17 +1101,42 @@
 
                 headerContainer.innerHTML = `
                     <div class="header-top">
-                        <h1 class="table-title">Overview - Acompanhamento Orçamentário</h1>
+                        <h1 class="table-title">G&A Executive Oversight Engine</h1>
                         <div class="header-actions">
+                            <button class="telemetry-btn" id="telemetryBtn" type="button">Telemetria</button>
+                        </div>
+                    </div>
+                    <div class="panel-filter-bar">
+                        <span class="panel-filter-label">Filtro do painel:</span>
+                        <label>
                             <select class="month-filter" id="monthFilter" ${monthDisabled} aria-label="Filtrar mês">
                                 <option value="__all__" ${selectedAll}>Todos os meses</option>
                                 ${monthOptionsHtml}
                             </select>
-                            <button class="telemetry-btn" id="telemetryBtn" type="button">Telemetria</button>
+                        </label>
+                    </div>
+                    <div class="executive-oversight ${riskClass}">
+                        <div class="executive-headline">
+                            <span>${escapeHtml(executiveNarrative.headline)}</span>
+                            <span class="executive-score">Score ${(consolidatedRiskScore * 100).toFixed(0)}</span>
+                        </div>
+                        <div class="executive-grid">
+                            <div class="executive-text">
+                                <span class="executive-label">Contexto e Insight</span>
+                                ${escapeHtml(executiveNarrative.riskAssessment)} ${escapeHtml(executiveNarrative.keyDrivers)}
+                            </div>
+                            <div class="executive-text">
+                                <span class="executive-label">Tendência e Causa</span>
+                                ${escapeHtml(executiveNarrative.trend)} ${escapeHtml(executiveNarrative.rootCause)}
+                            </div>
+                            <div class="executive-text">
+                                <span class="executive-label">Recomendação</span>
+                                ${escapeHtml(executiveNarrative.recommendation)}
+                            </div>
                         </div>
                     </div>
                     <p class="table-summary ${varianceClass}">
-                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado.${ofensoresText}
+                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado, com filtro executivo de materialidade aplicado.${ofensoresText}
                     </p>
                 `;
                 this._bindHeaderControls(monthOptions, Boolean(monthDimKey));
@@ -936,7 +1200,9 @@
                     html += `<td class="numeric cell-variance ${varColorClass}">${rowObj.desvio !== 0 ? desvioFormatted : "-"}</td>`;
 
                     let barFillWidth = rowObj.percentConsumption === Infinity ? 100 : Math.min(100, rowObj.percentConsumption || 0);
-                    let barFillClass = rowObj.percentConsumption === Infinity || rowObj.percentConsumption >= 100 ? "fill-red" : (rowObj.percentConsumption < 90 ? "fill-green" : "fill-yellow");
+                    let barFillClass = "fill-green";
+                    if (rowObj.executiveSeverity === "Crítica" || rowObj.executiveSeverity === "Alta") barFillClass = "fill-red";
+                    else if (rowObj.executiveSeverity === "Moderada" || rowObj.percentConsumption >= 100) barFillClass = "fill-yellow";
                     let consumptionText = rowObj.percentConsumption === Infinity ? "∞" : (rowObj.percentConsumption === 0 ? "-" : formatPercentage(rowObj.percentConsumption));
                     
                     if(rowObj.valOrcado === 0 && rowObj.valRealizado === 0) barFillWidth = 0;
@@ -948,30 +1214,35 @@
                         </div>
                     </td>`;
 
-                    let statusText = "-"; let statusPillClass = "";
-                    if (rowObj.valOrcado === 0 && rowObj.valRealizado > 0) { statusText = "Acima"; statusPillClass = "status-acima"; }
-                    else if (rowObj.valOrcado > 0 || rowObj.valRealizado > 0) {
-                        if (rowObj.percentConsumption < 90) { statusText = "Abaixo"; statusPillClass = "status-abaixo"; }
-                        else if (rowObj.percentConsumption < 100) { statusText = "Atenção"; statusPillClass = "status-atencao"; }
-                        else { statusText = "Acima"; statusPillClass = "status-acima"; }
-                    }
+                    let statusText = rowObj.executiveSeverity || "-";
+                    let statusPillClass = `status-${normalizeText(statusText).toLowerCase()}`;
+                    if (rowObj.isExecutiveNoise) { statusText = "Baixa"; statusPillClass = "status-baixa"; }
 
-                    let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}">${statusText}</span>` : "-";
+                    let statusTitle = `Materialidade ${(rowObj.materialityScore * 100).toFixed(1)}% | Risco ${(rowObj.executiveRiskScore * 100).toFixed(1)}% | ${rowObj.accountNature}`;
+                    let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}" title="${escapeHtml(statusTitle)}">${statusText}</span>` : "-";
                     html += `<td class="center cell-status">${statusHtml}</td></tr>`;
                     
                     return html;
+                };
+                const hasVisibleSignal = (rowObj, level = 0) => {
+                    if (level === 0) return true;
+                    if (!rowObj.isExecutiveNoise) return true;
+                    return (rowObj.children || []).some(child => hasVisibleSignal(child, level + 1));
                 };
 
                 tableData.forEach(calcRow => {
                     tableHtml += renderRowHtml(calcRow, 0);
                     if (this._expandedRows.has(calcRow.key)) {
                         calcRow.children.forEach(ccNivel1Row => {
+                            if (!hasVisibleSignal(ccNivel1Row, 1)) return;
                             tableHtml += renderRowHtml(ccNivel1Row, 1);
                             if (this._expandedRows.has(ccNivel1Row.key)) {
                                 ccNivel1Row.children.forEach(ccNivel2Row => {
+                                    if (!hasVisibleSignal(ccNivel2Row, 2)) return;
                                     tableHtml += renderRowHtml(ccNivel2Row, 2);
                                     if (this._expandedRows.has(ccNivel2Row.key)) {
                                         ccNivel2Row.children.forEach(contaRow => {
+                                            if (!hasVisibleSignal(contaRow, 3)) return;
                                             tableHtml += renderRowHtml(contaRow, 3);
                                         });
                                     }
@@ -988,17 +1259,12 @@
                 let totalPercentConsumption = totalGlobalOrcado > 0 ? (totalGlobalRealizado / totalGlobalOrcado) * 100 : (totalGlobalRealizado > 0 ? Infinity : 0);
                 
                 let totalBarFillWidth = totalPercentConsumption === Infinity ? 100 : Math.min(100, totalPercentConsumption || 0);
-                let totalBarFillClass = totalPercentConsumption === Infinity || totalPercentConsumption >= 100 ? "fill-red" : (totalPercentConsumption < 90 ? "fill-green" : "fill-yellow");
+                let totalBarFillClass = consolidatedRiskLabel === "Crítico" || consolidatedRiskLabel === "Alto" ? "fill-red" : (consolidatedRiskLabel === "Moderado" ? "fill-yellow" : "fill-green");
                 let totalConsumptionText = totalPercentConsumption === Infinity ? "∞" : (totalPercentConsumption === 0 ? "-" : formatPercentage(totalPercentConsumption));
                 if(totalGlobalOrcado === 0 && totalGlobalRealizado === 0) totalBarFillWidth = 0;
 
-                let totalStatusText = "-"; let totalStatusPillClass = "";
-                if (totalGlobalOrcado === 0 && totalGlobalRealizado > 0) { totalStatusText = "Acima"; totalStatusPillClass = "status-acima"; }
-                else if (totalGlobalOrcado > 0 || totalGlobalRealizado > 0) {
-                    if (totalPercentConsumption < 90) { totalStatusText = "Abaixo"; totalStatusPillClass = "status-abaixo"; }
-                    else if (totalPercentConsumption < 100) { totalStatusText = "Atenção"; totalStatusPillClass = "status-atencao"; }
-                    else { totalStatusText = "Acima"; totalStatusPillClass = "status-acima"; }
-                }
+                let totalStatusText = consolidatedRiskLabel;
+                let totalStatusPillClass = `status-${normalizeText(consolidatedRiskLabel).toLowerCase()}`;
 
                 tableHtml += `<tfoot><tr><td>TOTAL GERAL</td>`;
                 uniqueCols.forEach(col => {
