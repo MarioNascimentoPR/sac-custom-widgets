@@ -198,10 +198,6 @@
         font-size: var(--small-font-size); font-weight: 700; color: #4a5568; background-color: #f1f5f9; border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none;
       }
       .telemetry-btn:hover { background-color: #e2e8f0; color: #1e293b; }
-      .export-btn {
-        font-size: var(--small-font-size); font-weight: 700; color: #1e293b; background-color: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s; user-select: none;
-      }
-      .export-btn:hover { background-color: #edf2f7; }
       .telemetry-modal {
         display: none; position: absolute; top: 48px; right: 18px; width: 330px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 1000; padding: 14px; font-size: 11px; color: #334155;
       }
@@ -266,6 +262,22 @@
         font-size: var(--small-font-size); font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.75px;
         margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0;
       }
+      .copy-panel-header {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0;
+      }
+      .copy-panel-header .executive-panel-title,
+      .highlight-title-box .highlight-title-main {
+        margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex: 1; min-width: 0;
+      }
+      .copy-text-btn {
+        display: inline-flex; align-items: center; justify-content: center; min-width: 58px; height: 24px;
+        border: 1px solid #cbd5e0; border-radius: 4px; background: #ffffff; color: #475569;
+        font-size: var(--small-font-size); font-weight: 700; line-height: 1; cursor: pointer; white-space: nowrap;
+      }
+      .copy-text-btn:hover { background: #edf2f7; color: #1e293b; }
+      .copy-text-btn.copied { background: #e6f4ea; color: #137333; border-color: #ceead6; }
+      .copy-text-btn.error { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
       .waterfall-panel-header {
         display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;
         padding-bottom: 6px; border-bottom: 2px solid #cbd5e0;
@@ -338,6 +350,7 @@
       .movement-tag.normal { background: #e6f4ea; color: #137333; border-color: #ceead6; }
       .operational-attention-list { display: flex; flex-direction: column; gap: 1px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
       .operational-attention-row { background: #ffffff; padding: 9px 10px; font-size: var(--ui-font-size); color: #334155; line-height: 1.4; }
+      .operational-explanation-text { display: flex; flex-direction: column; min-width: 0; }
       .operational-generated-text { background: #ffffff; border-left: 4px solid #cbd5e0; border-radius: 4px; padding: 10px 12px; color: #334155; font-size: var(--ui-font-size); line-height: 1.5; }
       .operational-empty { color: #64748b; font-size: var(--ui-font-size); padding: 16px 4px; }
       .main-visualization-layout { display: flex; width: 100%; gap: var(--layout-gap); margin-bottom: 22px; flex-shrink: 0; align-items: stretch; }
@@ -404,7 +417,8 @@
         display: flex; flex-direction: column; background: #F8F9FA; border: 1px solid #e2e8f0; 
         border-left: 4px solid #cbd5e0; border-radius: 8px; padding: var(--panel-padding); color: #333333;
       }
-      .highlight-title-box { display: flex; align-items: center; gap: 6px; font-size: var(--small-font-size); font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      .highlight-title-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: var(--small-font-size); font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #cbd5e0; }
+      .highlight-title-main { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
       .highlight-content-levels { display: flex; flex-direction: column; gap: 10px; }
       .highlight-section { display: flex; flex-direction: column; gap: 6px; }
       .highlight-section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--small-font-size); font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.6px; }
@@ -464,8 +478,6 @@
           <span class="filter-label-finance">Corte:</span>
           <div class="tree-dropdown-trigger" id="treeDropdownTrigger">Selecionar...</div>
           <div class="tree-dropdown-content" id="treeDropdownContent"></div>
-          <button class="export-btn" id="exportPptBtn" type="button">Exportar PPT</button>
-          
           <button class="telemetry-btn" id="telemetryBtn" style="display: none;">📊 Telemetria</button>
           
           <div class="telemetry-modal" id="telemetryModal">
@@ -546,7 +558,10 @@
             <div class="waterfall-chart" id="waterfallChart"></div>
           </div>
           <div class="executive-panel">
-            <div class="executive-panel-title">Leitura Executiva</div>
+            <div class="copy-panel-header">
+              <div class="executive-panel-title">Leitura Executiva</div>
+              <button class="copy-text-btn" id="copyExecutiveTextBtn" type="button" aria-label="Copiar leitura executiva">Copiar</button>
+            </div>
             <div class="executive-summary-list" id="executiveSummaryList"></div>
           </div>
         </div>
@@ -607,7 +622,10 @@
           </div>
         </div>
         <div class="highlight-card-area" id="highlightCardArea">
-          <div class="highlight-title-box"><span class="highlight-icon-box">💡</span><span>Highlights</span></div>
+          <div class="highlight-title-box">
+            <span class="highlight-title-main"><span class="highlight-icon-box">💡</span><span>Highlights</span></span>
+            <button class="copy-text-btn" id="copyHighlightTextBtn" type="button" aria-label="Copiar highlights visíveis">Copiar</button>
+          </div>
           <div class="highlight-content-text" id="highlightContentText"></div>
         </div>
       </div>
@@ -620,9 +638,14 @@
             <div class="operational-table-wrap" id="operationalTableWrap"></div>
           </div>
           <div class="operational-panel">
-            <div class="executive-panel-title">Atenção Controladoria</div>
-            <div class="operational-attention-list" id="operationalAttentionWrap"></div>
-            <div class="operational-generated-text" id="operationalGeneratedText"></div>
+            <div class="copy-panel-header">
+              <div class="executive-panel-title">Atenção Controladoria</div>
+              <button class="copy-text-btn" id="copyOperationalTextBtn" type="button" aria-label="Copiar explicação operacional">Copiar</button>
+            </div>
+            <div class="operational-explanation-text" id="operationalExplanationText">
+              <div class="operational-attention-list" id="operationalAttentionWrap"></div>
+              <div class="operational-generated-text" id="operationalGeneratedText"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1277,7 +1300,6 @@
         this._insightGrid = this._shadowRoot.getElementById("insightGrid");
         this._treeDropdownTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
         this._treeDropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
-        this._exportPptBtn = this._shadowRoot.getElementById("exportPptBtn");
         this._executiveTabBtn = this._shadowRoot.getElementById("executiveTabBtn");
         this._diagnosticTabBtn = this._shadowRoot.getElementById("diagnosticTabBtn");
         this._operationalTabBtn = this._shadowRoot.getElementById("operationalTabBtn");
@@ -1297,8 +1319,12 @@
         this._waterfallYtdBtn = this._shadowRoot.getElementById("waterfallYtdBtn");
         this._waterfallMomBtn = this._shadowRoot.getElementById("waterfallMomBtn");
         this._executiveSummaryList = this._shadowRoot.getElementById("executiveSummaryList");
+        this._copyExecutiveTextBtn = this._shadowRoot.getElementById("copyExecutiveTextBtn");
+        this._copyHighlightTextBtn = this._shadowRoot.getElementById("copyHighlightTextBtn");
+        this._copyOperationalTextBtn = this._shadowRoot.getElementById("copyOperationalTextBtn");
         this._operationalSummaryCards = this._shadowRoot.getElementById("operationalSummaryCards");
         this._operationalTableWrap = this._shadowRoot.getElementById("operationalTableWrap");
+        this._operationalExplanationText = this._shadowRoot.getElementById("operationalExplanationText");
         this._operationalAttentionWrap = this._shadowRoot.getElementById("operationalAttentionWrap");
         this._operationalGeneratedText = this._shadowRoot.getElementById("operationalGeneratedText");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
@@ -1363,9 +1389,11 @@
         this._executiveTabBtn.addEventListener("click", () => this._setActiveView("executive"));
         this._diagnosticTabBtn.addEventListener("click", () => this._setActiveView("diagnostic"));
         this._operationalTabBtn.addEventListener("click", () => this._setActiveView("operational"));
-        this._exportPptBtn.addEventListener("click", () => this._exportCurrentViewToPpt());
         this._waterfallYtdBtn.addEventListener("click", () => this._setWaterfallMode("ytd"));
         this._waterfallMomBtn.addEventListener("click", () => this._setWaterfallMode("mom"));
+        this._copyExecutiveTextBtn.addEventListener("click", () => this._copyVisibleText(this._executiveSummaryList, this._copyExecutiveTextBtn));
+        this._copyHighlightTextBtn.addEventListener("click", () => this._copyVisibleText(this._highlightContentText, this._copyHighlightTextBtn));
+        this._copyOperationalTextBtn.addEventListener("click", () => this._copyVisibleText(this._operationalExplanationText, this._copyOperationalTextBtn));
 
         this._initStaticHighlightsDOM();
         this._setActiveView(this._activeView);
@@ -1660,6 +1688,114 @@
         .replace(/>/g, "&gt;")
         .replace(/\"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    _isElementVisibleForCopy(element) {
+      if (!element || !element.getClientRects || !element.getClientRects().length) return false;
+      let current = element;
+      while (current && current !== this._shadowRoot) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+          const style = getComputedStyle(current);
+          if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false;
+        }
+        current = current.parentElement;
+      }
+      return true;
+    }
+
+    _normalizeCopiedText(text) {
+      return String(text || "")
+        .replace(/\s+/g, " ")
+        .replace(/\s+([,.;:])/g, "$1")
+        .trim();
+    }
+
+    _getVisibleTextForCopy(root) {
+      if (!root) return "";
+      const blockSelector = "li, .executive-summary-row, .operational-attention-row, .operational-generated-text";
+      const blocks = [];
+      if (root.matches && root.matches(blockSelector)) blocks.push(root);
+      if (root.querySelectorAll) blocks.push(...root.querySelectorAll(blockSelector));
+
+      const readTextNodeBlock = (element) => {
+        const pieces = [];
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+          acceptNode: (node) => {
+            const parent = node.parentElement;
+            if (!parent || parent.closest("button, .copy-text-btn, .highlight-toggle-btn")) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return this._isElementVisibleForCopy(parent) && this._normalizeCopiedText(node.nodeValue)
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_REJECT;
+          }
+        });
+        while (walker.nextNode()) {
+          pieces.push(this._normalizeCopiedText(walker.currentNode.nodeValue));
+        }
+        return this._normalizeCopiedText(pieces.join(" "));
+      };
+
+      const lines = blocks
+        .filter(block => this._isElementVisibleForCopy(block))
+        .map(readTextNodeBlock)
+        .filter(Boolean);
+
+      if (lines.length) return lines.join("\n");
+      return readTextNodeBlock(root);
+    }
+
+    async _writeClipboardText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return;
+        } catch (error) {
+          // Fallback below covers restricted iframe/context permissions.
+        }
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand && document.execCommand("copy");
+      textarea.remove();
+      if (!copied) throw new Error("Clipboard indisponível");
+    }
+
+    _setCopyButtonFeedback(button, label, stateClass) {
+      if (!button) return;
+      const originalLabel = button.dataset.defaultLabel || button.textContent || "Copiar";
+      button.dataset.defaultLabel = originalLabel;
+      button.textContent = label;
+      button.classList.remove("copied", "error");
+      if (stateClass) button.classList.add(stateClass);
+      clearTimeout(button._copyFeedbackTimer);
+      button._copyFeedbackTimer = setTimeout(() => {
+        button.textContent = originalLabel;
+        button.classList.remove("copied", "error");
+      }, 1400);
+    }
+
+    async _copyVisibleText(root, button) {
+      const text = this._getVisibleTextForCopy(root);
+      if (!text) {
+        this._setCopyButtonFeedback(button, "Sem texto", "error");
+        return;
+      }
+      try {
+        await this._writeClipboardText(text);
+        this._setCopyButtonFeedback(button, "Copiado", "copied");
+      } catch (error) {
+        console.warn("Falha ao copiar texto", error);
+        this._setCopyButtonFeedback(button, "Erro", "error");
+      }
     }
 
     _initStaticHighlightsDOM() {
@@ -2406,526 +2542,6 @@
       if (this._operationalGeneratedText) {
         this._operationalGeneratedText.textContent = analysis.generatedText;
       }
-    }
-
-    async _exportCurrentViewToPpt() {
-      if (!this._widgetWrapper || !this._exportPptBtn) return;
-      const originalLabel = this._exportPptBtn.textContent;
-      try {
-        const snapshot = await this._captureWidgetPng();
-        this._exportPptBtn.disabled = true;
-        this._setText(this._exportPptBtn, "Gerando PPT...");
-        const pptBlob = this._buildScreenshotPptxBlob(snapshot.dataUrl, snapshot.width, snapshot.height);
-        const url = URL.createObjectURL(pptBlob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `performance-summary-${this._activeView}.pptx`;
-        anchor.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } catch (error) {
-        console.error("Falha ao exportar PPT", error);
-      } finally {
-        this._exportPptBtn.disabled = false;
-        this._setText(this._exportPptBtn, originalLabel);
-      }
-    }
-
-    async _captureWidgetPng() {
-      if (document.fonts && document.fonts.ready) {
-        try { await document.fonts.ready; } catch (e) { /* no-op */ }
-      }
-
-      const rect = this._widgetWrapper.getBoundingClientRect();
-      const width = Math.max(1, Math.ceil(rect.width));
-      const height = Math.max(1, Math.ceil(rect.height));
-      const clone = this._widgetWrapper.cloneNode(true);
-      const sourceInputs = this._widgetWrapper.querySelectorAll("input");
-      const cloneInputs = clone.querySelectorAll("input");
-      sourceInputs.forEach((input, index) => {
-        const cloneInput = cloneInputs[index];
-        if (!cloneInput) return;
-        cloneInput.setAttribute("value", input.value);
-        if (input.checked) cloneInput.setAttribute("checked", "checked");
-        else cloneInput.removeAttribute("checked");
-      });
-      const styles = Array.from(this._shadowRoot.querySelectorAll("style"))
-        .map(style => style.textContent.replace(/:host/g, ".export-host"))
-        .join("\n");
-      const serialized = new XMLSerializer().serializeToString(clone);
-      const sizeAttr = this.getAttribute("data-size") || "regular";
-      const layoutAttr = this.getAttribute("data-layout") || "split";
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-          <foreignObject width="100%" height="100%">
-            <div xmlns="http://www.w3.org/1999/xhtml" class="export-host" data-size="${sizeAttr}" data-layout="${layoutAttr}" style="width:${width}px;height:${height}px;">
-              <style>${styles}</style>
-              ${serialized}
-            </div>
-          </foreignObject>
-        </svg>
-      `;
-      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      const image = await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = svgUrl;
-      });
-      const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(width * scale);
-      canvas.height = Math.round(height * scale);
-      const ctx = canvas.getContext("2d");
-      ctx.scale(scale, scale);
-      ctx.drawImage(image, 0, 0, width, height);
-      return { dataUrl: canvas.toDataURL("image/png"), width, height };
-    }
-
-    _buildScreenshotPptxBlob(pngDataUrl, width, height) {
-      const encoder = new TextEncoder();
-      const pngBytes = this._base64ToBytes(pngDataUrl.split(",")[1]);
-      const slideWidth = 12192000;
-      const slideHeight = 6858000;
-      const imageScale = Math.min(slideWidth / Math.max(width, 1), slideHeight / Math.max(height, 1));
-      const imageWidth = Math.round(width * imageScale);
-      const imageHeight = Math.round(height * imageScale);
-      const imageX = Math.round((slideWidth - imageWidth) / 2);
-      const imageY = Math.round((slideHeight - imageHeight) / 2);
-      const now = new Date().toISOString();
-      const xml = (text) => encoder.encode(text.trim());
-      const entries = [
-        {
-          path: "[Content_Types].xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-              <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-              <Default Extension="xml" ContentType="application/xml"/>
-              <Default Extension="png" ContentType="image/png"/>
-              <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-              <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-              <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
-              <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
-              <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
-              <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
-              <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
-            </Types>`)
-        },
-        {
-          path: "_rels/.rels",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
-              <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "docProps/app.xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-              <Application>Performance Summary Widget</Application>
-              <PresentationFormat>On-screen Show (16:9)</PresentationFormat>
-              <Slides>1</Slides>
-              <HiddenSlides>0</HiddenSlides>
-              <MMClips>0</MMClips>
-              <ScaleCrop>false</ScaleCrop>
-              <LinksUpToDate>false</LinksUpToDate>
-              <SharedDoc>false</SharedDoc>
-              <HyperlinksChanged>false</HyperlinksChanged>
-              <AppVersion>16.0000</AppVersion>
-            </Properties>`)
-        },
-        {
-          path: "docProps/core.xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <dc:title>Performance Summary</dc:title>
-              <dc:creator>Performance Summary Widget</dc:creator>
-              <cp:lastModifiedBy>Performance Summary Widget</cp:lastModifiedBy>
-              <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
-              <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
-            </cp:coreProperties>`)
-        },
-        {
-          path: "ppt/presentation.xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
-              <p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst>
-              <p:sldSz cx="${slideWidth}" cy="${slideHeight}" type="wide"/>
-              <p:notesSz cx="6858000" cy="9144000"/>
-            </p:presentation>`)
-        },
-        {
-          path: "ppt/_rels/presentation.xml.rels",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/slides/slide1.xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:cSld name="Print da tela">
-                <p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
-                <p:spTree>
-                  <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
-                  <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
-                  <p:pic>
-                    <p:nvPicPr><p:cNvPr id="2" name="Print da tela do widget"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
-                    <p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
-                    <p:spPr>
-                      <a:xfrm><a:off x="${imageX}" y="${imageY}"/><a:ext cx="${imageWidth}" cy="${imageHeight}"/></a:xfrm>
-                      <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-                    </p:spPr>
-                  </p:pic>
-                </p:spTree>
-              </p:cSld>
-              <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
-            </p:sld>`)
-        },
-        {
-          path: "ppt/slides/_rels/slide1.xml.rels",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/slideMasters/slideMaster1.xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
-              <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
-              <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
-              <p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles>
-            </p:sldMaster>`)
-        },
-        {
-          path: "ppt/slideMasters/_rels/slideMaster1.xml.rels",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/slideLayouts/slideLayout1.xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
-              <p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
-              <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
-            </p:sldLayout>`)
-        },
-        {
-          path: "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/theme/theme1.xml",
-          data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
-              <a:themeElements>
-                <a:clrScheme name="Office">
-                  <a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>
-                  <a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2>
-                  <a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2><a:accent3><a:srgbClr val="9BBB59"/></a:accent3>
-                  <a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6>
-                  <a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink>
-                </a:clrScheme>
-                <a:fontScheme name="Office"><a:majorFont><a:latin typeface="Arial"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Arial"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>
-                <a:fmtScheme name="Office">
-                  <a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
-                  <a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="25400"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="38100"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
-                  <a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
-                  <a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst>
-                </a:fmtScheme>
-              </a:themeElements>
-              <a:objectDefaults/><a:extraClrSchemeLst/>
-            </a:theme>`)
-        },
-        { path: "ppt/media/image1.png", data: pngBytes }
-      ];
-      return new Blob([this._zipEntries(entries)], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
-    }
-
-    _buildPptxBlob(pngDataUrl, width, height) {
-      const encoder = new TextEncoder();
-      const pngBytes = this._base64ToBytes(pngDataUrl.split(",")[1]);
-      const slideWidth = 12192000;
-      const slideHeight = 6858000;
-      const imageScale = Math.min(slideWidth / Math.max(width, 1), slideHeight / Math.max(height, 1));
-      const imageWidth = Math.round(width * imageScale);
-      const imageHeight = Math.round(height * imageScale);
-      const imageX = Math.round((slideWidth - imageWidth) / 2);
-      const imageY = Math.round((slideHeight - imageHeight) / 2);
-      const now = new Date().toISOString();
-      const entries = [
-        {
-          path: "[Content_Types].xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-              <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-              <Default Extension="xml" ContentType="application/xml"/>
-              <Default Extension="png" ContentType="image/png"/>
-              <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
-              <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
-              <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
-              <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
-              <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
-              <Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/>
-              <Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/>
-              <Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/>
-              <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-              <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-            </Types>`)
-        },
-        {
-          path: "_rels/.rels",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
-              <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "docProps/core.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <dc:title>Performance Summary</dc:title>
-              <dc:creator>Performance Summary Widget</dc:creator>
-              <cp:lastModifiedBy>Performance Summary Widget</cp:lastModifiedBy>
-              <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
-              <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
-            </cp:coreProperties>`)
-        },
-        {
-          path: "docProps/app.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-              <Application>Performance Summary Widget</Application>
-              <Slides>1</Slides>
-            </Properties>`)
-        },
-        {
-          path: "ppt/presentation.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
-              <p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst>
-              <p:sldSz cx="${slideWidth}" cy="${slideHeight}" type="wide"/>
-              <p:notesSz cx="6858000" cy="9144000"/>
-            </p:presentation>`)
-        },
-        {
-          path: "ppt/_rels/presentation.xml.rels",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
-              <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps" Target="presProps.xml"/>
-              <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps" Target="viewProps.xml"/>
-              <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
-              <Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/slides/slide1.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:cSld><p:spTree>
-                <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
-                <p:grpSpPr/>
-                <p:pic>
-                  <p:nvPicPr><p:cNvPr id="2" name="Widget Snapshot"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>
-                  <p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
-                  <p:spPr>
-                    <a:xfrm><a:off x="${imageX}" y="${imageY}"/><a:ext cx="${imageWidth}" cy="${imageHeight}"/></a:xfrm>
-                    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-                  </p:spPr>
-                </p:pic>
-              </p:spTree></p:cSld>
-              <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
-            </p:sld>`)
-        },
-        {
-          path: "ppt/slides/_rels/slide1.xml.rels",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/slideMasters/slideMaster1.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
-              <p:clrMap accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" bg1="lt1" bg2="lt2" folHlink="folHlink" hlink="hlink" tx1="dk1" tx2="dk2"/>
-              <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
-              <p:txStyles>
-                <p:titleStyle><a:lvl1pPr algn="l"><a:defRPr sz="4400"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr></p:titleStyle>
-                <p:bodyStyle><a:lvl1pPr marL="0" indent="0" algn="l"><a:defRPr sz="2800"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr></p:bodyStyle>
-                <p:otherStyle><a:lvl1pPr marL="0" indent="0" algn="l"><a:defRPr sz="1800"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr></p:otherStyle>
-              </p:txStyles>
-            </p:sldMaster>`)
-        },
-        {
-          path: "ppt/slideMasters/_rels/slideMaster1.xml.rels",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
-              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/slideLayouts/slideLayout1.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
-              <p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
-              <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
-            </p:sldLayout>`)
-        },
-        {
-          path: "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
-            </Relationships>`)
-        },
-        {
-          path: "ppt/theme/theme1.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
-              <a:themeElements>
-                <a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2><a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2><a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme>
-                <a:fontScheme name="Office">
-                  <a:majorFont><a:latin typeface="Arial"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>
-                  <a:minorFont><a:latin typeface="Arial"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont>
-                </a:fontScheme>
-                <a:fmtScheme name="Office">
-                  <a:fillStyleLst>
-                    <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
-                    <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"/></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="80000"/><a:lumOff val="20000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>
-                    <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:lumMod val="80000"/><a:lumOff val="20000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"/></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>
-                  </a:fillStyleLst>
-                  <a:lnStyleLst>
-                    <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln>
-                    <a:ln w="25400" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln>
-                    <a:ln w="38100" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln>
-                  </a:lnStyleLst>
-                  <a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
-                  <a:bgFillStyleLst>
-                    <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
-                    <a:solidFill><a:schemeClr val="phClr"><a:tint val="95000"/><a:satMod val="170000"/></a:schemeClr></a:solidFill>
-                    <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"/></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="80000"/><a:lumOff val="20000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>
-                  </a:bgFillStyleLst>
-                </a:fmtScheme>
-              </a:themeElements>
-            </a:theme>`)
-        },
-        {
-          path: "ppt/presProps.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:showPr><p:present/></p:showPr>
-            </p:presentationPr>`)
-        },
-        {
-          path: "ppt/viewProps.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <p:viewPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-              <p:normalViewPr><p:restoredLeft sz="15620"/><p:restoredTop sz="94660"/></p:normalViewPr>
-              <p:slideViewPr><p:cSldViewPr><p:cViewPr varScale="1"><p:scale><a:sx n="100" d="100"/><a:sy n="100" d="100"/></p:scale><p:origin x="0" y="0"/></p:cViewPr><p:guideLst/></p:cSldViewPr></p:slideViewPr>
-            </p:viewPr>`)
-        },
-        {
-          path: "ppt/tableStyles.xml",
-          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-            <a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>`)
-        },
-        { path: "ppt/media/image1.png", data: pngBytes }
-      ];
-      return new Blob([this._zipEntries(entries)], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
-    }
-
-    _base64ToBytes(base64) {
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return bytes;
-    }
-
-    _zipEntries(entries) {
-      const encoder = new TextEncoder();
-      const localFiles = [];
-      const centralFiles = [];
-      const now = new Date();
-      const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
-      const dosDate = ((Math.max(now.getFullYear(), 1980) - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
-      let offset = 0;
-      entries.forEach(entry => {
-        const nameBytes = encoder.encode(entry.path);
-        const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data);
-        const crc = this._crc32(data);
-        const localHeader = this._concatBytes([
-          this._u32(0x04034b50), this._u16(20), this._u16(0), this._u16(0), this._u16(dosTime), this._u16(dosDate),
-          this._u32(crc), this._u32(data.length), this._u32(data.length), this._u16(nameBytes.length), this._u16(0), nameBytes
-        ]);
-        localFiles.push(localHeader, data);
-
-        const centralHeader = this._concatBytes([
-          this._u32(0x02014b50), this._u16(20), this._u16(20), this._u16(0), this._u16(0), this._u16(dosTime), this._u16(dosDate),
-          this._u32(crc), this._u32(data.length), this._u32(data.length), this._u16(nameBytes.length), this._u16(0), this._u16(0),
-          this._u16(0), this._u16(0), this._u32(0), this._u32(offset), nameBytes
-        ]);
-        centralFiles.push(centralHeader);
-        offset += localHeader.length + data.length;
-      });
-      const centralDirectory = this._concatBytes(centralFiles);
-      const localSection = this._concatBytes(localFiles);
-      const endRecord = this._concatBytes([
-        this._u32(0x06054b50), this._u16(0), this._u16(0), this._u16(entries.length), this._u16(entries.length),
-        this._u32(centralDirectory.length), this._u32(localSection.length), this._u16(0)
-      ]);
-      return this._concatBytes([localSection, centralDirectory, endRecord]);
-    }
-
-    _crc32(bytes) {
-      let crc = -1;
-      for (let i = 0; i < bytes.length; i++) {
-        crc ^= bytes[i];
-        for (let j = 0; j < 8; j++) {
-          crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
-        }
-      }
-      return (crc ^ -1) >>> 0;
-    }
-
-    _u16(value) {
-      return new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
-    }
-
-    _u32(value) {
-      return new Uint8Array([value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff]);
-    }
-
-    _concatBytes(chunks) {
-      const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-      const output = new Uint8Array(total);
-      let offset = 0;
-      chunks.forEach(chunk => {
-        output.set(chunk, offset);
-        offset += chunk.length;
-      });
-      return output;
     }
 
     _toggleDropdownDOM() {
