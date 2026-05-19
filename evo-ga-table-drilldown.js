@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.2.5 - simplified budget governance.
+// Evo GA Executive Oversight Engine v1.2.6 - simplified budget governance.
 (function () {
     const ENABLE_TELEMETRY = true;
 
@@ -382,10 +382,8 @@
                 padding: 10px 12px;
                 color: #1E293B;
             }
-            .executive-oversight.risk-baixo { border-left-color: #2E7D32; }
-            .executive-oversight.risk-moderado { border-left-color: #EF6C00; }
-            .executive-oversight.risk-alto { border-left-color: #D32F2F; }
-            .executive-oversight.risk-critico { border-left-color: #7F1D1D; }
+            .executive-oversight.summary-saving { border-left-color: #2E7D32; }
+            .executive-oversight.summary-desvio { border-left-color: #B91C1C; }
             .executive-headline {
                 display: flex;
                 align-items: baseline;
@@ -408,7 +406,7 @@
                 display: block;
                 font-size: 10px;
                 font-weight: 800;
-                color: #64748B;
+                color: #475569;
                 text-transform: uppercase;
                 letter-spacing: 0.4px;
                 margin-bottom: 2px;
@@ -469,7 +467,8 @@
             .kpi-label {
                 font-size: 10px;
                 font-weight: 800;
-                color: #64748B;
+                color: #475569;
+                font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 0.35px;
                 margin-bottom: 4px;
@@ -501,19 +500,34 @@
                 letter-spacing: 0.4px;
                 margin-bottom: 8px;
             }
-            .driver-list { display: grid; gap: 6px; }
+            .driver-list { display: grid; gap: 8px; }
             .driver-row {
                 display: grid;
-                grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr;
+                grid-template-columns: 1.35fr minmax(120px, 0.8fr) minmax(96px, 0.65fr) minmax(92px, 0.65fr);
                 gap: 8px;
                 align-items: center;
-                font-size: 11.5px;
-                border-bottom: 1px solid #F1F5F9;
-                padding-bottom: 6px;
+                font-size: 12px;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                padding: 8px 10px;
+                background: #FFFFFF;
             }
-            .driver-row:last-child { border-bottom: 0; padding-bottom: 0; }
-            .driver-name { font-weight: 700; color: #0F172A; }
-            .driver-meta { color: #64748B; }
+            .driver-row:last-child { padding-bottom: 8px; }
+            .driver-name { font-weight: 800; color: #0F172A; line-height: 1.3; }
+            .driver-meta { color: #475569; font-weight: 600; line-height: 1.35; }
+            .driver-metric { min-width: 0; text-align: right; }
+            .driver-value {
+                display: block;
+                color: #0F172A;
+                font-size: 12.5px;
+                font-weight: 800;
+                line-height: 1.25;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            .driver-value-alert { color: #B91C1C; }
+            .driver-value-saving { color: #166534; }
+            .driver-value-neutral { color: #0F172A; }
             .diagnostic-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(220px, 1fr));
@@ -523,6 +537,7 @@
                 .executive-kpi-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
                 .diagnostic-grid { grid-template-columns: 1fr; }
                 .driver-row { grid-template-columns: 1fr; }
+                .driver-metric { text-align: left; }
             }
             @media (max-width: 760px) {
                 .executive-grid { grid-template-columns: 1fr; }
@@ -734,6 +749,7 @@
             this._expandedRows = new Set();
             this._currentData = null;
             this._selectedMonth = "__all__";
+            this._hasManualMonthSelection = false;
             this._activeView = "executive";
             this._isDropdownOpen = false;
             this._profiler = new EvoGATableProfiler();
@@ -895,6 +911,46 @@
             });
         }
 
+        _getPeriodSortValue(value) {
+            const period = this._getPeriodParts(value);
+            if (period.year === "Sem ano" || period.month < 1 || period.month > 12) return null;
+            const yearNumber = parseInt(period.year, 10);
+            if (!Number.isFinite(yearNumber)) return null;
+            return (yearNumber * 100) + period.month;
+        }
+
+        _getPreviousMonthReference() {
+            const now = new Date();
+            let year = now.getFullYear();
+            let month = now.getMonth();
+            if (month === 0) {
+                year -= 1;
+                month = 12;
+            }
+            return { year: String(year), month };
+        }
+
+        _findDefaultMonthOption(monthOptions) {
+            if (!monthOptions || monthOptions.length === 0) return "__all__";
+            const target = this._getPreviousMonthReference();
+            const exactMatch = monthOptions.find(option => {
+                const period = this._getPeriodParts(option);
+                return period.year === target.year && period.month === target.month;
+            });
+            if (exactMatch) return exactMatch;
+
+            const targetSortValue = (parseInt(target.year, 10) * 100) + target.month;
+            const datedOptions = monthOptions
+                .map(option => ({ option, sortValue: this._getPeriodSortValue(option) }))
+                .filter(item => item.sortValue !== null)
+                .sort((a, b) => b.sortValue - a.sortValue);
+
+            const previousAvailable = datedOptions.find(item => item.sortValue <= targetSortValue);
+            if (previousAvailable) return previousAvailable.option;
+            if (datedOptions.length) return datedOptions[0].option;
+            return monthOptions[monthOptions.length - 1];
+        }
+
         _bindHeaderControls(monthOptions, hasMonthFilter) {
             const monthTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
             const monthMenu = this._shadowRoot.getElementById("treeDropdownContent");
@@ -918,6 +974,7 @@
                     item.addEventListener("click", (event) => {
                         event.stopPropagation();
                         this._selectedMonth = event.currentTarget.getAttribute("data-month-value") || "__all__";
+                        this._hasManualMonthSelection = true;
                         this._isDropdownOpen = false;
                         this._toggleDropdownDOM();
                         this._dispatchMonthFilterChanged();
@@ -1071,8 +1128,15 @@
                 const monthOptions = monthDimKey
                     ? this._sortMonthOptions(Array.from(new Set(financialData.data.map(row => getName(row[monthDimKey])).filter(Boolean))))
                     : [];
-                if (this._selectedMonth !== "__all__" && !monthOptions.includes(this._selectedMonth)) {
+                if (monthOptions.length) {
+                    const selectedStillValid = this._selectedMonth === "__all__" || monthOptions.includes(this._selectedMonth);
+                    if (!this._hasManualMonthSelection || !selectedStillValid) {
+                        this._selectedMonth = this._findDefaultMonthOption(monthOptions);
+                        this._hasManualMonthSelection = false;
+                    }
+                } else {
                     this._selectedMonth = "__all__";
+                    this._hasManualMonthSelection = false;
                 }
 
                 const rowsForRender = monthDimKey && this._selectedMonth !== "__all__"
@@ -1213,9 +1277,16 @@
                     return parseNumber(value);
                 };
                 const selectedMonthIndex = this._selectedMonth === "__all__" ? -1 : monthOptions.indexOf(this._selectedMonth);
+                const selectedPeriod = this._getPeriodParts(this._selectedMonth);
+                const selectedHasCalendarPeriod = selectedPeriod.year !== "Sem ano" && selectedPeriod.month >= 1 && selectedPeriod.month <= 12;
                 const ytdRows = monthDimKey && selectedMonthIndex >= 0
                     ? financialData.data.filter(row => {
-                        const rowMonthIndex = monthOptions.indexOf(getName(row[monthDimKey]));
+                        const rowMonth = getName(row[monthDimKey]);
+                        if (selectedHasCalendarPeriod) {
+                            const rowPeriod = this._getPeriodParts(rowMonth);
+                            return rowPeriod.year === selectedPeriod.year && rowPeriod.month >= 1 && rowPeriod.month <= selectedPeriod.month;
+                        }
+                        const rowMonthIndex = monthOptions.indexOf(rowMonth);
                         return rowMonthIndex >= 0 && rowMonthIndex <= selectedMonthIndex;
                     })
                     : rowsForRender;
@@ -1251,7 +1322,7 @@
                         dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta] = {};
                     }
 
-                    dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta][col] = numVal;
+                    dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta][col] = (dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta][col] || 0) + numVal;
                     dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals[col] = (dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals[col] || 0) + numVal;
                     dataMap[calcNode].ccNivel1[ccNivel1].totals[col] = (dataMap[calcNode].ccNivel1[ccNivel1].totals[col] || 0) + numVal;
                     dataMap[calcNode].totals[col] = (dataMap[calcNode].totals[col] || 0) + numVal;
@@ -1395,36 +1466,40 @@
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
                 const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
                 const kpiConsumptionText = totalGlobalOrcado > 0 ? `${((totalGlobalRealizado / totalGlobalOrcado) * 100).toFixed(1)}%` : "-";
-                const ytdLabel = this._selectedMonth === "__all__" ? "YTD disponível" : `YTD até ${this._selectedMonth}`;
-                const periodLabel = this._selectedMonth === "__all__" ? "Período disponível" : this._selectedMonth;
-                const driversListHtml = executiveDrivers.length ? executiveDrivers.slice(0, 5).map((driver, index) => `
-                    <div class="driver-row">
-                        <div>
-                            <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
-                            <div class="driver-meta">${escapeHtml(driver.accountNature)} · ${escapeHtml(driver.trendDirection)} · ${escapeHtml(driver.recurrenceType)}</div>
+                const selectedMonthDisplay = this._selectedMonth === "__all__" ? "Todos os anos" : this._getPeriodDisplayLabel(this._selectedMonth);
+                const ytdLabel = this._selectedMonth === "__all__" ? "Base completa disponível" : `YTD até ${selectedMonthDisplay}`;
+                const periodLabel = this._selectedMonth === "__all__" ? "Base completa" : selectedMonthDisplay;
+                const driversListHtml = executiveDrivers.length ? executiveDrivers.slice(0, 5).map((driver, index) => {
+                    const driverValueClass = driver.desvio > 0 ? "driver-value-alert" : (driver.desvio < 0 ? "driver-value-saving" : "driver-value-neutral");
+                    return `
+                        <div class="driver-row">
+                            <div>
+                                <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
+                                <div class="driver-meta">${escapeHtml(driver.accountNature)} · ${escapeHtml(driver.trendDirection)} · ${escapeHtml(driver.recurrenceType)}</div>
+                            </div>
+                            <div class="driver-metric"><span class="executive-label">Desvio</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</span></div>
+                            <div class="driver-metric"><span class="executive-label">% vs orçamento</span><span class="driver-value ${driverValueClass}">${driver.variancePct.toFixed(1)}%</span></div>
+                            <div class="driver-metric"><span class="executive-label">Consumo</span><span class="driver-value">${formatPercentage(driver.percentConsumption)}</span></div>
                         </div>
-                        <div><span class="executive-label">Desvio</span>${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</div>
-                        <div><span class="executive-label">% vs orçamento</span>${driver.variancePct.toFixed(1)}%</div>
-                        <div><span class="executive-label">Consumo</span>${formatPercentage(driver.percentConsumption)}</div>
-                    </div>
-                `).join("") : `<div class="driver-meta">Não há ofensores materiais acima do limiar executivo no período selecionado.</div>`;
+                    `;
+                }).join("") : `<div class="driver-meta">Não há ofensores materiais acima do limiar executivo no período selecionado.</div>`;
                 const diagnosticHtml = `
                     <div class="diagnostic-grid">
                         <div class="executive-section">
                             <div class="section-title">Critérios de Relevância</div>
                             <div class="driver-list">
-                                <div class="driver-row"><div class="driver-name">Desvio absoluto</div><div>${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</div><div class="driver-meta">Realizado - Orçado</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Desvio percentual</div><div>${totalVariancePct.toFixed(1)}%</div><div class="driver-meta">Sobre orçamento G&A</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Consumo do orçamento</div><div>${escapeHtml(kpiConsumptionText)}</div><div class="driver-meta">Realizado / Orçado</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ofensores considerados</div><div>${executiveDrivers.length}</div><div class="driver-meta">Ordenados por desvio absoluto</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Desvio absoluto</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div><div class="driver-meta">Realizado - Orçado</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Desvio percentual</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${totalVariancePct.toFixed(1)}%</span></div><div class="driver-meta">Sobre orçamento G&A</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Consumo do orçamento</div><div class="driver-metric"><span class="driver-value">${escapeHtml(kpiConsumptionText)}</span></div><div class="driver-meta">Realizado / Orçado</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ofensores considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Ordenados por desvio absoluto</div><div></div></div>
                             </div>
                         </div>
                         <div class="executive-section">
                             <div class="section-title">Leitura Operacional</div>
                             <div class="driver-list">
-                                <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div>${financialData.data.length}</div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div>${centrosDeCusto.filter(item => item.isExecutiveNoise).length}</div><div class="driver-meta">Critério 2% e R$100k</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Tendência principal</div><div>${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].trendDirection) : "-"}</div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].recurrenceType) : "Sem ofensor material"}</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div class="driver-metric"><span class="driver-value">${financialData.data.length}</span></div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div class="driver-metric"><span class="driver-value">${centrosDeCusto.filter(item => item.isExecutiveNoise).length}</span></div><div class="driver-meta">Critério 2% e R$100k</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Tendência principal</div><div class="driver-metric"><span class="driver-value">${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].trendDirection) : "-"}</span></div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].recurrenceType) : "Sem ofensor material"}</div><div></div></div>
                             </div>
                         </div>
                     </div>
@@ -1471,7 +1546,7 @@
                         </div>
                     </div>
                     <div class="filter-container-finance">
-                        <span class="filter-label-finance">Corte:</span>
+                        <span class="filter-label-finance">Mês de análise:</span>
                         <div class="tree-dropdown-trigger ${monthDisabledClass}" id="treeDropdownTrigger">${escapeHtml(selectedMonthLabel)}</div>
                         <div class="tree-dropdown-content ${this._isDropdownOpen ? "show" : ""}" id="treeDropdownContent">
                             ${monthItemsHtml}
