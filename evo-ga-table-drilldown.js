@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.2.4 - period filter grouped by year.
+// Evo GA Executive Oversight Engine v1.2.5 - simplified budget governance.
 (function () {
     const ENABLE_TELEMETRY = true;
 
@@ -396,10 +396,6 @@
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 margin-bottom: 6px;
-            }
-            .executive-score {
-                font-variant-numeric: tabular-nums;
-                white-space: nowrap;
             }
             .executive-grid {
                 display: grid;
@@ -1128,18 +1124,14 @@
                 };
                 
                 const formatPercentage = (val) => val === 0 ? "-" : (val === Infinity ? "∞" : val.toFixed(1) + "%");
-                const minimumMaterialityThreshold = 0.20;
-                const classifySeverity = (score) => {
-                    if (score > 0.70) return "Crítica";
-                    if (score >= 0.45) return "Alta";
-                    if (score >= 0.20) return "Moderada";
-                    return "Baixa";
-                };
-                const classifyRisk = (score) => {
-                    if (score > 0.75) return "Crítico";
-                    if (score >= 0.50) return "Alto";
-                    if (score >= 0.25) return "Moderado";
-                    return "Baixo";
+                const isExecutiveNoiseCandidate = (variancePct, varianceAbs) => Math.abs(variancePct) < 2 && Math.abs(varianceAbs) < 100000;
+                const classifyBudgetStatus = (budget, actual, varianceAbs, variancePct) => {
+                    if (budget === 0 && actual === 0) return "Sem movimento";
+                    if (budget === 0 && actual > 0) return "Sem orçamento";
+                    if (varianceAbs <= 0) return "Aderente";
+                    if (Math.abs(variancePct) < 2 && Math.abs(varianceAbs) < 100000) return "Monitorar";
+                    if (variancePct >= 10 || varianceAbs >= 500000) return "Acima";
+                    return "Atenção";
                 };
                 const classifyAccountNature = (name) => {
                     const text = normalizeText(name);
@@ -1155,19 +1147,6 @@
                     if (text.includes("BACKOFFICE") || text.includes("ADMINISTR")) return "Backoffice";
                     return "SG&A";
                 };
-                const administrativeCriticalityWeight = (nature) => ({
-                    "Compliance": 1.0,
-                    "Legal": 0.9,
-                    "Corporate IT": 0.9,
-                    "Facilities": 0.7,
-                    "People": 0.7,
-                    "Consulting": 0.6,
-                    "Training": 0.4,
-                    "Travel": 0.3,
-                    "Shared Services": 0.6,
-                    "Backoffice": 0.6,
-                    "SG&A": 0.5
-                }[nature] || 0.5);
                 const buildTrendProfile = (monthlyValues) => {
                     const series = (monthlyValues || []).map(item => item.actual - item.budget);
                     const positives = series.map(value => value > 0);
@@ -1180,11 +1159,9 @@
                     else if (last3.length >= 2 && last3[last3.length - 1] > last3[last3.length - 2] * 1.15) trendDirection = "acceleration";
                     else if (recurrenceMonths === 0 && positives.slice(0, -1).some(Boolean)) trendDirection = "normalization";
                     const recurrenceType = recurrenceMonths >= 6 ? "persistent" : (recurrenceMonths >= 3 ? "recurring" : (recurrenceMonths >= 1 ? "isolated" : "none"));
-                    const trendRisk = trendDirection === "worsening" || trendDirection === "acceleration" ? 1 : (trendDirection === "stable" ? 0.45 : 0.15);
-                    const recurrenceRisk = recurrenceMonths >= 6 ? 1 : (recurrenceMonths >= 3 ? 0.65 : (recurrenceMonths >= 1 ? 0.25 : 0));
-                    return { trendDirection, recurrenceType, trendRisk, recurrenceRisk, recurrenceMonths };
+                    return { trendDirection, recurrenceType, recurrenceMonths };
                 };
-                const buildExecutiveNarrative = (riskLabel, riskScore, drivers, totalDesvio, totalPct) => {
+                const buildExecutiveNarrative = (drivers, totalDesvio, totalPct) => {
                     const driverNames = drivers.slice(0, 3).map(item => item.accountNature || item.name);
                     const uniqueDrivers = Array.from(new Set(driverNames));
                     const driverText = uniqueDrivers.length ? uniqueDrivers.join(", ") : "sem concentração material";
@@ -1193,14 +1170,13 @@
                         ? `deterioração recorrente em ${topDriver.recurrenceMonths || 3} períodos recentes`
                         : (topDriver && topDriver.trendDirection === "acceleration" ? "aceleração no período corrente" : "comportamento sob controle relativo");
                     const directionText = totalDesvio > 0 ? "pressão administrativa acima do esperado" : "aderência orçamentária com oportunidade de preservação de saving";
-                    const recommendation = riskScore >= 0.50
+                    const recommendation = totalDesvio > 0 && drivers.length
                         ? "Priorizar revisão executiva dos vetores materiais, validar recorrência contratual e pactuar plano de contenção com responsáveis administrativos."
                         : "Manter acompanhamento no ciclo de forecast e preservar disciplina de aprovação para despesas recorrentes.";
                     return {
-                        headline: `RISCO ORÇAMENTÁRIO G&A: ${riskLabel.toUpperCase()}`,
+                        headline: totalDesvio > 0 ? "DISCIPLINA ORÇAMENTÁRIA G&A: PRESSÃO ACIMA DO PLANEJADO" : "DISCIPLINA ORÇAMENTÁRIA G&A: ADERÊNCIA AO PLANEJADO",
                         keyDrivers: `Principais vetores: ${driverText}.`,
-                        rootCause: topDriver ? `A leitura aponta concentração em ${topDriver.accountNature}, com materialidade ${(topDriver.materialityScore * 100).toFixed(0)}%.` : "Não há vetor administrativo dominante com materialidade executiva.",
-                        severity: riskLabel,
+                        rootCause: topDriver ? `A leitura aponta concentração em ${topDriver.accountNature}, com desvio relevante no período.` : "Não há vetor administrativo dominante com desvio relevante.",
                         trend: `Tendência: ${trendText}.`,
                         recommendation,
                         riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A.`
@@ -1357,7 +1333,6 @@
                     (node.children || []).forEach(collectNodes);
                 };
                 tableData.forEach(collectNodes);
-                const maxVarianceAbs = Math.max(...allNodes.map(node => Math.abs(node.desvio)), 1);
                 const monthlyProfileFor = (key) => {
                     const monthMap = monthlyIndex[key] || {};
                     return this._sortMonthOptions(Object.keys(monthMap)).map(month => monthMap[month]);
@@ -1368,21 +1343,18 @@
                     const variancePct = node.valOrcado > 0 ? ((node.valRealizado - node.valOrcado) / node.valOrcado) * 100 : 0;
                     const budgetWeight = totalGlobalOrcado > 0 ? node.valOrcado / totalGlobalOrcado : 0;
                     const organizationalWeight = totalGlobalRealizado > 0 ? node.valRealizado / totalGlobalRealizado : 0;
-                    const normalizedVariancePct = Math.min(Math.abs(variancePct) / 100, 1);
-                    const normalizedVarianceAbs = Math.min(Math.abs(varianceAbs) / maxVarianceAbs, 1);
-                    const materialityScore = (normalizedVariancePct * 0.35) + (normalizedVarianceAbs * 0.35) + (budgetWeight * 0.20) + (organizationalWeight * 0.10);
-                    const childrenByMateriality = [...(node.children || [])].sort((a, b) => (b.materialityScore || 0) - (a.materialityScore || 0));
+                    const materialityValue = Math.abs(varianceAbs);
+                    const childrenByMateriality = [...(node.children || [])].sort((a, b) => (b.materialityValue || 0) - (a.materialityValue || 0));
                     const inheritedNature = childrenByMateriality[0] && childrenByMateriality[0].accountNature;
                     const accountNature = node.children && node.children.length ? (inheritedNature || classifyAccountNature(node.name)) : classifyAccountNature(node.name);
                     const trendProfile = buildTrendProfile(monthlyProfileFor(node.key));
-                    const administrativeCriticality = administrativeCriticalityWeight(accountNature);
-                    const executiveRiskScore = (materialityScore * 0.40) + (trendProfile.trendRisk * 0.25) + (trendProfile.recurrenceRisk * 0.20) + (administrativeCriticality * 0.15);
+                    const budgetStatus = classifyBudgetStatus(node.valOrcado, node.valRealizado, varianceAbs, variancePct);
                     node.varianceAbs = varianceAbs;
                     node.variancePct = variancePct;
                     node.budgetWeight = budgetWeight;
                     node.organizationalWeight = organizationalWeight;
-                    node.materialityScore = materialityScore;
-                    node.executiveSeverity = classifySeverity(materialityScore);
+                    node.materialityValue = materialityValue;
+                    node.executiveSeverity = budgetStatus;
                     node.varianceDirection = varianceAbs > 0 ? "negative" : (varianceAbs < 0 ? "positive" : "neutral");
                     node.varianceSeverity = node.executiveSeverity.toLowerCase();
                     node.trendDirection = trendProfile.trendDirection;
@@ -1390,10 +1362,7 @@
                     node.recurrenceType = trendProfile.recurrenceType;
                     node.recurrenceMonths = trendProfile.recurrenceMonths;
                     node.accountNature = accountNature;
-                    node.administrativeCriticality = administrativeCriticality;
-                    node.executiveRiskScore = executiveRiskScore;
-                    node.executiveRisk = classifyRisk(executiveRiskScore);
-                    node.isExecutiveNoise = Math.abs(variancePct) < 2 && Math.abs(varianceAbs) < 100000 && materialityScore < minimumMaterialityThreshold;
+                    node.isExecutiveNoise = isExecutiveNoiseCandidate(variancePct, varianceAbs);
                 };
                 tableData.forEach(annotateNode);
 
@@ -1402,7 +1371,7 @@
                 );
                 const ofensores = [...centrosDeCusto]
                     .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
-                    .sort((a, b) => b.materialityScore - a.materialityScore)
+                    .sort((a, b) => b.materialityValue - a.materialityValue)
                     .slice(0, 3);
 
                 ofensores.forEach(item => item.isOfensor = true);
@@ -1418,15 +1387,11 @@
                 }
                 const executiveDrivers = [...centrosDeCusto]
                     .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
-                    .sort((a, b) => b.executiveRiskScore - a.executiveRiskScore || b.materialityScore - a.materialityScore)
+                    .sort((a, b) => b.materialityValue - a.materialityValue)
                     .slice(0, 5);
-                const consolidatedRiskScore = executiveDrivers.length
-                    ? Math.max(...executiveDrivers.map(item => item.executiveRiskScore))
-                    : (tableData[0] ? tableData[0].executiveRiskScore : 0);
-                const consolidatedRiskLabel = classifyRisk(consolidatedRiskScore);
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
-                const executiveNarrative = buildExecutiveNarrative(consolidatedRiskLabel, consolidatedRiskScore, executiveDrivers, totalGlobalDesvio, totalVariancePct);
-                const riskClass = `risk-${normalizeText(consolidatedRiskLabel).toLowerCase()}`;
+                const executiveNarrative = buildExecutiveNarrative(executiveDrivers, totalGlobalDesvio, totalVariancePct);
+                const oversightClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
                 const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
                 const kpiConsumptionText = totalGlobalOrcado > 0 ? `${((totalGlobalRealizado / totalGlobalOrcado) * 100).toFixed(1)}%` : "-";
@@ -1439,27 +1404,27 @@
                             <div class="driver-meta">${escapeHtml(driver.accountNature)} · ${escapeHtml(driver.trendDirection)} · ${escapeHtml(driver.recurrenceType)}</div>
                         </div>
                         <div><span class="executive-label">Desvio</span>${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</div>
-                        <div><span class="executive-label">Materialidade</span>${(driver.materialityScore * 100).toFixed(1)}%</div>
-                        <div><span class="executive-label">Risco</span>${escapeHtml(driver.executiveRisk)}</div>
+                        <div><span class="executive-label">% vs orçamento</span>${driver.variancePct.toFixed(1)}%</div>
+                        <div><span class="executive-label">Consumo</span>${formatPercentage(driver.percentConsumption)}</div>
                     </div>
                 `).join("") : `<div class="driver-meta">Não há ofensores materiais acima do limiar executivo no período selecionado.</div>`;
                 const diagnosticHtml = `
                     <div class="diagnostic-grid">
                         <div class="executive-section">
-                            <div class="section-title">Critérios de Materialidade</div>
+                            <div class="section-title">Critérios de Relevância</div>
                             <div class="driver-list">
-                                <div class="driver-row"><div class="driver-name">Desvio percentual normalizado</div><div>35%</div><div class="driver-meta">Escala 0-1</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Desvio absoluto normalizado</div><div>35%</div><div class="driver-meta">Escala 0-1</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Peso no orçamento G&A</div><div>20%</div><div class="driver-meta">Budget / total</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Peso organizacional</div><div>10%</div><div class="driver-meta">Actual / total</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Desvio absoluto</div><div>${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</div><div class="driver-meta">Realizado - Orçado</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Desvio percentual</div><div>${totalVariancePct.toFixed(1)}%</div><div class="driver-meta">Sobre orçamento G&A</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Consumo do orçamento</div><div>${escapeHtml(kpiConsumptionText)}</div><div class="driver-meta">Realizado / Orçado</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ofensores considerados</div><div>${executiveDrivers.length}</div><div class="driver-meta">Ordenados por desvio absoluto</div><div></div></div>
                             </div>
                         </div>
                         <div class="executive-section">
-                            <div class="section-title">Leitura de Risco Executivo</div>
+                            <div class="section-title">Leitura Operacional</div>
                             <div class="driver-list">
-                                <div class="driver-row"><div class="driver-name">Risco consolidado</div><div>${escapeHtml(consolidatedRiskLabel)}</div><div>${(consolidatedRiskScore * 100).toFixed(1)}%</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div>${financialData.data.length}</div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ruído executivo ocultado</div><div>${centrosDeCusto.filter(item => item.isExecutiveNoise).length}</div><div class="driver-meta">Critério 2% / R$100k / baixa materialidade</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div>${centrosDeCusto.filter(item => item.isExecutiveNoise).length}</div><div class="driver-meta">Critério 2% e R$100k</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Tendência principal</div><div>${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].trendDirection) : "-"}</div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(executiveDrivers[0].recurrenceType) : "Sem ofensor material"}</div><div></div></div>
                             </div>
                         </div>
                     </div>
@@ -1573,8 +1538,8 @@
 
                     let barFillWidth = rowObj.percentConsumption === Infinity ? 100 : Math.min(100, rowObj.percentConsumption || 0);
                     let barFillClass = "fill-green";
-                    if (rowObj.executiveSeverity === "Crítica" || rowObj.executiveSeverity === "Alta") barFillClass = "fill-red";
-                    else if (rowObj.executiveSeverity === "Moderada" || rowObj.percentConsumption >= 100) barFillClass = "fill-yellow";
+                    if (rowObj.executiveSeverity === "Acima" || rowObj.executiveSeverity === "Sem orçamento") barFillClass = "fill-red";
+                    else if (rowObj.executiveSeverity === "Atenção" || rowObj.percentConsumption >= 100) barFillClass = "fill-yellow";
                     let consumptionText = rowObj.percentConsumption === Infinity ? "∞" : (rowObj.percentConsumption === 0 ? "-" : formatPercentage(rowObj.percentConsumption));
                     
                     if(rowObj.valOrcado === 0 && rowObj.valRealizado === 0) barFillWidth = 0;
@@ -1590,7 +1555,7 @@
                     let statusPillClass = `status-${normalizeText(statusText).toLowerCase()}`;
                     if (rowObj.isExecutiveNoise) { statusText = "Baixa"; statusPillClass = "status-baixa"; }
 
-                    let statusTitle = `Materialidade ${(rowObj.materialityScore * 100).toFixed(1)}% | Risco ${(rowObj.executiveRiskScore * 100).toFixed(1)}% | ${rowObj.accountNature}`;
+                    let statusTitle = `Desvio ${formatNumber(Math.abs(rowObj.desvio), true, true, rowObj.desvio)} | ${rowObj.variancePct.toFixed(1)}% vs orçamento | ${rowObj.accountNature}`;
                     let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}" title="${escapeHtml(statusTitle)}">${statusText}</span>` : "-";
                     html += `<td class="center cell-status">${statusHtml}</td></tr>`;
                     
@@ -1631,12 +1596,12 @@
                 let totalPercentConsumption = totalGlobalOrcado > 0 ? (totalGlobalRealizado / totalGlobalOrcado) * 100 : (totalGlobalRealizado > 0 ? Infinity : 0);
                 
                 let totalBarFillWidth = totalPercentConsumption === Infinity ? 100 : Math.min(100, totalPercentConsumption || 0);
-                let totalBarFillClass = consolidatedRiskLabel === "Crítico" || consolidatedRiskLabel === "Alto" ? "fill-red" : (consolidatedRiskLabel === "Moderado" ? "fill-yellow" : "fill-green");
+                let totalBarFillClass = totalGlobalDesvio > 0 ? (totalVariancePct >= 10 ? "fill-red" : "fill-yellow") : "fill-green";
                 let totalConsumptionText = totalPercentConsumption === Infinity ? "∞" : (totalPercentConsumption === 0 ? "-" : formatPercentage(totalPercentConsumption));
                 if(totalGlobalOrcado === 0 && totalGlobalRealizado === 0) totalBarFillWidth = 0;
 
-                let totalStatusText = consolidatedRiskLabel;
-                let totalStatusPillClass = `status-${normalizeText(consolidatedRiskLabel).toLowerCase()}`;
+                let totalStatusText = classifyBudgetStatus(totalGlobalOrcado, totalGlobalRealizado, totalGlobalDesvio, totalVariancePct);
+                let totalStatusPillClass = `status-${normalizeText(totalStatusText).toLowerCase()}`;
 
                 tableHtml += `<tfoot><tr><td>TOTAL GERAL</td>`;
                 uniqueCols.forEach(col => {
@@ -1666,15 +1631,14 @@
                             <div class="kpi-sub">${escapeHtml(ytdLabel)} · ${ytdVariancePct.toFixed(1)}%</div>
                         </div>
                         <div class="executive-kpi">
-                            <div class="kpi-label">Risco Executivo</div>
-                            <div class="kpi-value">${escapeHtml(consolidatedRiskLabel)}</div>
-                            <div class="kpi-sub">Score ${(consolidatedRiskScore * 100).toFixed(0)}</div>
+                            <div class="kpi-label">Status Orçamentário</div>
+                            <div class="kpi-value">${escapeHtml(totalStatusText)}</div>
+                            <div class="kpi-sub">${executiveDrivers.length} ofensores materiais</div>
                         </div>
                     </div>
-                    <div class="executive-oversight ${riskClass}">
+                    <div class="executive-oversight ${oversightClass}">
                         <div class="executive-headline">
                             <span>${escapeHtml(executiveNarrative.headline)}</span>
-                            <span class="executive-score">Score ${(consolidatedRiskScore * 100).toFixed(0)}</span>
                         </div>
                         <div class="executive-grid">
                             <div class="executive-text">
