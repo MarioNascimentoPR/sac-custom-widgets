@@ -122,16 +122,26 @@
                 height: 100%; 
                 background: #ffffff; 
                 box-sizing: border-box;
+                --small-font-size: 11px;
+                --body-font-size: 12px;
+                --label-font-size: 10px;
+                --enterprise-text: #243443;
+                --enterprise-muted: #64748b;
+                --enterprise-border: #dbe3ec;
             }
             #widget-wrapper {
                 display: flex;
                 flex-direction: column;
                 width: 100%;
                 height: 100%;
+                position: relative;
             }
             #header-container {
                 padding: 4px 16px 12px 10px; /* Ajuste: 10px na esquerda para alinhar com a tabela */
                 flex-shrink: 0;
+                position: relative;
+                z-index: 3000;
+                overflow: visible;
             }
             #table-container {
                 width: 100%;
@@ -143,7 +153,7 @@
             }
             .table-title {
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: 700;
                 color: #222222;
                 margin: 0 0 8px 0;
@@ -164,80 +174,76 @@
                 gap: 8px;
                 flex-shrink: 0;
             }
-            .panel-filter-bar {
+            .filter-container-finance {
                 display: flex;
                 align-items: center;
                 gap: 8px;
                 margin: 0 0 8px 0;
                 position: relative;
-                z-index: 40;
+                z-index: 1200;
+                width: fit-content;
             }
-            .panel-filter-label {
+            .filter-label-finance {
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                font-size: 11px;
-                font-weight: 700;
-                color: #475569;
-                text-transform: uppercase;
-                letter-spacing: 0.4px;
-            }
-            .month-filter-trigger {
-                min-width: 132px;
-                height: 28px;
-                border: 1px solid #CBD5E0;
-                border-radius: 4px;
-                background: #FFFFFF;
-                color: #334155;
-                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                font-size: 11.5px;
+                font-size: var(--small-font-size);
                 font-weight: 600;
-                padding: 0 8px;
+                color: #4A5568;
+            }
+            .tree-dropdown-trigger {
+                min-width: 136px;
+                max-width: 220px;
+                border: 1px solid #CBD5E0;
+                border-radius: 6px;
+                background-color: #F8FAFC;
+                color: #2D3748;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: var(--small-font-size);
+                font-weight: 700;
+                padding: 5px 28px 5px 10px;
                 cursor: pointer;
-                text-align: left;
-                display: inline-flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 10px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 8px center;
+                background-size: 12px;
+                user-select: none;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                overflow: hidden;
             }
-            .month-filter-trigger::after {
-                content: '▾';
-                color: #64748B;
-                font-size: 10px;
-            }
-            .month-filter-trigger:disabled {
+            .tree-dropdown-trigger.disabled {
                 color: #94A3B8;
                 background: #F8FAFC;
                 cursor: not-allowed;
             }
-            .month-filter-menu {
+            .tree-dropdown-content {
                 display: none;
                 position: absolute;
-                top: 32px;
-                left: 116px;
+                top: 100%;
+                left: 42px;
+                margin-top: 4px;
                 min-width: 160px;
-                max-height: 220px;
-                overflow: auto;
-                background: #FFFFFF;
-                border: 1px solid #CBD5E0;
-                border-radius: 4px;
+                max-height: 260px;
+                overflow-y: auto;
+                background: #ffffff;
+                border: 1px solid #cbd5e0;
+                border-radius: 6px;
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
-                z-index: 1200;
-                padding: 4px 0;
+                z-index: 5000;
+                padding: 6px 0;
             }
-            .month-filter-menu.show { display: block; }
-            .month-filter-item {
-                width: 100%;
-                border: 0;
-                background: transparent;
-                color: #334155;
+            .tree-dropdown-content.show { display: block; }
+            .tree-month-item {
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                font-size: 11.5px;
+                font-size: var(--small-font-size);
                 font-weight: 600;
-                padding: 7px 10px;
-                text-align: left;
+                color: #4A5568;
+                padding: 6px 12px;
                 cursor: pointer;
+                user-select: none;
             }
-            .month-filter-item:hover { background: #F1F5F9; }
-            .month-filter-item.selected { background: #E2E8F0; color: #0F172A; }
+            .tree-month-item:hover { background-color: #E2E8F0; color: #1F4E79; }
+            .tree-month-item.selected { background-color: #EDF2F7; color: #1F4E79; font-weight: 700; }
             .telemetry-btn {
                 height: 28px;
                 border: 1px solid #CBD5E0;
@@ -245,7 +251,7 @@
                 background: #F1F5F9;
                 color: #475569;
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                font-size: 11.5px;
+                font-size: var(--small-font-size);
                 font-weight: 700;
                 padding: 0 10px;
                 cursor: pointer;
@@ -384,32 +390,33 @@
             }
             .executive-text strong { color: #0F172A; }
             .view-tabs {
-                display: flex;
+                display: inline-flex;
                 align-items: center;
-                gap: 4px;
-                padding: 0 10px 8px 10px;
-                border-bottom: 1px solid #E2E8F0;
+                align-self: flex-start;
+                gap: 3px;
+                margin: 0 10px 10px 10px;
+                padding: 3px;
+                background: #F1F5F9;
+                border: 1px solid #DBE3EC;
+                border-radius: 7px;
                 flex-shrink: 0;
             }
             .view-tab {
-                height: 30px;
-                border: 1px solid transparent;
+                border: none;
                 background: transparent;
                 color: #475569;
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                font-size: 11.5px;
-                font-weight: 800;
-                text-transform: uppercase;
-                letter-spacing: 0.35px;
-                padding: 0 10px;
+                font-size: var(--small-font-size);
+                font-weight: 700;
+                border-radius: 5px;
+                padding: 6px 11px;
                 cursor: pointer;
             }
-            .view-tab:hover { background: #F1F5F9; }
+            .view-tab:hover { background: #E2E8F0; color: #1E293B; }
             .view-tab.active {
-                background: #E2E8F0;
-                color: #0F172A;
-                border-color: #CBD5E0;
-                border-radius: 4px;
+                background: #FFFFFF;
+                color: #1F4E79;
+                box-shadow: 0 1px 3px rgba(15,23,42,0.08);
             }
             .view-panel {
                 display: none;
@@ -417,6 +424,8 @@
                 overflow: auto;
                 flex-grow: 1;
                 min-height: 0;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: var(--body-font-size);
             }
             .view-panel.active { display: block; }
             .executive-kpi-grid {
@@ -701,8 +710,21 @@
             this._currentData = null;
             this._selectedMonth = "__all__";
             this._activeView = "executive";
-            this._isMonthDropdownOpen = false;
+            this._isDropdownOpen = false;
             this._profiler = new EvoGATableProfiler();
+            this._boundWindowClick = (event) => {
+                const path = event.composedPath ? event.composedPath() : [];
+                const trigger = this._shadowRoot.getElementById("treeDropdownTrigger");
+                const content = this._shadowRoot.getElementById("treeDropdownContent");
+                const telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
+                if (this._isDropdownOpen && trigger && content && !path.includes(trigger) && !path.includes(content)) {
+                    this._isDropdownOpen = false;
+                    this._toggleDropdownDOM();
+                }
+                if (this._telemetryModal && this._telemetryModal.classList.contains("show") && telemetryBtn && !path.includes(telemetryBtn) && !path.includes(this._telemetryModal)) {
+                    this._telemetryModal.classList.remove("show");
+                }
+            };
             this._telemetryModal = this._shadowRoot.getElementById("telemetryModal");
             this._closeTelemetry = this._shadowRoot.getElementById("closeTelemetry");
             this._telemetryLabels = {
@@ -728,6 +750,14 @@
             this._profiler.startFPSMonitor();
         }
 
+        connectedCallback() {
+            if (typeof window !== "undefined") window.addEventListener("click", this._boundWindowClick);
+        }
+
+        disconnectedCallback() {
+            if (typeof window !== "undefined") window.removeEventListener("click", this._boundWindowClick);
+        }
+
         onCustomWidgetBeforeUpdate(changedProperties) {
             this._props = { ...this._props, ...changedProperties };
         }
@@ -747,6 +777,11 @@
         _setActiveView(viewName) {
             this._activeView = viewName;
             this.renderTable();
+        }
+
+        _toggleDropdownDOM() {
+            const dropdownContent = this._shadowRoot.getElementById("treeDropdownContent");
+            if (dropdownContent) dropdownContent.classList.toggle("show", this._isDropdownOpen);
         }
 
         _sortMonthOptions(options) {
@@ -785,29 +820,26 @@
         }
 
         _bindHeaderControls(monthOptions, hasMonthFilter) {
-            const monthTrigger = this._shadowRoot.getElementById("monthFilterTrigger");
-            const monthMenu = this._shadowRoot.getElementById("monthFilterMenu");
+            const monthTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
+            const monthMenu = this._shadowRoot.getElementById("treeDropdownContent");
             const telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
             if (monthTrigger && monthMenu) {
                 monthTrigger.addEventListener("click", (event) => {
                     event.stopPropagation();
                     if (!hasMonthFilter) return;
-                    this._isMonthDropdownOpen = !this._isMonthDropdownOpen;
-                    monthMenu.classList.toggle("show", this._isMonthDropdownOpen);
+                    this._isDropdownOpen = !this._isDropdownOpen;
+                    this._toggleDropdownDOM();
                 });
-                monthMenu.querySelectorAll("[data-month-value]").forEach(item => {
+                monthMenu.querySelectorAll(".tree-month-item").forEach(item => {
                     item.addEventListener("click", (event) => {
                         event.stopPropagation();
                         this._selectedMonth = event.currentTarget.getAttribute("data-month-value") || "__all__";
-                        this._isMonthDropdownOpen = false;
-                        this.dispatchEvent(new CustomEvent("monthFilterChanged", {
-                            detail: {
-                                selectedMonth: this._selectedMonth === "__all__" ? null : this._selectedMonth,
-                                isAllMonths: this._selectedMonth === "__all__"
-                            }
-                        }));
+                        this._isDropdownOpen = false;
+                        this._toggleDropdownDOM();
+                        this._dispatchMonthFilterChanged();
                         this.renderTable();
                     });
+                    item.classList.toggle("selected", item.getAttribute("data-month-value") === this._selectedMonth);
                 });
             }
             this._shadowRoot.querySelectorAll("[data-view]").forEach(tab => {
@@ -1327,12 +1359,12 @@
 
                 this._profiler.metrics.steps.aggregation = this._profiler._now() - tAggregationStart;
                 const tDOMStart = this._profiler._now();
-                const monthItemsHtml = [`<button class="month-filter-item ${this._selectedMonth === "__all__" ? "selected" : ""}" type="button" data-month-value="__all__">Todos os meses</button>`]
+                const monthItemsHtml = [`<div class="tree-month-item ${this._selectedMonth === "__all__" ? "selected" : ""}" data-month-value="__all__">Todos os meses</div>`]
                     .concat(monthOptions.map(month =>
-                        `<button class="month-filter-item ${this._selectedMonth === month ? "selected" : ""}" type="button" data-month-value="${escapeHtml(month)}">${escapeHtml(month)}</button>`
+                        `<div class="tree-month-item ${this._selectedMonth === month ? "selected" : ""}" data-month-value="${escapeHtml(month)}">${escapeHtml(month)}</div>`
                     )).join("");
                 const selectedMonthLabel = this._selectedMonth === "__all__" ? "Todos os meses" : this._selectedMonth;
-                const monthDisabled = monthOptions.length ? "" : "disabled";
+                const monthDisabledClass = monthOptions.length ? "" : "disabled";
 
                 headerContainer.innerHTML = `
                     <div class="header-top">
@@ -1341,10 +1373,10 @@
                             <button class="telemetry-btn" id="telemetryBtn" type="button">Telemetria</button>
                         </div>
                     </div>
-                    <div class="panel-filter-bar">
-                        <span class="panel-filter-label">Filtro do painel:</span>
-                        <button class="month-filter-trigger" id="monthFilterTrigger" type="button" ${monthDisabled} aria-label="Filtrar mês">${escapeHtml(selectedMonthLabel)}</button>
-                        <div class="month-filter-menu ${this._isMonthDropdownOpen ? "show" : ""}" id="monthFilterMenu">
+                    <div class="filter-container-finance">
+                        <span class="filter-label-finance">Corte:</span>
+                        <div class="tree-dropdown-trigger ${monthDisabledClass}" id="treeDropdownTrigger">${escapeHtml(selectedMonthLabel)}</div>
+                        <div class="tree-dropdown-content ${this._isDropdownOpen ? "show" : ""}" id="treeDropdownContent">
                             ${monthItemsHtml}
                         </div>
                     </div>
