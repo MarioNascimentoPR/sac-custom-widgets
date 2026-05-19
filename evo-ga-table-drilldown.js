@@ -86,10 +86,15 @@
             tr.row-cc { cursor: pointer; transition: background-color 0.15s; }
             tr.row-cc:hover { background-color: #F8F9FA; }
             tr.row-cc td:first-child { font-weight: 600; color: #222222; }
-            tr.row-centro-custo td { background-color: #FCFCFC; }
-            tr.row-centro-custo td:first-child {
+            tr.row-cc-nivel-1 td { background-color: #FCFCFC; }
+            tr.row-cc-nivel-1 td:first-child {
                 padding-left: 26px;
                 color: #333333;
+            }
+            tr.row-cc-nivel-2 td { background-color: #FAFAFA; }
+            tr.row-cc-nivel-2 td:first-child {
+                padding-left: 42px;
+                color: #444444;
             }
             .expand-icon { 
                 display: inline-block; 
@@ -123,7 +128,7 @@
             }
 
             tr.row-conta td:first-child { 
-                padding-left: 54px;
+                padding-left: 70px;
                 font-weight: 400; 
                 color: #555555; 
                 position: relative;
@@ -132,7 +137,7 @@
             tr.row-conta td:first-child::before { 
                 content: '↳'; 
                 position: absolute; 
-                left: 36px; 
+                left: 52px; 
                 top: 50%;
                 transform: translateY(-50%);
                 color: #CCCCCC;
@@ -237,8 +242,8 @@
                 const dimKeys = Object.keys(dimensions);
                 const measureKeys = Object.keys(measures);
 
-                if (dimKeys.length < 4 || measureKeys.length < 1) {
-                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 4 dimensões (1. Dimensão Calculada, 2. Centro de Custo, 3. Conta Contábil, 4. Orçado/Realizado) e 1 medida.</div>";
+                if (dimKeys.length < 5 || measureKeys.length < 1) {
+                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 5 dimensões (1. Dimensão Calculada, 2. Centro de Custo Nível 1, 3. Centro de Custo Nível 2, 4. Conta Contábil, 5. Orçado/Realizado) e 1 medida.</div>";
                     return;
                 }
 
@@ -257,13 +262,13 @@
                 ) || dimKeys[3];
 
                 const hierarchyDimKeys = dimKeys.filter(dimKey => dimKey !== colDimKey);
-                if (hierarchyDimKeys.length < 3) {
+                if (hierarchyDimKeys.length < 4) {
                     container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Não foi possível identificar a dimensão de versão (Orçado/Realizado). Verifique se uma dimensão contém os membros Orçado e Realizado.</div>";
                     return;
                 }
 
                 const getDimensionMetadataName = (dimKey) => normalizeText(getName(dimensions[dimKey]));
-                const detectedCcDimKey = hierarchyDimKeys.find(dimKey => {
+                const ccDimKeys = hierarchyDimKeys.filter(dimKey => {
                     const dimName = getDimensionMetadataName(dimKey);
                     return dimName.includes("CENTRO") || /\bCC\b/.test(dimName);
                 });
@@ -272,12 +277,13 @@
                     return dimName.includes("CONTA");
                 });
                 const detectedCalcDimKey = hierarchyDimKeys.find(dimKey =>
-                    dimKey !== detectedCcDimKey && dimKey !== detectedContaDimKey
+                    !ccDimKeys.includes(dimKey) && dimKey !== detectedContaDimKey
                 );
 
                 const calcDimKey = detectedCalcDimKey || hierarchyDimKeys[0];
-                const ccDimKey = detectedCcDimKey || hierarchyDimKeys[1];
-                const contaDimKey = detectedContaDimKey || hierarchyDimKeys[2];
+                const ccNivel1DimKey = ccDimKeys[0] || hierarchyDimKeys[1];
+                const ccNivel2DimKey = ccDimKeys[1] || hierarchyDimKeys[2];
+                const contaDimKey = detectedContaDimKey || hierarchyDimKeys[3];
                 const measureKey = measureKeys[0];
 
                 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
@@ -326,7 +332,8 @@
 
                 financialData.data.forEach(row => {
                     const calcNode = getName(row[calcDimKey]);
-                    const cc = getName(row[ccDimKey]);
+                    const ccNivel1 = getName(row[ccNivel1DimKey]);
+                    const ccNivel2 = getName(row[ccNivel2DimKey]);
                     const conta = getName(row[contaDimKey]);
                     const col = getName(row[colDimKey]);
                     uniqueColsSet.add(col);
@@ -347,17 +354,21 @@
                     const numVal = parseNumber(value);
 
                     if (!dataMap[calcNode]) {
-                        dataMap[calcNode] = { totals: {}, centros: {} };
+                        dataMap[calcNode] = { totals: {}, ccNivel1: {} };
                     }
-                    if (!dataMap[calcNode].centros[cc]) {
-                        dataMap[calcNode].centros[cc] = { totals: {}, contas: {} };
+                    if (!dataMap[calcNode].ccNivel1[ccNivel1]) {
+                        dataMap[calcNode].ccNivel1[ccNivel1] = { totals: {}, ccNivel2: {} };
                     }
-                    if (!dataMap[calcNode].centros[cc].contas[conta]) {
-                        dataMap[calcNode].centros[cc].contas[conta] = {};
+                    if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2]) {
+                        dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2] = { totals: {}, contas: {} };
+                    }
+                    if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta]) {
+                        dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta] = {};
                     }
 
-                    dataMap[calcNode].centros[cc].contas[conta][col] = numVal;
-                    dataMap[calcNode].centros[cc].totals[col] = (dataMap[calcNode].centros[cc].totals[col] || 0) + numVal;
+                    dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta][col] = numVal;
+                    dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals[col] = (dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals[col] || 0) + numVal;
+                    dataMap[calcNode].ccNivel1[ccNivel1].totals[col] = (dataMap[calcNode].ccNivel1[ccNivel1].totals[col] || 0) + numVal;
                     dataMap[calcNode].totals[col] = (dataMap[calcNode].totals[col] || 0) + numVal;
                 });
 
@@ -383,16 +394,22 @@
                 let tableData = Object.keys(dataMap).map(calcNodeName => {
                     let calcNode = buildRowMetrics(calcNodeName, dataMap[calcNodeName].totals);
                     calcNode.key = `calc:${calcNodeName}`;
-                    calcNode.children = Object.keys(dataMap[calcNodeName].centros).map(cc => {
-                        let ccNode = buildRowMetrics(cc, dataMap[calcNodeName].centros[cc].totals);
-                        ccNode.key = `calc:${calcNodeName}|cc:${cc}`;
-                        ccNode.children = Object.keys(dataMap[calcNodeName].centros[cc].contas).map(conta => {
-                            let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].centros[cc].contas[conta]);
-                            contaNode.key = `calc:${calcNodeName}|cc:${cc}|conta:${conta}`;
-                            return contaNode;
+                    calcNode.children = Object.keys(dataMap[calcNodeName].ccNivel1).map(ccNivel1 => {
+                        let ccNivel1Node = buildRowMetrics(ccNivel1, dataMap[calcNodeName].ccNivel1[ccNivel1].totals);
+                        ccNivel1Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}`;
+                        ccNivel1Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2).map(ccNivel2 => {
+                            let ccNivel2Node = buildRowMetrics(ccNivel2, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals);
+                            ccNivel2Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}`;
+                            ccNivel2Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas).map(conta => {
+                                let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta]);
+                                contaNode.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|conta:${conta}`;
+                                return contaNode;
+                            });
+                            ccNivel2Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                            return ccNivel2Node;
                         });
-                        ccNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
-                        return ccNode;
+                        ccNivel1Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                        return ccNivel1Node;
                     });
                     calcNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
                     return calcNode;
@@ -410,7 +427,9 @@
                 const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
 
-                const centrosDeCusto = tableData.flatMap(item => item.children);
+                const centrosDeCusto = tableData.flatMap(item =>
+                    item.children.flatMap(ccNivel1 => ccNivel1.children)
+                );
                 const ofensores = [...centrosDeCusto]
                     .filter(item => item.desvio > 0)
                     .sort((a, b) => b.desvio - a.desvio)
@@ -469,15 +488,18 @@
 
                 const renderRowHtml = (rowObj, level = 0) => {
                     const hasChildren = rowObj.children && rowObj.children.length > 0;
-                    let rowClass = level === 0 ? "row-cc" : (level === 1 ? "row-cc row-centro-custo" : "row-conta");
+                    let rowClass = "row-conta";
+                    if (level === 0) rowClass = "row-cc";
+                    else if (level === 1) rowClass = "row-cc row-cc-nivel-1";
+                    else if (level === 2) rowClass = "row-cc row-cc-nivel-2";
                     let expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
                     let dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
                     
                     let html = `<tr class="${rowClass} ${expandClass}" ${dataAttr}>`;
                     
-                    let flagHtml = (level === 1 && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
+                    let flagHtml = (level === 2 && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
                     let safeName = escapeHtml(rowObj.name);
-                    let nameCell = level === 2 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
+                    let nameCell = level === 3 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                     
                     html += `<td>${nameCell}</td>`;
                     
@@ -517,14 +539,19 @@
                     return html;
                 };
 
-                tableData.forEach(ccRow => {
-                    tableHtml += renderRowHtml(ccRow, 0);
-                    if (this._expandedRows.has(ccRow.key)) {
-                        ccRow.children.forEach(centroCustoRow => {
-                            tableHtml += renderRowHtml(centroCustoRow, 1);
-                            if (this._expandedRows.has(centroCustoRow.key)) {
-                                centroCustoRow.children.forEach(contaRow => {
-                                    tableHtml += renderRowHtml(contaRow, 2);
+                tableData.forEach(calcRow => {
+                    tableHtml += renderRowHtml(calcRow, 0);
+                    if (this._expandedRows.has(calcRow.key)) {
+                        calcRow.children.forEach(ccNivel1Row => {
+                            tableHtml += renderRowHtml(ccNivel1Row, 1);
+                            if (this._expandedRows.has(ccNivel1Row.key)) {
+                                ccNivel1Row.children.forEach(ccNivel2Row => {
+                                    tableHtml += renderRowHtml(ccNivel2Row, 2);
+                                    if (this._expandedRows.has(ccNivel2Row.key)) {
+                                        ccNivel2Row.children.forEach(contaRow => {
+                                            tableHtml += renderRowHtml(contaRow, 3);
+                                        });
+                                    }
                                 });
                             }
                         });
