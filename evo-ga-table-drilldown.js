@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.2.8 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.2.9 - governed budget oversight.
 (function () {
     const ENABLE_TELEMETRY = true;
 
@@ -126,6 +126,11 @@
         minimumMaterialityThreshold: 0.20,
         noiseVariancePct: 2,
         noiseVarianceAbs: 100000
+    };
+
+    const EVO_GA_MOM_OFFENDER_CONFIG = {
+        paretoCoverage: 0.80,
+        excludedTerms: ["IFRS 16", "OUTROS", "PBA", "RATEIO"]
     };
 
     const EVO_GA_TREND_LABELS = {
@@ -278,6 +283,125 @@
                     Math.abs(varianceAbs) < EVO_GA_MATERIALITY_CONFIG.noiseVarianceAbs &&
                     materialityScore < EVO_GA_MATERIALITY_CONFIG.minimumMaterialityThreshold;
             });
+        }
+    }
+
+    class EvoGAMoMEngine {
+        static _normalize(value) {
+            return String(value || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .trim();
+        }
+
+        static _hasExcludedTerm(values) {
+            const text = values.map(value => EvoGAMoMEngine._normalize(value)).join(" | ");
+            return EVO_GA_MOM_OFFENDER_CONFIG.excludedTerms.some(term => text.includes(EvoGAMoMEngine._normalize(term)));
+        }
+
+        static _emptyPeriod() {
+            return { budget: 0, actual: 0 };
+        }
+
+        static _addVersionValue(target, versionName, value) {
+            const version = EvoGAMoMEngine._normalize(versionName);
+            if (version.includes("ORCADO")) target.budget += value;
+            else if (version.includes("REALIZADO")) target.actual += value;
+        }
+
+        static buildDepartmentDrivers(config) {
+            const {
+                rows,
+                currentMonth,
+                previousMonth,
+                dimensionKeys,
+                getName,
+                getMeasureValueFromRow
+            } = config;
+
+            if (!rows || !currentMonth || !previousMonth) {
+                return { drivers: [], totalMoMDeviation: 0, coverage: 0, excludedRows: 0, currentMonth, previousMonth };
+            }
+
+            const departmentMap = {};
+            let excludedRows = 0;
+            rows.forEach(row => {
+                const rowMonth = getName(row[dimensionKeys.month]);
+                if (rowMonth !== currentMonth && rowMonth !== previousMonth) return;
+
+                const calcNode = getName(row[dimensionKeys.calc]);
+                const ccNivel1 = getName(row[dimensionKeys.cc1]);
+                const ccNivel2 = getName(row[dimensionKeys.cc2]);
+                const ccNivel3 = getName(row[dimensionKeys.cc3]);
+                const conta = getName(row[dimensionKeys.conta]);
+                if (EvoGAMoMEngine._hasExcludedTerm([calcNode, ccNivel1, ccNivel2, ccNivel3, conta])) {
+                    excludedRows++;
+                    return;
+                }
+
+                const key = `calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`;
+                if (!departmentMap[key]) {
+                    departmentMap[key] = {
+                        key,
+                        name: ccNivel3,
+                        hierarchyLabel: "Departamento",
+                        hierarchyPath: [calcNode, ccNivel1, ccNivel2, ccNivel3],
+                        accountabilityPath: [calcNode, ccNivel1, ccNivel2, ccNivel3].join(" > "),
+                        current: EvoGAMoMEngine._emptyPeriod(),
+                        previous: EvoGAMoMEngine._emptyPeriod()
+                    };
+                }
+
+                const target = rowMonth === currentMonth ? departmentMap[key].current : departmentMap[key].previous;
+                EvoGAMoMEngine._addVersionValue(target, getName(row[dimensionKeys.version]), getMeasureValueFromRow(row));
+            });
+
+            const allDrivers = Object.values(departmentMap).map(item => {
+                const currentDesvio = item.current.actual - item.current.budget;
+                const previousDesvio = item.previous.actual - item.previous.budget;
+                const momVariance = currentDesvio - previousDesvio;
+                const percentConsumption = item.current.budget > 0 ? (item.current.actual / item.current.budget) * 100 : (item.current.actual > 0 ? Infinity : 0);
+                return {
+                    ...item,
+                    valOrcado: item.current.budget,
+                    valRealizado: item.current.actual,
+                    desvio: currentDesvio,
+                    previousDesvio,
+                    momVariance,
+                    materialityValue: Math.abs(momVariance),
+                    percentConsumption,
+                    variancePct: item.current.budget > 0 ? (currentDesvio / item.current.budget) * 100 : 0,
+                    trendDirection: momVariance > 0 ? "worsening" : (momVariance < 0 ? "improving" : "stable"),
+                    recurrenceType: "isolated",
+                    recurrenceMonths: momVariance > 0 ? 1 : 0,
+                    isExecutiveNoise: momVariance <= 0
+                };
+            }).filter(item => item.momVariance > 0);
+
+            const totalMoMDeviation = allDrivers.reduce((sum, item) => sum + item.momVariance, 0);
+            const sortedDrivers = allDrivers.sort((a, b) => b.momVariance - a.momVariance);
+            const selectedDrivers = [];
+            let cumulative = 0;
+            for (const item of sortedDrivers) {
+                if (totalMoMDeviation <= 0) break;
+                cumulative += item.momVariance;
+                selectedDrivers.push({
+                    ...item,
+                    contributionPct: (item.momVariance / totalMoMDeviation) * 100,
+                    cumulativeContributionPct: (cumulative / totalMoMDeviation) * 100
+                });
+                if ((cumulative / totalMoMDeviation) >= EVO_GA_MOM_OFFENDER_CONFIG.paretoCoverage) break;
+            }
+
+            return {
+                drivers: selectedDrivers,
+                totalMoMDeviation,
+                coverage: totalMoMDeviation > 0 ? cumulative / totalMoMDeviation : 0,
+                excludedRows,
+                currentMonth,
+                previousMonth
+            };
         }
     }
 
@@ -1541,12 +1665,41 @@
                         ccNivel1.children.flatMap(ccNivel2 => ccNivel2.children)
                     )
                 );
-                const ofensores = [...departamentos]
-                    .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
-                    .sort((a, b) => b.materialityScore - a.materialityScore || b.materialityValue - a.materialityValue)
-                    .slice(0, 3);
+                const selectedMoMMonth = this._selectedMonth === "__all__" ? monthOptions[monthOptions.length - 1] : this._selectedMonth;
+                const selectedMoMMonthIndex = monthOptions.indexOf(selectedMoMMonth);
+                const previousMoMMonth = selectedMoMMonthIndex > 0 ? monthOptions[selectedMoMMonthIndex - 1] : null;
+                const momOffenderAnalysis = monthDimKey ? EvoGAMoMEngine.buildDepartmentDrivers({
+                    rows: financialData.data,
+                    currentMonth: selectedMoMMonth,
+                    previousMonth: previousMoMMonth,
+                    dimensionKeys: {
+                        calc: calcDimKey,
+                        cc1: ccNivel1DimKey,
+                        cc2: ccNivel2DimKey,
+                        cc3: ccNivel3DimKey,
+                        conta: contaDimKey,
+                        version: colDimKey,
+                        month: monthDimKey
+                    },
+                    getName,
+                    getMeasureValueFromRow
+                }) : { drivers: [], totalMoMDeviation: 0, coverage: 0, excludedRows: 0, currentMonth: null, previousMonth: null };
+                const departmentNodeByKey = new Map(departamentos.map(item => [item.key, item]));
+                const executiveDrivers = momOffenderAnalysis.drivers.map(driver => {
+                    const node = departmentNodeByKey.get(driver.key);
+                    return {
+                        ...driver,
+                        trendDirection: node ? node.trendDirection : driver.trendDirection,
+                        recurrenceType: node ? node.recurrenceType : driver.recurrenceType,
+                        recurrenceMonths: node ? node.recurrenceMonths : driver.recurrenceMonths
+                    };
+                });
+                const ofensores = executiveDrivers.slice(0, 3);
 
-                ofensores.forEach(item => item.isOfensor = true);
+                ofensores.forEach(item => {
+                    const node = departmentNodeByKey.get(item.key);
+                    if (node) node.isOfensor = true;
+                });
 
                 let ofensoresText = "";
                 if (ofensores.length > 0) {
@@ -1557,10 +1710,6 @@
                 } else {
                     ofensoresText = " Não foram identificados departamentos operando acima do orçamento.";
                 }
-                const executiveDrivers = [...departamentos]
-                    .filter(item => item.desvio > 0 && !item.isExecutiveNoise)
-                    .sort((a, b) => b.materialityScore - a.materialityScore || b.materialityValue - a.materialityValue)
-                    .slice(0, 5);
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
                 const executiveNarrative = EvoGANarrativeEngine.build(executiveDrivers, totalGlobalDesvio, totalVariancePct);
                 const oversightClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
@@ -1570,20 +1719,24 @@
                 const selectedMonthDisplay = this._selectedMonth === "__all__" ? "Todos os anos" : this._getPeriodDisplayLabel(this._selectedMonth);
                 const ytdLabel = this._selectedMonth === "__all__" ? "Base completa disponível" : `YTD até ${selectedMonthDisplay}`;
                 const periodLabel = this._selectedMonth === "__all__" ? "Base completa" : selectedMonthDisplay;
-                const driversListHtml = executiveDrivers.length ? executiveDrivers.slice(0, 5).map((driver, index) => {
-                    const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.desvio);
+                const momPeriodLabel = momOffenderAnalysis.previousMonth && momOffenderAnalysis.currentMonth
+                    ? `${this._getPeriodDisplayLabel(momOffenderAnalysis.previousMonth)} → ${this._getPeriodDisplayLabel(momOffenderAnalysis.currentMonth)}`
+                    : "MoM indisponível";
+                const momCoverageText = `${(momOffenderAnalysis.coverage * 100).toFixed(1)}%`;
+                const driversListHtml = executiveDrivers.length ? executiveDrivers.map((driver, index) => {
+                    const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.momVariance);
                     return `
                         <div class="driver-row">
                             <div>
                                 <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
-                                <div class="driver-meta">${escapeHtml(driver.accountabilityPath)} · ${escapeHtml(EvoGATrendEngine.formatTrend(driver.trendDirection))} · ${escapeHtml(EvoGATrendEngine.formatRecurrence(driver.recurrenceType))}</div>
+                                <div class="driver-meta">${escapeHtml(driver.accountabilityPath)} · MoM ${escapeHtml(momPeriodLabel)}</div>
                             </div>
-                            <div class="driver-metric"><span class="executive-label">Desvio</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</span></div>
-                            <div class="driver-metric"><span class="executive-label">% vs orçamento</span><span class="driver-value ${driverValueClass}">${driver.variancePct.toFixed(1)}%</span></div>
-                            <div class="driver-metric"><span class="executive-label">Consumo</span><span class="driver-value">${formatPercentage(driver.percentConsumption)}</span></div>
+                            <div class="driver-metric"><span class="executive-label">Variação MoM</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.momVariance), true, true, driver.momVariance)}</span></div>
+                            <div class="driver-metric"><span class="executive-label">Contribuição</span><span class="driver-value ${driverValueClass}">${driver.contributionPct.toFixed(1)}%</span></div>
+                            <div class="driver-metric"><span class="executive-label">Desvio atual</span><span class="driver-value">${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</span></div>
                         </div>
                     `;
-                }).join("") : `<div class="driver-meta">Não há ofensores materiais acima do limiar executivo no período selecionado.</div>`;
+                }).join("") : `<div class="driver-meta">Não há piora MoM relevante por Departamento no período selecionado.</div>`;
                 const diagnosticHtml = `
                     <div class="diagnostic-grid">
                         <div class="executive-section">
@@ -1592,7 +1745,8 @@
                                 <div class="driver-row"><div class="driver-name">Desvio absoluto</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div><div class="driver-meta">Realizado - Orçado</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Desvio percentual</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${totalVariancePct.toFixed(1)}%</span></div><div class="driver-meta">Sobre orçamento G&A</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Consumo do orçamento</div><div class="driver-metric"><span class="driver-value">${escapeHtml(kpiConsumptionText)}</span></div><div class="driver-meta">Realizado / Orçado</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ofensores considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Ordenados por materialidade financeira</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ofensores MoM considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Cobertura ${escapeHtml(momCoverageText)} da piora MoM</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Piora MoM total analisada</div><div class="driver-metric"><span class="driver-value driver-value-alert">${formatNumber(Math.abs(momOffenderAnalysis.totalMoMDeviation), true, true, momOffenderAnalysis.totalMoMDeviation)}</span></div><div class="driver-meta">${escapeHtml(momPeriodLabel)}</div><div></div></div>
                             </div>
                         </div>
                         <div class="executive-section">
@@ -1600,6 +1754,7 @@
                             <div class="driver-list">
                                 <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div class="driver-metric"><span class="driver-value">${financialData.data.length}</span></div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div class="driver-metric"><span class="driver-value">${departamentos.filter(item => item.isExecutiveNoise).length}</span></div><div class="driver-meta">Critério 2%, R$100k e baixa materialidade</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Linhas excluídas dos ofensores</div><div class="driver-metric"><span class="driver-value">${momOffenderAnalysis.excludedRows}</span></div><div class="driver-meta">${escapeHtml(EVO_GA_MOM_OFFENDER_CONFIG.excludedTerms.join(", "))}</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Tendência principal</div><div class="driver-metric"><span class="driver-value">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatTrend(executiveDrivers[0].trendDirection)) : "-"}</span></div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatRecurrence(executiveDrivers[0].recurrenceType)) : "Sem ofensor material"}</div><div></div></div>
                             </div>
                         </div>
@@ -1816,7 +1971,7 @@
                         <div class="executive-kpi">
                             <div class="kpi-label">Status Orçamentário</div>
                             <div class="kpi-value">${escapeHtml(totalStatusText)}</div>
-                            <div class="kpi-sub">${executiveDrivers.length} ofensores materiais</div>
+                            <div class="kpi-sub">${executiveDrivers.length} departamentos no Pareto MoM</div>
                         </div>
                     </div>
                     <div class="executive-oversight ${oversightClass}">
@@ -1839,11 +1994,11 @@
                         </div>
                     </div>
                     <div class="executive-section">
-                        <div class="section-title">Principais Ofensores do Período</div>
+                        <div class="section-title">Principais Ofensores do Período por Departamento</div>
                         <div class="driver-list">${driversListHtml}</div>
                     </div>
                     <p class="table-summary ${varianceClass}">
-                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado, com filtro executivo de materialidade aplicado.${ofensoresText}
+                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado. A lista de ofensores considera a piora MoM por Departamento, excluindo IFRS 16, Outros, PBA e Rateio, até cobrir ao menos 80% da variação MoM relevante.${ofensoresText}
                     </p>
                 `;
 
