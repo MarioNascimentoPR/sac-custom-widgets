@@ -850,7 +850,9 @@
           className: this._eventClassName(primary),
           metric: "Quanto impactou?",
           reading: this.formatMoney(primary ? primary.amount : context.diffYtdNominal, true),
-          implication: `Impacto equivalente a ${primaryPercent} versus orçamento, considerando a leitura acumulada do período.`
+          implication: primary && primary.businessMeaning
+            ? `${primary.businessMeaning} Impacto equivalente a ${primaryPercent} versus orçamento.`
+            : `Impacto equivalente a ${primaryPercent} versus orçamento, considerando a leitura acumulada do período.`
         },
         {
           signal: driverEvent && driverEvent.type === "account_concentration" ? "Concentrado" : (driverEvent ? "Driver" : "Sem driver"),
@@ -866,14 +868,16 @@
           className: this._eventClassName(mainActionEvent),
           metric: "Ação recomendada",
           reading: mainActionEvent ? this._eventTypeLabel(mainActionEvent.type) : "Triagem",
-          implication: this.getRecommendedActionFromEvent(mainActionEvent)
+          implication: mainActionEvent && mainActionEvent.hypothesis
+            ? `${mainActionEvent.hypothesis} ${this.getRecommendedActionFromEvent(mainActionEvent)}`
+            : this.getRecommendedActionFromEvent(mainActionEvent)
         },
         {
           signal: confidenceEvent ? this._confidenceLabel(confidenceEvent.confidence) : "Baixa",
           className: confidenceEvent ? this._confidenceClassName(confidenceEvent.confidence) : "alert",
           metric: "Nível de confiança",
           reading: confidenceEvent && confidenceEvent.percent ? `${Math.min(Math.abs(confidenceEvent.percent), 999).toFixed(1)}% do impacto` : "Baixa granularidade",
-          implication: confidenceEvent ? confidenceEvent.messageHint : "Confiança baixa: não há driver dominante suficiente para uma leitura conclusiva."
+          implication: confidenceEvent && confidenceEvent.rationale ? confidenceEvent.rationale : (confidenceEvent ? confidenceEvent.messageHint : "Confiança baixa: não há driver dominante suficiente para uma leitura conclusiva.")
         }
       ];
     }
@@ -890,7 +894,7 @@
       if (primary) {
         rows.push({
           title: "O que aconteceu",
-          text: primary.messageHint
+          text: primary.businessMeaning || primary.messageHint
         });
       } else {
         rows.push({
@@ -914,7 +918,14 @@
       if (acceleration) {
         rows.push({
           title: "Tendência",
-          text: acceleration.messageHint
+          text: acceleration.hypothesis || acceleration.messageHint
+        });
+      }
+
+      if (primary && primary.hypothesis && primary !== acceleration) {
+        rows.push({
+          title: "Hipótese analítica",
+          text: primary.hypothesis
         });
       }
 
@@ -925,7 +936,7 @@
 
       rows.push({
         title: "Confiança",
-        text: this._eventConfidenceMessage(lowConfidence || dispersion || primary)
+        text: (lowConfidence || dispersion || primary || {}).rationale || this._eventConfidenceMessage(lowConfidence || dispersion || primary)
       });
 
       return rows;
@@ -1400,6 +1411,176 @@
     }
   }
 
+  class EvoSemanticInterpreter {
+    interpret(events, context) {
+      if (!Array.isArray(events) || !events.length) return [];
+      const index = this._buildIndex(events);
+      return events.map(event => this._enrichEvent(event, context, index));
+    }
+
+    _buildIndex(events) {
+      return events.reduce((acc, event) => {
+        acc.types.add(event.type);
+        if (!acc.bySubject.has(event.subject)) acc.bySubject.set(event.subject, []);
+        acc.bySubject.get(event.subject).push(event);
+        return acc;
+      }, { types: new Set(), bySubject: new Map() });
+    }
+
+    _enrichEvent(event, context, index) {
+      const semanticType = this._semanticType(event, context, index);
+      return {
+        ...event,
+        semanticType,
+        businessMeaning: this._businessMeaning(semanticType, event),
+        hypothesis: this._hypothesis(semanticType, event),
+        rationale: this._rationale(semanticType, event, index),
+        evidence: this._evidence(event, context)
+      };
+    }
+
+    _semanticType(event, context, index) {
+      if (event.type === "account_concentration") return "concentration_risk";
+      if (event.type === "dispersion" || event.type === "low_confidence") return "analytical_uncertainty";
+      if (event.type === "acceleration") {
+        return event.severity === "critical" || event.severity === "high" ? "structural_pressure" : "operational_instability";
+      }
+      if (event.type === "budget_pressure") {
+        if (index.types.has("acceleration")) return "forecast_risk";
+        return event.severity === "critical" || event.severity === "high" ? "structural_pressure" : "temporary_pressure";
+      }
+      if (event.type === "saving_opportunity") {
+        return event.severity === "high" || Math.abs(event.percent || 0) >= 10 ? "possible_postponement" : "efficiency_opportunity";
+      }
+      if (event.type === "seasonal_behavior") return "seasonal_pattern";
+      if (event.type === "operational_instability") return "operational_instability";
+      return "financial_variation";
+    }
+
+    _businessMeaning(semanticType, event) {
+      const labels = {
+        structural_pressure: "pressão com indício de recorrência ou deterioração",
+        temporary_pressure: "pressão pontual a validar",
+        operational_instability: "instabilidade operacional no mês",
+        forecast_risk: "risco de revisão de forecast",
+        concentration_risk: "risco concentrado em conta ou driver dominante",
+        possible_postponement: "saving que pode refletir postergação de despesa",
+        efficiency_opportunity: "oportunidade de captura ou manutenção de saving",
+        seasonal_pattern: "comportamento compatível com sazonalidade",
+        analytical_uncertainty: "evidência insuficiente para conclusão assertiva",
+        financial_variation: "variação financeira relevante"
+      };
+      return `${event.subject}: ${labels[semanticType] || labels.financial_variation}.`;
+    }
+
+    _hypothesis(semanticType, event) {
+      const hypotheses = {
+        structural_pressure: "Indícios de pressão estrutural; confirmar recorrência antes de concluir causa raiz.",
+        temporary_pressure: "Possível efeito pontual de competência ou mix; validar recorrência no próximo ciclo.",
+        operational_instability: "Possível instabilidade operacional na competência atual.",
+        forecast_risk: "Indícios de risco para o forecast caso o comportamento se mantenha.",
+        concentration_risk: "Possível concentração de impacto em conta específica, exigindo validação contábil.",
+        possible_postponement: "Possível postergação de despesa; confirmar se o saving é estrutural.",
+        efficiency_opportunity: "Possível oportunidade de eficiência; validar se há captura permanente.",
+        seasonal_pattern: "Comportamento compatível com sazonalidade; comparar com ciclos equivalentes.",
+        analytical_uncertainty: "Evidência dispersa; evitar conclusão sem drilldown complementar.",
+        financial_variation: "Variação relevante; detalhar composição antes de definir ação."
+      };
+      return hypotheses[semanticType] || hypotheses.financial_variation;
+    }
+
+    _rationale(semanticType, event, index) {
+      const parts = [
+        `Evento ${event.type}`,
+        `severidade ${event.severity}`,
+        `confiança ${event.confidence}`,
+        `impacto ${this._formatMoney(event.amount)}`
+      ];
+      if (Math.abs(event.percent || 0) > 0) parts.push(`${Math.abs(event.percent).toFixed(1)}%`);
+      if (event.driverAccount) parts.push(`conta ${event.driverAccount}`);
+      if (semanticType === "forecast_risk" && index.types.has("acceleration")) parts.push("com aceleração associada");
+      return parts.join("; ") + ".";
+    }
+
+    _evidence(event, context) {
+      const evidence = [
+        { label: "tipo", value: event.type },
+        { label: "severidade", value: event.severity },
+        { label: "confiança", value: event.confidence },
+        { label: "impacto", value: event.amount },
+        { label: "percentual", value: event.percent }
+      ];
+      if (event.driverAccount) evidence.push({ label: "conta", value: event.driverAccount });
+      if (context && context.currentBarNode) evidence.push({ label: "periodo", value: context.currentBarNode.label || context.currentBarNode.id });
+      return evidence;
+    }
+
+    _formatMoney(value) {
+      const numeric = Number(value) || 0;
+      const sign = numeric < 0 ? "-" : "";
+      return `${sign}R$ ${Math.abs(numeric / 1000000).toFixed(2)}M`;
+    }
+  }
+
+  class EvoNarrativePrioritizer {
+    prioritize(events, context) {
+      if (!Array.isArray(events) || !events.length) return [];
+      return [...events]
+        .map((event, index) => ({
+          ...event,
+          priorityScore: this._score(event, context),
+          priorityRank: index + 1,
+          narrativeLayer: this._layer(event)
+        }))
+        .sort((a, b) => b.priorityScore - a.priorityScore)
+        .map((event, index) => ({ ...event, priorityRank: index + 1 }))
+        .slice(0, 6);
+    }
+
+    _score(event, context) {
+      const severityWeight = { critical: 100, high: 75, medium: 45, low: 20 }[event.severity] || 20;
+      const confidencePenalty = { high: 0, medium: 8, low: 18 }[event.confidence] || 18;
+      const typeWeight = {
+        budget_pressure: 20,
+        saving_opportunity: 14,
+        acceleration: 24,
+        account_concentration: 16,
+        forecast_risk: 24,
+        operational_instability: 18,
+        seasonal_behavior: 10,
+        dispersion: 8,
+        low_confidence: 6
+      }[event.type] || 10;
+      const semanticWeight = {
+        structural_pressure: 24,
+        forecast_risk: 24,
+        operational_instability: 18,
+        concentration_risk: 16,
+        possible_postponement: 14,
+        analytical_uncertainty: 8,
+        seasonal_pattern: 8,
+        temporary_pressure: 10,
+        efficiency_opportunity: 10
+      }[event.semanticType] || 10;
+      const materiality = this._materialityScore(event, context);
+      return severityWeight + typeWeight + semanticWeight + materiality - confidencePenalty;
+    }
+
+    _materialityScore(event, context) {
+      const budget = Math.abs(Number(context && context.totalBudgetYTDCompleto) || 0);
+      const amount = Math.abs(Number(event.amount) || 0);
+      if (!budget || !amount) return Math.min(Math.abs(Number(event.percent) || 0), 25);
+      return Math.min((amount / budget) * 100, 35);
+    }
+
+    _layer(event) {
+      if (event.semanticType === "structural_pressure" || event.semanticType === "forecast_risk") return "strategic";
+      if (event.type === "account_concentration" || event.semanticType === "concentration_risk") return "managerial";
+      if (event.type === "acceleration" || event.semanticType === "operational_instability") return "operational";
+      return event.confidence === "low" ? "investigative" : "managerial";
+    }
+  }
+
   class EvoNarrativeEngine {
     constructor() {
       this._monthOrderMap = { "JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12 };
@@ -1735,6 +1916,8 @@
       this._layoutUpdateQueued = false;
       this._analyticsEngine = new EvoNarrativeEngine();
       this._eventBuilder = new EvoNarrativeEventBuilder();
+      this._semanticInterpreter = new EvoSemanticInterpreter();
+      this._narrativePrioritizer = new EvoNarrativePrioritizer();
       this._textGenerator = new EvoTextGenerator();
       this._profiler = new EvoStreamProfiler();
 
@@ -3871,7 +4054,9 @@
         totalBudgetYTDCompleto,
         analysis
       };
-      textContext.narrativeEvents = this._eventBuilder.buildNarrativeEvents(textContext, analysis, analysis.outlierTable, analysis.varianceTable);
+      const narrativeEvents = this._eventBuilder.buildNarrativeEvents(textContext, analysis, analysis.outlierTable, analysis.varianceTable);
+      const semanticEvents = this._semanticInterpreter.interpret(narrativeEvents, textContext);
+      textContext.narrativeEvents = this._narrativePrioritizer.prioritize(semanticEvents, textContext);
 
       this._textGenerator.buildHighlightList(analysis.outlierTable, textContext).forEach(row => {
         const liItem = document.createElement("li");
