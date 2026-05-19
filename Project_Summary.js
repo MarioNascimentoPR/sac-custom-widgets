@@ -669,10 +669,10 @@
   class EvoTextGenerator {
     constructor() {
       this.templates = {
-        adverseMaterial: "{item} concentra o principal desvio do YTD, com impacto de {valor} ({pct} vs orçamento).",
-        savingMaterial: "{item} sustenta o principal saving do período, com impacto de {valor} ({pct} vs orçamento).",
-        acceleration: "{item} merece atenção porque o desvio piorou no mês, indicando aceleração da pressão orçamentária.",
-        monitoring: "{item} deve seguir em acompanhamento, com impacto de {valor} no YTD."
+        adverseMaterial: "{item}: desvio YTD de {valor} ({pct} vs orçamento), com participação de {share} na variação acumulada.",
+        savingMaterial: "{item}: saving YTD de {valorAbs} ({pct} vs orçamento), com participação de {share} na variação acumulada.",
+        acceleration: "{item}: piora no mês de {monthValue}, sinalizando aceleração frente à competência anterior.",
+        monitoring: "{item}: variação YTD de {valor} ({pct} vs orçamento), sem concentração suficiente para conclusão isolada."
       };
       this.priorityLabels = {
         adverseWatch: "Desvio monitorado",
@@ -726,6 +726,9 @@
     }
 
     buildExecutiveSummary(context) {
+      const narrativeEvents = context && Array.isArray(context.narrativeEvents) && context.narrativeEvents.length ? context.narrativeEvents : null;
+      if (narrativeEvents) return this.buildExecutiveSummaryFromEvents(narrativeEvents, context);
+
       const risk = this.buildRiskMessage(context);
       const drivers = this._sortedDrivers(context);
       const mainDriver = drivers[0] || null;
@@ -761,7 +764,7 @@
           metric: "Qual o driver?",
           reading: mainDriver ? `${mainDriver.itemName} | ${driverShare.toFixed(1)}%` : "Sem driver material",
           implication: mainDriver
-            ? `${mainDriver.itemName} explica a maior parcela do ${status} YTD.${driverAccount}`
+            ? `${mainDriver.itemName} é a maior contribuição identificada para o ${status} YTD.${driverAccount}`
             : "A variação está dispersa entre itens, sem concentração suficiente para uma conclusão executiva."
         },
         {
@@ -775,18 +778,21 @@
           signal: confidence.levelLabel,
           className: confidence.className,
           metric: "Nível de confiança",
-          reading: `${confidence.share.toFixed(1)}% explicado`,
+          reading: `${confidence.share.toFixed(1)}% do impacto`,
           implication: confidence.message
         }
       ];
     }
 
     buildHighlightList(insights, context) {
+      const narrativeEvents = context && Array.isArray(context.narrativeEvents) && context.narrativeEvents.length ? context.narrativeEvents : null;
+      if (narrativeEvents) return this.buildHighlightsFromEvents(narrativeEvents, context);
+
       const mainDriver = (insights && insights[0]) || null;
       const status = context.diffYtdNominal <= 0 ? "saving" : "desvio";
       const position = context.diffYtdNominal <= 0 ? "abaixo do orçamento" : "acima do orçamento";
       const driverPhrase = mainDriver
-        ? `${mainDriver.isSaving ? "sustentado" : "pressionado"} principalmente por ${mainDriver.itemName}`
+        ? `com maior contribuição em ${mainDriver.itemName}`
         : "sem concentração dominante entre os itens analisados";
       const rows = [
         {
@@ -817,18 +823,195 @@
       return rows;
     }
 
+    buildExecutiveSummaryFromEvents(events, context) {
+      const risk = this.buildRiskMessage(context);
+      const primary = this._selectPrimaryEvent(events, context);
+      const concentration = this._firstEvent(events, "account_concentration");
+      const acceleration = this._firstEvent(events, "acceleration");
+      const dispersion = this._firstEvent(events, "dispersion");
+      const lowConfidence = this._firstEvent(events, "low_confidence");
+      const driverEvent = concentration || primary;
+      const confidenceEvent = lowConfidence || dispersion || primary;
+      const mainActionEvent = acceleration || concentration || primary;
+      const status = primary && primary.type === "saving_opportunity" ? "saving" : "desvio";
+      const position = status === "saving" ? "abaixo do orçamento" : "acima do orçamento";
+      const primaryPercent = primary ? this.formatPercent(Math.abs(primary.percent || 0), false) : this.formatPercent(Math.abs(context.diffYtdPercent || 0), false);
+
+      return [
+        {
+          signal: risk.label,
+          className: risk.className,
+          metric: "O que aconteceu?",
+          reading: `YTD ${this.formatPercent(context.diffYtdPercent || 0, true)}`,
+          implication: primary ? primary.messageHint : `O acumulado está ${position}, com ${status} de ${this.formatMoney(context.diffYtdNominal || 0, true)}.`
+        },
+        {
+          signal: this._eventSeverityLabel(primary),
+          className: this._eventClassName(primary),
+          metric: "Quanto impactou?",
+          reading: this.formatMoney(primary ? primary.amount : context.diffYtdNominal, true),
+          implication: `Impacto equivalente a ${primaryPercent} versus orçamento, considerando a leitura acumulada do período.`
+        },
+        {
+          signal: driverEvent && driverEvent.type === "account_concentration" ? "Concentrado" : (driverEvent ? "Driver" : "Sem driver"),
+          className: driverEvent ? this._eventClassName(driverEvent) : "watch",
+          metric: "Qual o driver?",
+          reading: driverEvent && driverEvent.subject ? driverEvent.subject : "Sem driver material",
+          implication: driverEvent && driverEvent.driverAccount
+            ? `${driverEvent.subject} tem concentração relevante em ${driverEvent.driverAccount}.`
+            : (dispersion ? dispersion.messageHint : "A variação está distribuída entre itens, sem concentração dominante.")
+        },
+        {
+          signal: "Ação",
+          className: this._eventClassName(mainActionEvent),
+          metric: "Ação recomendada",
+          reading: mainActionEvent ? this._eventTypeLabel(mainActionEvent.type) : "Triagem",
+          implication: this.getRecommendedActionFromEvent(mainActionEvent)
+        },
+        {
+          signal: confidenceEvent ? this._confidenceLabel(confidenceEvent.confidence) : "Baixa",
+          className: confidenceEvent ? this._confidenceClassName(confidenceEvent.confidence) : "alert",
+          metric: "Nível de confiança",
+          reading: confidenceEvent && confidenceEvent.percent ? `${Math.min(Math.abs(confidenceEvent.percent), 999).toFixed(1)}% do impacto` : "Baixa granularidade",
+          implication: confidenceEvent ? confidenceEvent.messageHint : "Confiança baixa: não há driver dominante suficiente para uma leitura conclusiva."
+        }
+      ];
+    }
+
+    buildHighlightsFromEvents(events, context) {
+      const primary = this._selectPrimaryEvent(events, context);
+      const acceleration = this._firstEvent(events, "acceleration");
+      const concentration = this._firstEvent(events, "account_concentration");
+      const dispersion = this._firstEvent(events, "dispersion");
+      const lowConfidence = this._firstEvent(events, "low_confidence");
+      const actionEvent = acceleration || concentration || primary;
+      const rows = [];
+
+      if (primary) {
+        rows.push({
+          title: "O que aconteceu",
+          text: primary.messageHint
+        });
+      } else {
+        rows.push({
+          title: "O que aconteceu",
+          text: `O YTD apresenta ${this.formatMoney(context.diffYtdNominal || 0, true)} (${this.formatPercent(Math.abs(context.diffYtdPercent || 0), false)}) versus orçamento.`
+        });
+      }
+
+      if (concentration) {
+        rows.push({
+          title: "Driver principal",
+          text: concentration.messageHint
+        });
+      } else if (dispersion) {
+        rows.push({
+          title: "Driver principal",
+          text: dispersion.messageHint
+        });
+      }
+
+      if (acceleration) {
+        rows.push({
+          title: "Tendência",
+          text: acceleration.messageHint
+        });
+      }
+
+      rows.push({
+        title: "Ação recomendada",
+        text: this.getRecommendedActionFromEvent(actionEvent)
+      });
+
+      rows.push({
+        title: "Confiança",
+        text: this._eventConfidenceMessage(lowConfidence || dispersion || primary)
+      });
+
+      return rows;
+    }
+
+    getRecommendedActionFromEvent(event) {
+      if (!event) {
+        return "Abrir os principais itens e validar se a dispersão decorre de mix, competência contábil ou ausência de granularidade.";
+      }
+      if (event.recommendedAction) return event.recommendedAction;
+      if (event.type === "acceleration") return "Priorizar investigação da competência atual e revisar premissas do forecast.";
+      if (event.type === "saving_opportunity") return "Avaliar se o saving é estrutural ou postergação de despesa antes de incorporar no forecast.";
+      if (event.type === "account_concentration") return "Validar recorrência, competência contábil e tendência da conta dominante para o próximo ciclo de forecast.";
+      if (event.type === "dispersion" || event.type === "low_confidence") return "Ampliar o drilldown antes de concluir causa raiz ou ajustar forecast.";
+      return "Detalhar as contas de maior impacto, confirmar natureza recorrente e definir responsável pelo plano de ação.";
+    }
+
+    _firstEvent(events, type) {
+      return (events || []).find(event => event.type === type) || null;
+    }
+
+    _eventConfidenceMessage(event) {
+      if (!event) return "Confiança média: leitura baseada nos principais eventos narrativos do período.";
+      const label = this._confidenceLabel(event.confidence).toLowerCase();
+      const share = Math.min(Math.abs(event.percent || 0), 999);
+      if (event.type === "low_confidence") return event.messageHint;
+      if (event.type === "dispersion") return `Confiança ${label}: a variação está distribuída; o maior fator representa ${share.toFixed(1)}% do impacto analisado.`;
+      return `Confiança ${label}: leitura baseada no evento de maior relevância identificado para ${event.subject || "o período"}.`;
+    }
+
+    _selectPrimaryEvent(events, context) {
+      const preferredType = context && context.diffYtdNominal <= 0 ? "saving_opportunity" : "budget_pressure";
+      return this._firstEvent(events, preferredType) || this._firstEvent(events, "budget_pressure") || this._firstEvent(events, "saving_opportunity") || (events && events[0]) || null;
+    }
+
+    _eventClassName(event) {
+      if (!event) return "watch";
+      if (event.severity === "critical" || event.severity === "high") return event.type === "saving_opportunity" ? "good" : "alert";
+      if (event.severity === "low") return event.type === "saving_opportunity" ? "good" : "watch";
+      return "watch";
+    }
+
+    _eventSeverityLabel(event) {
+      if (!event) return "Impacto";
+      if (event.severity === "critical") return "Crítico";
+      if (event.severity === "high") return "Material";
+      if (event.severity === "medium") return "Relevante";
+      return "Monitorar";
+    }
+
+    _eventTypeLabel(type) {
+      const labels = {
+        budget_pressure: "Pressão orçamentária",
+        saving_opportunity: "Saving",
+        acceleration: "Aceleração",
+        dispersion: "Dispersão",
+        low_confidence: "Baixa confiança",
+        account_concentration: "Concentração"
+      };
+      return labels[type] || "Triagem";
+    }
+
+    _confidenceLabel(confidence) {
+      if (confidence === "high") return "Alta";
+      if (confidence === "medium") return "Média";
+      return "Baixa";
+    }
+
+    _confidenceClassName(confidence) {
+      if (confidence === "high") return "good";
+      if (confidence === "medium") return "watch";
+      return "alert";
+    }
+
     buildHighlightDetail(insight) {
       const confidence = this.buildConfidence(insight);
       const parts = [
-        this._buildTemplateText(insight),
-        `Realizado acumulado de ${this.formatMoney(insight.realizado)} versus orçamento de ${this.formatMoney(insight.budget)}.`,
-        `Comportamento recente: ${this.getTrendLabel(insight)}, com variação mensal de ${this.formatMoney(insight.monthDiff || 0, true)}.`
+        this._buildDetailOpening(insight),
+        `Realizado acumulado: ${this.formatMoney(insight.realizado)} vs orçamento de ${this.formatMoney(insight.budget)}.`,
+        this._buildTrendSentence(insight)
       ];
       if (Math.abs(insight.yoyDiff || 0) > 0) {
         parts.push(`No comparativo YoY, o realizado apresenta ${this.formatMoney(insight.yoyDiff, true)} (${this.formatPercent(insight.yoyPct || 0, true)}).`);
       }
       if (insight.driverConta && Math.abs(insight.driverImpact || 0) > 0) {
-        parts.push(`Principal conta contábil: ${insight.driverConta}, com impacto de ${this.formatMoney(insight.driverImpact, true)} e share de ${Math.min(insight.driverShare || 0, 999).toFixed(1)}% da variação do item.`);
+        parts.push(`Conta de maior impacto: ${insight.driverConta}, ${this.formatMoney(insight.driverImpact, true)} e ${Math.min(insight.driverShare || 0, 999).toFixed(1)}% da variação do item.`);
       }
       parts.push(`Ação recomendada: ${this.getRecommendedAction(insight)}`);
       parts.push(confidence.message);
@@ -845,14 +1028,14 @@
           levelLabel: "Baixa",
           className: "alert",
           share: 0,
-          message: "Confiança baixa: não há driver dominante suficiente para sustentar uma leitura conclusiva."
+          message: "Confiança baixa: não há driver dominante suficiente para uma leitura conclusiva."
         };
       }
       const share = Math.max(insight.driverShare || 0, insight.contributionPct || 0);
       const level = share > 50 ? "high" : (share > 25 ? "medium" : "low");
       const levelLabel = level === "high" ? "Alta" : (level === "medium" ? "Média" : "Baixa");
       const className = level === "high" ? "good" : (level === "medium" ? "watch" : "alert");
-      const target = (insight.driverShare || 0) > 0 ? "a principal conta" : "o principal driver";
+      const target = (insight.driverShare || 0) > 0 ? "a principal conta" : "o maior driver";
       const status = insight.isSaving ? "saving" : "desvio";
       const suffix = level === "high"
         ? "há concentração suficiente para direcionar a próxima ação."
@@ -864,7 +1047,7 @@
         levelLabel,
         className,
         share,
-        message: `Confiança ${levelLabel.toLowerCase()}: ${target} explica ${Math.min(share, 999).toFixed(1)}% do ${status}; ${suffix}`
+        message: `Confiança ${levelLabel.toLowerCase()}: ${target} representa ${Math.min(share, 999).toFixed(1)}% do ${status}; ${suffix}`
       };
     }
 
@@ -884,6 +1067,35 @@
       return "Detalhar as contas de maior impacto, confirmar natureza recorrente e definir responsável pelo plano de ação.";
     }
 
+    _buildDetailOpening(insight) {
+      const direction = insight.isSaving ? "Saving YTD" : "Desvio YTD";
+      const value = insight.isSaving
+        ? this.formatMoney(Math.abs(insight.desvio || 0), false)
+        : this.formatMoney(insight.desvio || 0, true);
+      const pct = this.formatPercent(Math.abs(insight.pctVar || 0), false);
+      const share = Math.min(Math.abs(insight.contributionPct || 0), 999).toFixed(1);
+      return `${direction} de ${value} (${pct} vs orçamento), com participação de ${share}% na variação acumulada.`;
+    }
+
+    _buildTrendSentence(insight) {
+      const monthDiff = insight.monthDiff || 0;
+      const previousMonthDiff = insight.previousMonthDiff || 0;
+      const acceleration = insight.acceleration || 0;
+      if (insight.insightType === "acceleration") {
+        return `Tendência mensal: piora de ${this.formatMoney(acceleration, true)} frente ao mês anterior, com variação atual de ${this.formatMoney(monthDiff, true)}.`;
+      }
+      if (insight.trendKey === "easingPressure") {
+        return `Tendência mensal: pressão em redução; variação atual de ${this.formatMoney(monthDiff, true)} vs ${this.formatMoney(previousMonthDiff, true)} no mês anterior.`;
+      }
+      if (insight.trendKey === "savingExpansion") {
+        return `Tendência mensal: saving em expansão; variação atual de ${this.formatMoney(monthDiff, true)} vs ${this.formatMoney(previousMonthDiff, true)} no mês anterior.`;
+      }
+      if (insight.trendKey === "savingSoftening") {
+        return `Tendência mensal: menor contribuição de saving; variação atual de ${this.formatMoney(monthDiff, true)} vs ${this.formatMoney(previousMonthDiff, true)} no mês anterior.`;
+      }
+      return `Tendência mensal: ${this.getTrendLabel(insight)}, com variação atual de ${this.formatMoney(monthDiff, true)}.`;
+    }
+
     _sortedDrivers(context) {
       const rows = context && context.analysis && context.analysis.waterfallTable ? context.analysis.waterfallTable : [];
       return [...rows].sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio));
@@ -895,7 +1107,10 @@
       return this._applyTemplate(template, {
         item: insight.itemName,
         valor: this.formatMoney(insight.desvio, true),
-        pct: this.formatPercent(Math.abs(insight.pctVar || 0), false)
+        valorAbs: this.formatMoney(Math.abs(insight.desvio || 0), false),
+        pct: this.formatPercent(Math.abs(insight.pctVar || 0), false),
+        share: `${Math.min(Math.abs(insight.contributionPct || 0), 999).toFixed(1)}%`,
+        monthValue: this.formatMoney(insight.monthDiff || 0, true)
       });
     }
 
@@ -909,6 +1124,279 @@
 
     _applyTemplate(template, values) {
       return template.replace(/\{(\w+)\}/g, (_, key) => values[key] != null ? values[key] : "");
+    }
+  }
+
+  class EvoNarrativeEventBuilder {
+    buildNarrativeEvents(context, analysis, selectedInsights, varianceTable) {
+      const resolvedAnalysis = analysis || (context && context.analysis) || {};
+      const insights = Array.isArray(selectedInsights)
+        ? selectedInsights
+        : (Array.isArray(resolvedAnalysis.outlierTable) ? resolvedAnalysis.outlierTable : []);
+      const variance = varianceTable || resolvedAnalysis.varianceTable || this._varianceFromContext(context);
+      const mainInsight = (resolvedAnalysis.summary && resolvedAnalysis.summary.mainDriver) || insights[0] || null;
+      const ytd = variance.ytd || {};
+      const ytdDiff = this._number(ytd.diffNominal, context && context.diffYtdNominal);
+      const events = [];
+
+      if (ytdDiff > 0 || (mainInsight && !mainInsight.isSaving)) {
+        events.push(this._buildBudgetPressureEvent(context, variance, mainInsight));
+      }
+      if (ytdDiff <= 0 || (mainInsight && mainInsight.isSaving)) {
+        events.push(this._buildSavingOpportunityEvent(context, variance, mainInsight));
+      }
+
+      const floor = this._materialityFloor(context, variance);
+      insights.forEach(insight => {
+        if (this._isAcceleration(insight, floor)) {
+          events.push(this._buildAccelerationEvent(context, variance, insight));
+        }
+        if ((insight.driverShare || 0) >= 50) {
+          events.push(this._buildAccountConcentrationEvent(context, variance, insight));
+        }
+      });
+
+      const mainShare = this._confidenceShare(mainInsight);
+      if (!mainInsight || mainShare < 25) {
+        events.push(this._buildDispersionEvent(context, variance, mainInsight));
+      }
+      if (this._confidenceLevel(mainInsight) === "low") {
+        events.push(this._buildLowConfidenceEvent(context, variance, mainInsight));
+      }
+
+      return this._dedupeEvents(events);
+    }
+
+    _varianceFromContext(context) {
+      const monthDiff = this._number(context && context.diffNominal, 0);
+      const monthBudget = this._number(context && context.budgetVal, 0);
+      const ytdDiff = this._number(context && context.diffYtdNominal, 0);
+      const ytdBudget = this._number(context && context.totalBudgetYTDCompleto, 0);
+      return {
+        month: {
+          diffNominal: monthDiff,
+          pctVar: monthBudget !== 0 ? (monthDiff / monthBudget) * 100 : this._number(context && context.diffPercent, 0),
+          consumption: this._number(context && context.consumptionMonthPercent, 0),
+          isSaving: monthDiff <= 0
+        },
+        ytd: {
+          diffNominal: ytdDiff,
+          pctVar: ytdBudget !== 0 ? (ytdDiff / ytdBudget) * 100 : this._number(context && context.diffYtdPercent, 0),
+          consumption: this._number(context && context.consumoBudgetPercent, 0),
+          budget: ytdBudget,
+          actual: this._number(context && context.totalRealizadoYTDAtual, 0),
+          isSaving: ytdDiff <= 0
+        }
+      };
+    }
+
+    _buildBudgetPressureEvent(context, variance, insight) {
+      const ytd = variance.ytd || {};
+      const source = insight && !insight.isSaving ? insight : null;
+      const amount = source ? source.desvio : this._number(ytd.diffNominal, context && context.diffYtdNominal);
+      const percent = source ? source.pctVar : this._number(ytd.pctVar, context && context.diffYtdPercent);
+      const subject = source ? source.itemName : "YTD";
+      const confidence = this._confidenceLevel(source || insight);
+      const driverText = source
+        ? `, com maior contribuição em ${source.itemName}`
+        : "";
+      return this._event({
+        type: "budget_pressure",
+        subject,
+        amount,
+        percent,
+        driverAccount: source ? source.driverConta : "",
+        confidence,
+        messageHint: `O YTD apresenta desvio de ${this._formatMoney(this._number(ytd.diffNominal, amount), true)} (${this._formatPercent(Math.abs(this._number(ytd.pctVar, percent)))}) versus orçamento${driverText}.`,
+        recommendedAction: source && source.driverConta
+          ? "Validar recorrência, competência contábil e tendência da conta dominante para o próximo ciclo de forecast."
+          : "Detalhar os principais itens de pressão e confirmar natureza recorrente antes de ajustar o forecast.",
+        source,
+        context,
+        variance
+      });
+    }
+
+    _buildSavingOpportunityEvent(context, variance, insight) {
+      const ytd = variance.ytd || {};
+      const source = insight && insight.isSaving ? insight : null;
+      const amount = source ? source.desvio : this._number(ytd.diffNominal, context && context.diffYtdNominal);
+      const percent = source ? source.pctVar : this._number(ytd.pctVar, context && context.diffYtdPercent);
+      const subject = source ? source.itemName : "YTD";
+      const confidence = this._confidenceLevel(source || insight);
+      const driverText = source
+        ? `, com maior contribuição em ${source.itemName}`
+        : "";
+      return this._event({
+        type: "saving_opportunity",
+        subject,
+        amount,
+        percent,
+        driverAccount: source ? source.driverConta : "",
+        confidence,
+        messageHint: `O YTD apresenta saving de ${this._formatMoney(Math.abs(this._number(ytd.diffNominal, amount)))} (${this._formatPercent(Math.abs(this._number(ytd.pctVar, percent)))}) versus orçamento${driverText}.`,
+        recommendedAction: "Avaliar se o saving é estrutural ou postergação de despesa antes de incorporar no forecast.",
+        source,
+        context,
+        variance
+      });
+    }
+
+    _buildAccelerationEvent(context, variance, insight) {
+      const confidence = this._confidenceLevel(insight);
+      const acceleration = this._number(insight && insight.acceleration, 0);
+      return this._event({
+        type: "acceleration",
+        subject: insight.itemName,
+        amount: this._number(insight.monthDiff, insight.desvio),
+        percent: this._number(insight.monthPctVar, insight.pctVar),
+        driverAccount: insight.driverConta || "",
+        confidence,
+        messageHint: `${insight.itemName} mostra aceleração da pressão no mês, com piora de ${this._formatMoney(acceleration, true)} frente à competência anterior.`,
+        recommendedAction: "Priorizar investigação da competência atual e revisar premissas do forecast.",
+        source: insight,
+        context,
+        variance
+      });
+    }
+
+    _buildAccountConcentrationEvent(context, variance, insight) {
+      const share = Math.min(insight.driverShare || 0, 999);
+      const confidence = this._confidenceLevel(insight);
+      return this._event({
+        type: "account_concentration",
+        subject: insight.itemName,
+        amount: this._number(insight.driverImpact, insight.desvio),
+        percent: share,
+        driverAccount: insight.driverConta || "",
+        confidence,
+        messageHint: `${insight.itemName} apresenta concentração em ${insight.driverConta || "conta dominante"}, que representa ${share.toFixed(1)}% da variação do item.`,
+        recommendedAction: "Validar recorrência, competência contábil e tendência da conta dominante para o próximo ciclo de forecast.",
+        source: insight,
+        context,
+        variance
+      });
+    }
+
+    _buildDispersionEvent(context, variance, insight) {
+      const share = this._confidenceShare(insight);
+      return this._event({
+        type: "dispersion",
+        subject: insight && insight.itemName ? insight.itemName : "Carteira analisada",
+        amount: this._number(variance.ytd && variance.ytd.diffNominal, context && context.diffYtdNominal),
+        percent: share,
+        driverAccount: insight ? insight.driverConta || "" : "",
+        confidence: this._confidenceLevel(insight),
+        messageHint: `Há dispersão relevante entre os drivers; o maior fator representa ${Math.min(share, 999).toFixed(1)}% do desvio analisado.`,
+        recommendedAction: "Ampliar o drilldown antes de concluir causa raiz ou ajustar forecast.",
+        source: insight,
+        context,
+        variance
+      });
+    }
+
+    _buildLowConfidenceEvent(context, variance, insight) {
+      const share = this._confidenceShare(insight);
+      return this._event({
+        type: "low_confidence",
+        subject: insight && insight.itemName ? insight.itemName : "Carteira analisada",
+        amount: this._number(variance.ytd && variance.ytd.diffNominal, context && context.diffYtdNominal),
+        percent: share,
+        driverAccount: insight ? insight.driverConta || "" : "",
+        confidence: "low",
+        messageHint: `Confiança baixa: o maior driver representa ${Math.min(share, 999).toFixed(1)}% da variação; trate a leitura como triagem inicial.`,
+        recommendedAction: "Ampliar granularidade, validar classificação contábil e evitar conclusão definitiva sem drilldown complementar.",
+        source: insight,
+        context,
+        variance
+      });
+    }
+
+    _event(config) {
+      const severity = this._severityFor(config.type, config.amount, config.percent, config.confidence, config.source, config.context, config.variance);
+      return {
+        type: config.type,
+        severity,
+        subject: String(config.subject || ""),
+        amount: this._number(config.amount, 0),
+        percent: this._number(config.percent, 0),
+        driverAccount: String(config.driverAccount || ""),
+        confidence: config.confidence || "low",
+        messageHint: config.messageHint || "",
+        recommendedAction: config.recommendedAction || ""
+      };
+    }
+
+    _severityFor(type, amount, percent, confidence, insight, context, variance) {
+      const floor = this._materialityFloor(context, variance);
+      const absAmount = Math.abs(this._number(amount, 0));
+      const absPct = Math.abs(this._number(percent, 0));
+      const budget = Math.abs(this._number(variance && variance.ytd && variance.ytd.budget, context && context.totalBudgetYTDCompleto));
+      const materialAmount = budget > 0 ? absAmount >= budget * 0.05 : absAmount >= floor * 8;
+      const acceleration = type === "acceleration" || (insight && insight.insightType === "acceleration");
+      if ((materialAmount || absPct >= 10) && acceleration && confidence === "low") return "critical";
+      if (materialAmount || absPct >= 15 || (type === "account_concentration" && absAmount >= floor * 2)) return "high";
+      if (absAmount >= floor || absPct >= 2 || type === "dispersion" || type === "low_confidence") return "medium";
+      return "low";
+    }
+
+    _isAcceleration(insight, floor) {
+      if (!insight) return false;
+      if (insight.insightType === "acceleration") return true;
+      return this._number(insight.acceleration, 0) > Math.max(floor, 0);
+    }
+
+    _confidenceShare(insight) {
+      if (!insight) return 0;
+      return Math.max(this._number(insight.driverShare, 0), this._number(insight.contributionPct, 0));
+    }
+
+    _confidenceLevel(insight) {
+      const share = this._confidenceShare(insight);
+      if (share > 50) return "high";
+      if (share > 25) return "medium";
+      return "low";
+    }
+
+    _materialityFloor(context, variance) {
+      const budget = Math.abs(this._number(variance && variance.ytd && variance.ytd.budget, context && context.totalBudgetYTDCompleto));
+      return Math.max(1000, budget * 0.002);
+    }
+
+    _dedupeEvents(events) {
+      const order = {
+        budget_pressure: 1,
+        saving_opportunity: 1,
+        acceleration: 2,
+        account_concentration: 3,
+        dispersion: 4,
+        low_confidence: 5
+      };
+      const seen = new Set();
+      return events
+        .filter(Boolean)
+        .filter(event => {
+          const key = `${event.type}|${event.subject}|${event.driverAccount}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => (order[a.type] || 9) - (order[b.type] || 9));
+    }
+
+    _number(value, fallback) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : (Number.isFinite(Number(fallback)) ? Number(fallback) : 0);
+    }
+
+    _formatMoney(value, signed) {
+      const numeric = this._number(value, 0);
+      const sign = numeric < 0 ? "-" : (signed && numeric > 0 ? "+" : "");
+      return `${sign}R$ ${Math.abs(numeric / 1000000).toFixed(2)}M`;
+    }
+
+    _formatPercent(value) {
+      return `${this._number(value, 0).toFixed(1)}%`;
     }
   }
 
@@ -1070,7 +1558,7 @@
         profiler.metrics.steps.aggregation = performance.now() - tStartAggregation;
       }
 
-      return { outlierTable: selectedInsights, waterfallTable: outlierTable, summary };
+      return { outlierTable: selectedInsights, waterfallTable: outlierTable, summary, varianceTable };
     }
 
     _getMemberLabel(row, dimId, fallback) {
@@ -1246,6 +1734,7 @@
       this._updateQueued = false;
       this._layoutUpdateQueued = false;
       this._analyticsEngine = new EvoNarrativeEngine();
+      this._eventBuilder = new EvoNarrativeEventBuilder();
       this._textGenerator = new EvoTextGenerator();
       this._profiler = new EvoStreamProfiler();
 
@@ -3382,6 +3871,7 @@
         totalBudgetYTDCompleto,
         analysis
       };
+      textContext.narrativeEvents = this._eventBuilder.buildNarrativeEvents(textContext, analysis, analysis.outlierTable, analysis.varianceTable);
 
       this._textGenerator.buildHighlightList(analysis.outlierTable, textContext).forEach(row => {
         const liItem = document.createElement("li");
