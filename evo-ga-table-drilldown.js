@@ -1,6 +1,29 @@
-// Evo GA Executive Oversight Engine v1.3.4 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.3.6 - governed budget oversight.
 (function () {
     const ENABLE_TELEMETRY = true;
+    const EVO_GA_MONTH_MAP = {
+        JAN: 1, JANEIRO: 1,
+        FEV: 2, FEVEREIRO: 2, FEB: 2,
+        MAR: 3, MARCO: 3, MARÇO: 3,
+        ABR: 4, ABRIL: 4, APR: 4,
+        MAI: 5, MAIO: 5, MAY: 5,
+        JUN: 6, JUNHO: 6,
+        JUL: 7, JULHO: 7,
+        AGO: 8, AGOSTO: 8, AUG: 8,
+        SET: 9, SETEMBRO: 9, SEP: 9,
+        OUT: 10, OUTUBRO: 10, OCT: 10,
+        NOV: 11, NOVEMBRO: 11,
+        DEZ: 12, DEZEMBRO: 12, DEC: 12
+    };
+    const EVO_GA_MONTH_TOKENS = Object.keys(EVO_GA_MONTH_MAP);
+    const EVO_GA_MONTH_PATTERNS = EVO_GA_MONTH_TOKENS
+        .slice()
+        .sort((a, b) => b.length - a.length)
+        .map(token => ({ token, pattern: new RegExp(`(^|[^A-Z])${token}([^A-Z]|$)`) }));
+    const findMonthToken = (normalizedText) => {
+        const match = EVO_GA_MONTH_PATTERNS.find(item => item.pattern.test(normalizedText));
+        return match ? match.token : null;
+    };
 
     class EvoGATableProfiler {
         constructor() {
@@ -133,6 +156,13 @@
         excludedTerms: ["IFRS 16", "OUTROS", "PBA", "RATEIO"]
     };
 
+    const EVO_GA_RECOMMENDATION_CONFIG = {
+        materialYtdPct: 5,
+        materialYtdAbs: 500000,
+        savingConcentrationTop1: 0.50,
+        savingConcentrationTop3: 0.80
+    };
+
     const EVO_GA_TREND_LABELS = {
         worsening: "deterioração",
         acceleration: "aceleração",
@@ -222,8 +252,6 @@
                 name,
                 level,
                 hierarchyLabel: EVO_GA_HIERARCHY[level] ? EVO_GA_HIERARCHY[level].label : "Nível",
-                hierarchyPath: path,
-                accountabilityPath: path.join(" > "),
                 valOrcado,
                 valRealizado,
                 desvio,
@@ -274,10 +302,7 @@
                 node.budgetWeight = budgetWeight;
                 node.organizationalWeight = organizationalWeight;
                 node.materialityScore = materialityScore;
-                node.materialityValue = Math.abs(varianceAbs);
                 node.executiveSeverity = EvoGAMaterialityEngine.classifyBudgetStatus(node.valOrcado, node.valRealizado, varianceAbs, variancePct);
-                node.varianceDirection = varianceAbs > 0 ? "negative" : (varianceAbs < 0 ? "positive" : "neutral");
-                node.varianceSeverity = node.executiveSeverity.toLowerCase();
                 node.isExecutiveNoise =
                     Math.abs(variancePct) < EVO_GA_MATERIALITY_CONFIG.noiseVariancePct &&
                     Math.abs(varianceAbs) < EVO_GA_MATERIALITY_CONFIG.noiseVarianceAbs &&
@@ -315,6 +340,7 @@
                 rows,
                 currentMonth,
                 previousMonth,
+                facts,
                 dimensionKeys,
                 getName,
                 getMeasureValueFromRow,
@@ -322,21 +348,31 @@
             } = config;
             const targetCoverage = Number.isFinite(paretoCoverage) ? paretoCoverage : EVO_GA_MOM_OFFENDER_CONFIG.paretoCoverage;
 
-            if (!rows || !currentMonth || !previousMonth) {
+            if ((!rows && !facts) || !currentMonth || !previousMonth) {
                 return { drivers: [], totalMoMDeviation: 0, coverage: 0, excludedRows: 0, currentMonth, previousMonth };
             }
 
+            const sourceFacts = Array.isArray(facts) ? facts : (rows || []).map(row => ({
+                month: getName(row[dimensionKeys.month]),
+                calcNode: getName(row[dimensionKeys.calc]),
+                ccNivel1: getName(row[dimensionKeys.cc1]),
+                ccNivel2: getName(row[dimensionKeys.cc2]),
+                ccNivel3: getName(row[dimensionKeys.cc3]),
+                conta: getName(row[dimensionKeys.conta]),
+                col: getName(row[dimensionKeys.version]),
+                value: getMeasureValueFromRow(row)
+            }));
             const departmentMap = {};
             let excludedRows = 0;
-            rows.forEach(row => {
-                const rowMonth = getName(row[dimensionKeys.month]);
+            sourceFacts.forEach(fact => {
+                const rowMonth = fact.month;
                 if (rowMonth !== currentMonth && rowMonth !== previousMonth) return;
 
-                const calcNode = getName(row[dimensionKeys.calc]);
-                const ccNivel1 = getName(row[dimensionKeys.cc1]);
-                const ccNivel2 = getName(row[dimensionKeys.cc2]);
-                const ccNivel3 = getName(row[dimensionKeys.cc3]);
-                const conta = getName(row[dimensionKeys.conta]);
+                const calcNode = fact.calcNode;
+                const ccNivel1 = fact.ccNivel1;
+                const ccNivel2 = fact.ccNivel2;
+                const ccNivel3 = fact.ccNivel3;
+                const conta = fact.conta;
                 if (EvoGAMoMEngine._hasExcludedTerm([calcNode, ccNivel1, ccNivel2, ccNivel3, conta])) {
                     excludedRows++;
                     return;
@@ -348,15 +384,13 @@
                         key,
                         name: ccNivel3,
                         hierarchyLabel: "Departamento",
-                        hierarchyPath: [calcNode, ccNivel1, ccNivel2, ccNivel3],
-                        accountabilityPath: [calcNode, ccNivel1, ccNivel2, ccNivel3].join(" > "),
                         current: EvoGAMoMEngine._emptyPeriod(),
                         previous: EvoGAMoMEngine._emptyPeriod()
                     };
                 }
 
                 const target = rowMonth === currentMonth ? departmentMap[key].current : departmentMap[key].previous;
-                EvoGAMoMEngine._addVersionValue(target, getName(row[dimensionKeys.version]), getMeasureValueFromRow(row));
+                EvoGAMoMEngine._addVersionValue(target, fact.col, fact.value);
             });
 
             const allDrivers = Object.values(departmentMap).map(item => {
@@ -371,7 +405,6 @@
                     desvio: currentDesvio,
                     previousDesvio,
                     momVariance,
-                    materialityValue: Math.abs(momVariance),
                     percentConsumption,
                     variancePct: item.current.budget > 0 ? (currentDesvio / item.current.budget) * 100 : 0,
                     trendDirection: momVariance > 0 ? "worsening" : (momVariance < 0 ? "improving" : "stable"),
@@ -409,7 +442,34 @@
     }
 
     class EvoGANarrativeEngine {
-        static build(drivers, totalDesvio, totalPct) {
+        static buildRecommendation(context) {
+            const topDriver = context.drivers[0];
+            const topDepartment = topDriver ? topDriver.name : "departamento principal";
+            const savingProfile = context.savingProfile || {};
+            const topSaving = savingProfile.topDepartment || "departamento principal";
+
+            if (context.hasUnbudgetedDeviation) {
+                return "Tratar como exceção orçamentária: validar classificação do lançamento sem orçamento, confirmar responsável e regularizar no forecast antes de novas liberações.";
+            }
+            if (context.hasAccelerationDeviation) {
+                return `Priorizar contenção no Departamento ${topDepartment}, pois há aceleração recente do desvio. Revisar compromissos recorrentes, travar novas solicitações discricionárias e atualizar o forecast com plano de mitigação.`;
+            }
+            if (context.hasRecurringDeviation) {
+                return `Conduzir revisão recorrente no Departamento ${topDepartment}, separando efeito estrutural de efeito pontual e pactuando ação corretiva com acompanhamento no próximo ciclo mensal.`;
+            }
+            if (context.hasMaterialYtdDeviation) {
+                return "Escalar o desvio YTD para revisão executiva, reavaliar premissas do orçamento anual e formalizar plano de recuperação ou reforecast para o saldo do exercício.";
+            }
+            if (context.hasConcentratedSaving) {
+                return `Preservar o saving concentrado no Departamento ${topSaving}, validando se a economia é sustentável ou apenas postergação de despesa antes de incorporar ganho ao forecast.`;
+            }
+            if (context.hasDiffuseSaving) {
+                return "Monitorar o saving difuso sem converter automaticamente em folga orçamentária; validar se a economia decorre de disciplina operacional ou postergação distribuída de despesas.";
+            }
+            return "Manter acompanhamento ordinário no ciclo de forecast e preservar disciplina de aprovação, sem necessidade de ação executiva adicional no período.";
+        }
+
+        static build(drivers, totalDesvio, totalPct, context = {}) {
             const driverNames = drivers.slice(0, 3).map(item => item.name);
             const driverText = driverNames.length ? driverNames.join("; ") : "sem concentração material";
             const topDriver = drivers[0];
@@ -418,9 +478,7 @@
                 ? `${topTrend} por ${topDriver.recurrenceMonths} período(s) recente(s)`
                 : topTrend;
             const directionText = totalDesvio > 0 ? "pressão administrativa acima do orçamento" : "aderência orçamentária no período";
-            const recommendation = totalDesvio > 0 && drivers.length
-                ? "Priorizar revisão executiva das estruturas oficiais com maior desvio, validar recorrência no ciclo de forecast e pactuar plano de contenção com os responsáveis."
-                : "Manter acompanhamento no ciclo de forecast e preservar disciplina de aprovação para despesas recorrentes.";
+            const recommendation = EvoGANarrativeEngine.buildRecommendation({ drivers, totalDesvio, totalPct, ...context });
             return {
                 headline: totalDesvio > 0 ? "DISCIPLINA ORÇAMENTÁRIA G&A: PRESSÃO ACIMA DO PLANEJADO" : "DISCIPLINA ORÇAMENTÁRIA G&A: ADERÊNCIA AO PLANEJADO",
                 keyDrivers: `Principais ofensores oficiais: ${driverText}.`,
@@ -784,14 +842,15 @@
             .view-panel.active { display: block; }
             .executive-kpi-grid {
                 display: grid;
-                grid-template-columns: 1.35fr repeat(3, minmax(170px, 1fr));
-                gap: 8px;
-                margin-bottom: 10px;
+                grid-template-columns: minmax(0, 1.25fr) repeat(4, minmax(0, 1fr));
+                gap: 6px;
+                margin-bottom: 8px;
+                align-items: stretch;
             }
             .executive-kpi {
                 border: 1px solid #E2E8F0;
-                border-radius: 6px;
-                padding: 10px 11px;
+                border-radius: 5px;
+                padding: 7px 8px;
                 background: #FFFFFF;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 min-width: 0;
@@ -802,7 +861,7 @@
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                min-height: 104px;
+                min-height: 76px;
             }
             .executive-kpi.alert { border-left: 4px solid #B91C1C; }
             .executive-kpi.saving { border-left: 4px solid #166534; }
@@ -810,11 +869,11 @@
             .kpi-detail-row {
                 display: flex;
                 justify-content: space-between;
-                gap: 8px;
-                margin-top: 6px;
-                padding-top: 6px;
+                gap: 6px;
+                margin-top: 4px;
+                padding-top: 4px;
                 border-top: 1px solid #E2E8F0;
-                font-size: 11px;
+                font-size: 10.5px;
                 color: #475569;
                 font-weight: 600;
             }
@@ -830,23 +889,29 @@
                 color: #4a5568;
                 text-transform: uppercase;
                 letter-spacing: 0;
-                margin-bottom: 4px;
+                margin-bottom: 3px;
             }
             .kpi-value {
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: 700;
                 color: #1e293b;
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                line-height: 1.2;
             }
             .executive-kpi.primary .kpi-value {
-                font-size: 20px;
+                font-size: 17px;
             }
             .kpi-sub {
                 margin-top: 2px;
-                font-size: 11px;
+                font-size: 10.5px;
                 color: #475569;
                 font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .executive-section {
                 border: 1px solid #E2E8F0;
@@ -867,18 +932,21 @@
             .driver-list { display: grid; gap: 8px; }
             .pareto-control {
                 display: grid;
-                gap: 7px;
-                padding: 9px 10px;
+                grid-template-columns: minmax(170px, 1fr) minmax(220px, 260px);
+                align-items: center;
+                gap: 10px;
+                width: min(540px, 100%);
+                padding: 7px 9px;
                 margin-bottom: 9px;
                 border: 1px solid #e2e8f0;
-                border-radius: 6px;
+                border-radius: 5px;
                 background: #f8fafc;
             }
             .pareto-control-header {
                 display: flex;
-                align-items: flex-start;
+                align-items: center;
                 justify-content: space-between;
-                gap: 12px;
+                gap: 8px;
                 font-size: 11px;
                 color: #4a5568;
                 line-height: 1.35;
@@ -898,11 +966,20 @@
                 letter-spacing: 0;
             }
             .pareto-control-value {
-                min-width: 48px;
-                text-align: right;
+                min-width: 42px;
+                text-align: center;
                 color: #1e293b;
                 font-weight: 700;
                 font-variant-numeric: tabular-nums;
+                background: #ffffff;
+                border: 1px solid #dbe3ec;
+                border-radius: 4px;
+                padding: 2px 5px;
+            }
+            .pareto-slider-wrap {
+                display: grid;
+                gap: 2px;
+                min-width: 0;
             }
             .pareto-slider {
                 width: 100%;
@@ -955,12 +1032,14 @@
                 .diagnostic-grid { grid-template-columns: 1fr; }
                 .driver-row { grid-template-columns: 1fr; }
                 .driver-metric { text-align: left; }
+                .pareto-control { width: 100%; }
             }
             @media (max-width: 760px) {
                 .executive-grid { grid-template-columns: 1fr; }
                 .executive-headline { flex-direction: column; gap: 2px; }
                 .executive-kpi-grid { grid-template-columns: 1fr; }
                 .executive-kpi.primary { grid-column: auto; }
+                .pareto-control { grid-template-columns: 1fr; }
             }
 
             table { 
@@ -1172,7 +1251,6 @@
             super();
             this._shadowRoot = this.attachShadow({ mode: "open" });
             this._shadowRoot.appendChild(template.content.cloneNode(true));
-            this._props = {};
             this._sortState = { col: null, dir: 'asc' };
             this._expandedRows = new Set();
             this._currentData = null;
@@ -1181,6 +1259,8 @@
             this._activeView = "executive";
             this._paretoCoverage = EVO_GA_MOM_OFFENDER_CONFIG.paretoCoverage;
             this._isDropdownOpen = false;
+            this._normalizeCache = new Map();
+            this._periodPartsCache = new Map();
             this._profiler = new EvoGATableProfiler();
             this._boundWindowClick = (event) => {
                 const path = event.composedPath ? event.composedPath() : [];
@@ -1228,9 +1308,7 @@
             if (typeof window !== "undefined") window.removeEventListener("click", this._boundWindowClick);
         }
 
-        onCustomWidgetBeforeUpdate(changedProperties) {
-            this._props = { ...this._props, ...changedProperties };
-        }
+        onCustomWidgetBeforeUpdate() {}
 
         onCustomWidgetAfterUpdate(changedProperties) {
             if ("financialData" in changedProperties && this.financialData) {
@@ -1245,8 +1323,19 @@
         }
 
         _setActiveView(viewName) {
+            if (this._activeView === viewName) return;
             this._activeView = viewName;
-            this.renderTable();
+            const hasRenderedPanels = this._shadowRoot.getElementById("executiveView");
+            if (!hasRenderedPanels) {
+                this.renderTable();
+                return;
+            }
+            this._shadowRoot.querySelectorAll("[data-view]").forEach(tab => {
+                tab.classList.toggle("active", tab.getAttribute("data-view") === viewName);
+            });
+            this._shadowRoot.querySelectorAll(".view-panel").forEach(panel => {
+                panel.classList.toggle("active", panel.id === `${viewName}View`);
+            });
         }
 
         _toggleDropdownDOM() {
@@ -1255,31 +1344,25 @@
         }
 
         _normalizeText(value) {
-            return String(value || "")
+            const cacheKey = String(value || "");
+            const cached = this._normalizeCache.get(cacheKey);
+            if (cached !== undefined) return cached;
+            const normalized = cacheKey
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "")
                 .toUpperCase()
                 .trim();
+            if (this._normalizeCache.size > 2000) this._normalizeCache.clear();
+            this._normalizeCache.set(cacheKey, normalized);
+            return normalized;
         }
 
         _getPeriodParts(value) {
             const text = String(value || "").trim();
+            const cached = this._periodPartsCache.get(text);
+            if (cached) return cached;
             const normalized = this._normalizeText(text);
             const compact = normalized.replace(/[^A-Z0-9]/g, "");
-            const monthMap = {
-                JAN: 1, JANEIRO: 1,
-                FEV: 2, FEVEREIRO: 2, FEB: 2,
-                MAR: 3, MARCO: 3, MARÇO: 3,
-                ABR: 4, ABRIL: 4, APR: 4,
-                MAI: 5, MAIO: 5, MAY: 5,
-                JUN: 6, JUNHO: 6,
-                JUL: 7, JULHO: 7,
-                AGO: 8, AGOSTO: 8, AUG: 8,
-                SET: 9, SETEMBRO: 9, SEP: 9,
-                OUT: 10, OUTUBRO: 10, OCT: 10,
-                NOV: 11, NOVEMBRO: 11,
-                DEZ: 12, DEZEMBRO: 12, DEC: 12
-            };
             let year = null;
             let month = null;
 
@@ -1308,11 +1391,14 @@
             }
 
             if (!month) {
-                const token = Object.keys(monthMap).find(key => normalized === key || normalized.startsWith(`${key} `) || normalized.includes(` ${key} `));
-                if (token) month = monthMap[token];
+                const token = findMonthToken(normalized);
+                if (token) month = EVO_GA_MONTH_MAP[token];
             }
 
-            return { year: year || "Sem ano", month: month || 99, raw: text };
+            const result = { year: year || "Sem ano", month: month || 99, raw: text };
+            if (this._periodPartsCache.size > 1000) this._periodPartsCache.clear();
+            this._periodPartsCache.set(text, result);
+            return result;
         }
 
         _getPeriodYear(value) {
@@ -1498,10 +1584,7 @@
                 }
 
                 const getName = (obj) => obj ? (obj.label || obj.description || obj.id || "N/D") : "N/D";
-                const normalizeText = (value) => String(value || "")
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "")
-                    .toUpperCase();
+                const normalizeText = (value) => this._normalizeText(value);
                 const isVersionMember = (value) => {
                     const normalized = normalizeText(value);
                     return normalized.includes("ORCADO") || normalized.includes("REALIZADO");
@@ -1519,8 +1602,7 @@
                     const normalized = normalizeText(value).trim();
                     const compact = normalized.replace(/[^A-Z0-9]/g, "");
                     if (!normalized || normalized === "N/D") return false;
-                    const monthTokens = ["JAN", "JANEIRO", "FEV", "FEVEREIRO", "FEB", "MAR", "MARCO", "MARÇO", "ABR", "ABRIL", "APR", "MAI", "MAIO", "MAY", "JUN", "JUNHO", "JUL", "JULHO", "AGO", "AGOSTO", "AUG", "SET", "SETEMBRO", "SEP", "OUT", "OUTUBRO", "OCT", "NOV", "NOVEMBRO", "DEZ", "DEZEMBRO", "DEC"];
-                    if (monthTokens.some(token => normalized === token || normalized.startsWith(`${token} `) || normalized.includes(` ${token} `))) return true;
+                    if (findMonthToken(normalized)) return true;
                     if (/^(19|20)\d{2}(0[1-9]|1[0-2])$/.test(compact)) return true;
                     if (/^(0[1-9]|1[0-2])(19|20)\d{2}$/.test(compact)) return true;
                     if (/^(0?[1-9]|1[0-2])$/.test(compact)) return true;
@@ -1558,9 +1640,7 @@
                     this._hasManualMonthSelection = false;
                 }
 
-                const rowsForRender = monthDimKey && this._selectedMonth !== "__all__"
-                    ? financialData.data.filter(row => getName(row[monthDimKey]) === this._selectedMonth)
-                    : financialData.data;
+                const selectedMonthHasFilter = monthDimKey && this._selectedMonth !== "__all__";
 
                 const hierarchyDimKeys = [calcDimKey, ccNivel1DimKey, ccNivel2DimKey, ccNivel3DimKey, contaDimKey].filter(Boolean);
                 if (hierarchyDimKeys.length < EVO_GA_HIERARCHY.length) {
@@ -1644,58 +1724,64 @@
                     }
                     return parseNumber(value);
                 };
-                const selectedMonthIndex = this._selectedMonth === "__all__" ? -1 : monthOptions.indexOf(this._selectedMonth);
+                const monthIndexMap = new Map(monthOptions.map((month, index) => [month, index]));
+                const sourceFacts = financialData.data.map(row => {
+                    const col = getName(row[colDimKey]);
+                    return {
+                        calcNode: getName(row[calcDimKey]),
+                        ccNivel1: getName(row[ccNivel1DimKey]),
+                        ccNivel2: getName(row[ccNivel2DimKey]),
+                        ccNivel3: getName(row[ccNivel3DimKey]),
+                        conta: getName(row[contaDimKey]),
+                        col,
+                        normalizedCol: normalizeText(col),
+                        month: monthDimKey ? getName(row[monthDimKey]) : null,
+                        value: getMeasureValueFromRow(row)
+                    };
+                });
+                const rowsForRender = selectedMonthHasFilter
+                    ? sourceFacts.filter(fact => fact.month === this._selectedMonth)
+                    : sourceFacts;
+                const selectedMonthIndex = this._selectedMonth === "__all__" ? -1 : (monthIndexMap.has(this._selectedMonth) ? monthIndexMap.get(this._selectedMonth) : -1);
                 const selectedPeriod = this._getPeriodParts(this._selectedMonth);
                 const selectedHasCalendarPeriod = selectedPeriod.year !== "Sem ano" && selectedPeriod.month >= 1 && selectedPeriod.month <= 12;
                 const ytdRows = monthDimKey && selectedMonthIndex >= 0
-                    ? financialData.data.filter(row => {
-                        const rowMonth = getName(row[monthDimKey]);
+                    ? sourceFacts.filter(fact => {
+                        const rowMonth = fact.month;
                         if (selectedHasCalendarPeriod) {
                             const rowPeriod = this._getPeriodParts(rowMonth);
                             return rowPeriod.year === selectedPeriod.year && rowPeriod.month >= 1 && rowPeriod.month <= selectedPeriod.month;
                         }
-                        const rowMonthIndex = monthOptions.indexOf(rowMonth);
+                        const rowMonthIndex = monthIndexMap.get(rowMonth);
                         return rowMonthIndex >= 0 && rowMonthIndex <= selectedMonthIndex;
                     })
                     : rowsForRender;
                 const sumRowsByVersion = (rows) => rows.reduce((acc, row) => {
-                    const col = getName(row[colDimKey]);
-                    const numVal = getMeasureValueFromRow(row);
-                    if (normalizeText(col).includes("ORCADO")) acc.budget += numVal;
-                    else if (normalizeText(col).includes("REALIZADO")) acc.actual += numVal;
+                    if (row.normalizedCol.includes("ORCADO")) acc.budget += row.value;
+                    else if (row.normalizedCol.includes("REALIZADO")) acc.actual += row.value;
                     return acc;
                 }, { budget: 0, actual: 0 });
                 const ytdTotals = sumRowsByVersion(ytdRows);
 
-                rowsForRender.forEach(row => {
-                    const calcNode = getName(row[calcDimKey]);
-                    const ccNivel1 = getName(row[ccNivel1DimKey]);
-                    const ccNivel2 = getName(row[ccNivel2DimKey]);
-                    const ccNivel3 = getName(row[ccNivel3DimKey]);
-                    const conta = getName(row[contaDimKey]);
-                    const col = getName(row[colDimKey]);
+                rowsForRender.forEach(fact => {
+                    const calcNode = fact.calcNode;
+                    const ccNivel1 = fact.ccNivel1;
+                    const ccNivel2 = fact.ccNivel2;
+                    const ccNivel3 = fact.ccNivel3;
+                    const conta = fact.conta;
+                    const col = fact.col;
                     uniqueColsSet.add(col);
-                    
-                    const numVal = getMeasureValueFromRow(row);
 
-                    EvoGAAggregationEngine.addRow(dataMap, { calcNode, ccNivel1, ccNivel2, ccNivel3, conta }, col, numVal);
+                    EvoGAAggregationEngine.addRow(dataMap, { calcNode, ccNivel1, ccNivel2, ccNivel3, conta }, col, fact.value);
                 });
 
                 if (monthDimKey) {
-                    financialData.data.forEach(row => {
-                        const calcNode = getName(row[calcDimKey]);
-                        const ccNivel1 = getName(row[ccNivel1DimKey]);
-                        const ccNivel2 = getName(row[ccNivel2DimKey]);
-                        const ccNivel3 = getName(row[ccNivel3DimKey]);
-                        const conta = getName(row[contaDimKey]);
-                        const col = getName(row[colDimKey]);
-                        const month = getName(row[monthDimKey]);
-                        const numVal = getMeasureValueFromRow(row);
-                        addMonthlyValue(`calc:${calcNode}`, month, col, numVal);
-                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}`, month, col, numVal);
-                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}`, month, col, numVal);
-                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`, month, col, numVal);
-                        addMonthlyValue(`calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}|conta:${conta}`, month, col, numVal);
+                    sourceFacts.forEach(fact => {
+                        addMonthlyValue(`calc:${fact.calcNode}`, fact.month, fact.col, fact.value);
+                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}`, fact.month, fact.col, fact.value);
+                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`, fact.month, fact.col, fact.value);
+                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}`, fact.month, fact.col, fact.value);
+                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}|conta:${fact.conta}`, fact.month, fact.col, fact.value);
                     });
                 }
 
@@ -1766,10 +1852,11 @@
                     )
                 );
                 const selectedMoMMonth = this._selectedMonth === "__all__" ? monthOptions[monthOptions.length - 1] : this._selectedMonth;
-                const selectedMoMMonthIndex = monthOptions.indexOf(selectedMoMMonth);
+                const selectedMoMMonthIndex = monthIndexMap.has(selectedMoMMonth) ? monthIndexMap.get(selectedMoMMonth) : -1;
                 const previousMoMMonth = selectedMoMMonthIndex > 0 ? monthOptions[selectedMoMMonthIndex - 1] : null;
                 const momOffenderAnalysis = monthDimKey ? EvoGAMoMEngine.buildDepartmentDrivers({
                     rows: financialData.data,
+                    facts: sourceFacts,
                     currentMonth: selectedMoMMonth,
                     previousMonth: previousMoMMonth,
                     dimensionKeys: {
@@ -1812,15 +1899,43 @@
                     ofensoresText = " Não foram identificados departamentos operando acima do orçamento.";
                 }
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
-                const executiveNarrative = EvoGANarrativeEngine.build(executiveDrivers, totalGlobalDesvio, totalVariancePct);
-                const oversightClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
                 const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
+                const savingDepartments = departamentos
+                    .filter(item => item.desvio < 0)
+                    .sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio));
+                const totalSavingAbs = savingDepartments.reduce((sum, item) => sum + Math.abs(item.desvio), 0);
+                const topSavingAbs = savingDepartments[0] ? Math.abs(savingDepartments[0].desvio) : 0;
+                const top3SavingAbs = savingDepartments.slice(0, 3).reduce((sum, item) => sum + Math.abs(item.desvio), 0);
+                const savingProfile = {
+                    totalSavingAbs,
+                    topDepartment: savingDepartments[0] ? savingDepartments[0].name : null,
+                    topShare: totalSavingAbs > 0 ? topSavingAbs / totalSavingAbs : 0,
+                    top3Share: totalSavingAbs > 0 ? top3SavingAbs / totalSavingAbs : 0
+                };
+                savingProfile.isConcentrated =
+                    savingProfile.topShare >= EVO_GA_RECOMMENDATION_CONFIG.savingConcentrationTop1 ||
+                    savingProfile.top3Share >= EVO_GA_RECOMMENDATION_CONFIG.savingConcentrationTop3;
+                const recommendationContext = {
+                    hasUnbudgetedDeviation: (totalGlobalOrcado === 0 && totalGlobalRealizado > 0) ||
+                        departamentos.some(item => item.valOrcado === 0 && item.valRealizado > 0 && !item.isExecutiveNoise),
+                    hasAccelerationDeviation: executiveDrivers.some(item => item.trendDirection === "acceleration"),
+                    hasRecurringDeviation: executiveDrivers.some(item => item.recurrenceMonths >= 3 || item.recurrenceType === "recurring" || item.recurrenceType === "persistent"),
+                    hasMaterialYtdDeviation: ytdDesvio > 0 && (
+                        ytdDesvio >= EVO_GA_RECOMMENDATION_CONFIG.materialYtdAbs ||
+                        Math.abs(ytdVariancePct) >= EVO_GA_RECOMMENDATION_CONFIG.materialYtdPct
+                    ),
+                    hasConcentratedSaving: totalGlobalDesvio < 0 && totalSavingAbs > 0 && savingProfile.isConcentrated,
+                    hasDiffuseSaving: totalGlobalDesvio < 0 && totalSavingAbs > 0 && !savingProfile.isConcentrated,
+                    savingProfile
+                };
+                const executiveNarrative = EvoGANarrativeEngine.build(executiveDrivers, totalGlobalDesvio, totalVariancePct, recommendationContext);
+                const oversightClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const kpiConsumptionText = totalGlobalOrcado > 0 ? `${((totalGlobalRealizado / totalGlobalOrcado) * 100).toFixed(1)}%` : "-";
                 const currentPeriodTotal = totalGlobalRealizado;
                 const currentPeriodBudget = totalGlobalOrcado;
                 const previousMonthTotals = previousMoMMonth && monthDimKey
-                    ? sumRowsByVersion(financialData.data.filter(row => getName(row[monthDimKey]) === previousMoMMonth))
+                    ? sumRowsByVersion(sourceFacts.filter(fact => fact.month === previousMoMMonth))
                     : { budget: 0, actual: 0 };
                 const realizedMoMAbs = currentPeriodTotal - previousMonthTotals.actual;
                 const realizedMoMPct = previousMonthTotals.actual !== 0 ? (realizedMoMAbs / Math.abs(previousMonthTotals.actual)) * 100 : null;
@@ -2125,16 +2240,18 @@
                                 </div>
                                 <output class="pareto-control-value" for="paretoCoverageSlider">${escapeHtml(momTargetCoverageText)}</output>
                             </div>
-                            <input class="pareto-slider" id="paretoCoverageSlider" type="range" min="50" max="100" step="5" value="${Math.round(this._paretoCoverage * 100)}" list="paretoCoverageTicks" aria-label="Cobertura Pareto dos ofensores MoM">
-                            <datalist id="paretoCoverageTicks">
-                                <option value="50"></option>
-                                <option value="60"></option>
-                                <option value="70"></option>
-                                <option value="80"></option>
-                                <option value="90"></option>
-                                <option value="100"></option>
-                            </datalist>
-                            <div class="pareto-scale"><span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span></div>
+                            <div class="pareto-slider-wrap">
+                                <input class="pareto-slider" id="paretoCoverageSlider" type="range" min="50" max="100" step="5" value="${Math.round(this._paretoCoverage * 100)}" list="paretoCoverageTicks" aria-label="Cobertura Pareto dos ofensores MoM">
+                                <datalist id="paretoCoverageTicks">
+                                    <option value="50"></option>
+                                    <option value="60"></option>
+                                    <option value="70"></option>
+                                    <option value="80"></option>
+                                    <option value="90"></option>
+                                    <option value="100"></option>
+                                </datalist>
+                                <div class="pareto-scale"><span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span></div>
+                            </div>
                         </div>
                         <div class="driver-list">${driversListHtml}</div>
                     </div>
@@ -2167,27 +2284,29 @@
                     });
                 }
 
-                container.querySelectorAll('th.sortable').forEach(th => {
-                    th.addEventListener('click', () => {
-                        const col = th.getAttribute('data-sort');
+                container.onclick = (event) => {
+                    const eventTarget = event.target && event.target.nodeType === 1 ? event.target : (event.target ? event.target.parentElement : null);
+                    const sortHeader = eventTarget && eventTarget.closest ? eventTarget.closest("th.sortable") : null;
+                    if (sortHeader && container.contains(sortHeader)) {
+                        const col = sortHeader.getAttribute('data-sort');
                         if (this._sortState.col === col) {
                             this._sortState.dir = this._sortState.dir === 'asc' ? 'desc' : 'asc';
                         } else {
                             this._sortState.col = col;
                             this._sortState.dir = 'asc';
                         }
-                        this.renderTable(); 
-                    });
-                });
+                        this.renderTable();
+                        return;
+                    }
 
-                container.querySelectorAll('tr[data-node-key]').forEach(tr => {
-                    tr.addEventListener('click', (e) => {
-                        const nodeKey = e.currentTarget.getAttribute('data-node-key');
+                    const nodeRow = eventTarget && eventTarget.closest ? eventTarget.closest('tr[data-node-key]') : null;
+                    if (nodeRow && container.contains(nodeRow)) {
+                        const nodeKey = nodeRow.getAttribute('data-node-key');
                         if (this._expandedRows.has(nodeKey)) this._expandedRows.delete(nodeKey);
                         else this._expandedRows.add(nodeKey);
-                        this.renderTable(); 
-                    });
-                });
+                        this.renderTable();
+                    }
+                };
 
                 this._profiler.metrics.steps.domCreation = this._profiler._now() - tDOMStart;
                 this._updateTelemetry(tArrivalData, tDOMStart, this._profiler._now(), financialData.data.length, rowsForRender.length);
