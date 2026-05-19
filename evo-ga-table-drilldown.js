@@ -86,6 +86,11 @@
             tr.row-cc { cursor: pointer; transition: background-color 0.15s; }
             tr.row-cc:hover { background-color: #F8F9FA; }
             tr.row-cc td:first-child { font-weight: 600; color: #222222; }
+            tr.row-centro-custo td { background-color: #FCFCFC; }
+            tr.row-centro-custo td:first-child {
+                padding-left: 26px;
+                color: #333333;
+            }
             .expand-icon { 
                 display: inline-block; 
                 width: 14px; 
@@ -118,7 +123,7 @@
             }
 
             tr.row-conta td:first-child { 
-                padding-left: 38px;
+                padding-left: 54px;
                 font-weight: 400; 
                 color: #555555; 
                 position: relative;
@@ -127,7 +132,7 @@
             tr.row-conta td:first-child::before { 
                 content: '↳'; 
                 position: absolute; 
-                left: 20px; 
+                left: 36px; 
                 top: 50%;
                 transform: translateY(-50%);
                 color: #CCCCCC;
@@ -197,7 +202,7 @@
             this._shadowRoot.appendChild(template.content.cloneNode(true));
             this._props = {};
             this._sortState = { col: null, dir: 'asc' };
-            this._expandedRow = null; 
+            this._expandedRows = new Set();
             this._currentData = null; 
         }
 
@@ -232,21 +237,36 @@
                 const dimKeys = Object.keys(dimensions);
                 const measureKeys = Object.keys(measures);
 
-                if (dimKeys.length < 3 || measureKeys.length < 1) {
-                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 3 dimensões (Ex: 1. Centro de Custo, 2. Conta Contábil, 3. Orçado/Realizado) e 1 medida.</div>";
+                if (dimKeys.length < 4 || measureKeys.length < 1) {
+                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 4 dimensões (1. Dimensão Calculada, 2. Centro de Custo, 3. Conta Contábil, 4. Orçado/Realizado) e 1 medida.</div>";
                     return;
                 }
 
-                const ccDimKey = dimKeys[0];    
-                const contaDimKey = dimKeys[1]; 
-                const colDimKey = dimKeys[2];   
+                const calcDimKey = dimKeys[0];
+                const ccDimKey = dimKeys[1];
+                const contaDimKey = dimKeys[2];
+                const colDimKey = dimKeys[3];
                 const measureKey = measureKeys[0];
 
                 const getName = (obj) => obj ? (obj.label || obj.description || obj.id || "N/D") : "N/D";
+                const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[char]));
                 const parseNumber = (val) => {
                     if (typeof val === 'number') return val;
                     if (!val || val === "-") return 0;
-                    const cleanStr = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.'); 
+                    let cleanStr = String(val).replace(/[^0-9.,-]/g, '');
+                    const lastComma = cleanStr.lastIndexOf(',');
+                    const lastDot = cleanStr.lastIndexOf('.');
+                    if (lastComma > lastDot) {
+                        cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
+                    } else {
+                        cleanStr = cleanStr.replace(/,/g, '');
+                    }
                     return parseFloat(cleanStr) || 0;
                 };
 
@@ -268,12 +288,13 @@
                 
                 const formatPercentage = (val) => val === 0 ? "-" : (val === Infinity ? "∞" : val.toFixed(1) + "%");
 
-                const headerName = getName(dimensions[ccDimKey]);
+                const headerName = getName(dimensions[calcDimKey]);
 
                 const dataMap = {};
                 const uniqueColsSet = new Set();
 
                 financialData.data.forEach(row => {
+                    const calcNode = getName(row[calcDimKey]);
                     const cc = getName(row[ccDimKey]);
                     const conta = getName(row[contaDimKey]);
                     const col = getName(row[colDimKey]);
@@ -281,12 +302,12 @@
                     
                     let value = "-";
                     if (row[measureKey] && (row[measureKey].formattedValue !== undefined || row[measureKey].raw !== undefined)) {
-                        value = row[measureKey].formattedValue || row[measureKey].raw;
+                        value = row[measureKey].raw !== undefined ? row[measureKey].raw : row[measureKey].formattedValue;
                     } else {
                         for (const key in row) {
                             const cell = row[key];
                             if (cell && typeof cell === "object" && ("formattedValue" in cell || "raw" in cell)) {
-                                value = cell.formattedValue || cell.raw;
+                                value = cell.raw !== undefined ? cell.raw : cell.formattedValue;
                                 break;
                             }
                         }
@@ -294,15 +315,19 @@
 
                     const numVal = parseNumber(value);
 
-                    if (!dataMap[cc]) {
-                        dataMap[cc] = { totals: {}, contas: {} };
+                    if (!dataMap[calcNode]) {
+                        dataMap[calcNode] = { totals: {}, centros: {} };
                     }
-                    if (!dataMap[cc].contas[conta]) {
-                        dataMap[cc].contas[conta] = {};
+                    if (!dataMap[calcNode].centros[cc]) {
+                        dataMap[calcNode].centros[cc] = { totals: {}, contas: {} };
+                    }
+                    if (!dataMap[calcNode].centros[cc].contas[conta]) {
+                        dataMap[calcNode].centros[cc].contas[conta] = {};
                     }
 
-                    dataMap[cc].contas[conta][col] = numVal;
-                    dataMap[cc].totals[col] = (dataMap[cc].totals[col] || 0) + numVal; 
+                    dataMap[calcNode].centros[cc].contas[conta][col] = numVal;
+                    dataMap[calcNode].centros[cc].totals[col] = (dataMap[calcNode].centros[cc].totals[col] || 0) + numVal;
+                    dataMap[calcNode].totals[col] = (dataMap[calcNode].totals[col] || 0) + numVal;
                 });
 
                 const uniqueCols = Array.from(uniqueColsSet);
@@ -324,11 +349,22 @@
                     return { name, valOrcado, valRealizado, desvio, percentConsumption, numValues };
                 };
 
-                let tableData = Object.keys(dataMap).map(cc => {
-                    let ccNode = buildRowMetrics(cc, dataMap[cc].totals);
-                    ccNode.children = Object.keys(dataMap[cc].contas).map(conta => buildRowMetrics(conta, dataMap[cc].contas[conta]));
-                    ccNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
-                    return ccNode;
+                let tableData = Object.keys(dataMap).map(calcNodeName => {
+                    let calcNode = buildRowMetrics(calcNodeName, dataMap[calcNodeName].totals);
+                    calcNode.key = `calc:${calcNodeName}`;
+                    calcNode.children = Object.keys(dataMap[calcNodeName].centros).map(cc => {
+                        let ccNode = buildRowMetrics(cc, dataMap[calcNodeName].centros[cc].totals);
+                        ccNode.key = `calc:${calcNodeName}|cc:${cc}`;
+                        ccNode.children = Object.keys(dataMap[calcNodeName].centros[cc].contas).map(conta => {
+                            let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].centros[cc].contas[conta]);
+                            contaNode.key = `calc:${calcNodeName}|cc:${cc}|conta:${conta}`;
+                            return contaNode;
+                        });
+                        ccNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                        return ccNode;
+                    });
+                    calcNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                    return calcNode;
                 });
 
                 let totalGlobalOrcado = 0;
@@ -343,7 +379,8 @@
                 const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
 
-                const ofensores = [...tableData]
+                const centrosDeCusto = tableData.flatMap(item => item.children);
+                const ofensores = [...centrosDeCusto]
                     .filter(item => item.desvio > 0)
                     .sort((a, b) => b.desvio - a.desvio)
                     .slice(0, 3);
@@ -352,7 +389,7 @@
 
                 let ofensoresText = "";
                 if (ofensores.length > 0) {
-                    const names = ofensores.map(o => o.name);
+                    const names = ofensores.map(o => escapeHtml(o.name));
                     if (names.length === 1) ofensoresText = ` O principal ofensor que exige atenção é o centro de custo <strong>${names[0]}</strong>.`;
                     else if (names.length === 2) ofensoresText = ` Os principais ofensores que exigem atenção são <strong>${names[0]}</strong> e <strong>${names[1]}</strong>.`;
                     else ofensoresText = ` Os 3 principais ofensores que exigem atenção são <strong>${names[0]}</strong>, <strong>${names[1]}</strong> e <strong>${names[2]}</strong>.`;
@@ -383,7 +420,7 @@
 
                 let tableHtml = `<table>`;
                 let sortIconRow = this._sortState.col === 'name' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                tableHtml += `<thead><tr><th data-sort="name" class="sortable">${headerName}<span class="sort-icon">${sortIconRow}</span></th>`;
+                tableHtml += `<thead><tr><th data-sort="name" class="sortable">${escapeHtml(headerName)}<span class="sort-icon">${sortIconRow}</span></th>`;
                 
                 uniqueCols.forEach(col => {
                     let sortKey = '';
@@ -392,22 +429,24 @@
 
                     let sortIcon = this._sortState.col === sortKey ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
                     let sortAttr = sortKey ? `data-sort="${sortKey}" class="sortable"` : '';
-                    tableHtml += `<th ${sortAttr}>${col}<span class="sort-icon">${sortIcon}</span></th>`;
+                    tableHtml += `<th ${sortAttr}>${escapeHtml(col)}<span class="sort-icon">${sortIcon}</span></th>`;
                 });
 
                 let sortIconDesvio = this._sortState.col === 'desvio' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
                 tableHtml += `<th data-sort="desvio" class="sortable">VARIAÇÃO R$<span class="sort-icon">${sortIconDesvio}</span></th>`;
                 tableHtml += `<th class="numeric">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
 
-                const renderRowHtml = (rowObj, isChild = false) => {
-                    let rowClass = isChild ? "row-conta" : "row-cc";
-                    let expandClass = (!isChild && this._expandedRow === rowObj.name) ? "expanded" : "";
-                    let dataAttr = !isChild ? `data-cc="${rowObj.name}"` : "";
+                const renderRowHtml = (rowObj, level = 0) => {
+                    const hasChildren = rowObj.children && rowObj.children.length > 0;
+                    let rowClass = level === 0 ? "row-cc" : (level === 1 ? "row-cc row-centro-custo" : "row-conta");
+                    let expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
+                    let dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
                     
                     let html = `<tr class="${rowClass} ${expandClass}" ${dataAttr}>`;
                     
-                    let flagHtml = (!isChild && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
-                    let nameCell = isChild ? rowObj.name : `<span class="expand-icon">▶</span>${rowObj.name}${flagHtml}`;
+                    let flagHtml = (level === 1 && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
+                    let safeName = escapeHtml(rowObj.name);
+                    let nameCell = level === 2 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                     
                     html += `<td>${nameCell}</td>`;
                     
@@ -448,10 +487,15 @@
                 };
 
                 tableData.forEach(ccRow => {
-                    tableHtml += renderRowHtml(ccRow, false);
-                    if (this._expandedRow === ccRow.name) {
-                        ccRow.children.forEach(contaRow => {
-                            tableHtml += renderRowHtml(contaRow, true);
+                    tableHtml += renderRowHtml(ccRow, 0);
+                    if (this._expandedRows.has(ccRow.key)) {
+                        ccRow.children.forEach(centroCustoRow => {
+                            tableHtml += renderRowHtml(centroCustoRow, 1);
+                            if (this._expandedRows.has(centroCustoRow.key)) {
+                                centroCustoRow.children.forEach(contaRow => {
+                                    tableHtml += renderRowHtml(contaRow, 2);
+                                });
+                            }
                         });
                     }
                 });
@@ -500,10 +544,11 @@
                     });
                 });
 
-                container.querySelectorAll('tr.row-cc').forEach(tr => {
+                container.querySelectorAll('tr[data-node-key]').forEach(tr => {
                     tr.addEventListener('click', (e) => {
-                        const ccName = e.currentTarget.getAttribute('data-cc');
-                        this._expandedRow = this._expandedRow === ccName ? null : ccName;
+                        const nodeKey = e.currentTarget.getAttribute('data-node-key');
+                        if (this._expandedRows.has(nodeKey)) this._expandedRows.delete(nodeKey);
+                        else this._expandedRows.add(nodeKey);
                         this.renderTable(); 
                     });
                 });
