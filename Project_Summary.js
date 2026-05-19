@@ -308,6 +308,38 @@
       .executive-summary-metric { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-weight: 600; color: #4a5568; }
       .executive-summary-reading { font-variant-numeric: tabular-nums; white-space: nowrap; color: #1e293b; font-weight: 700; }
       .executive-summary-implication { color: #475569; line-height: 1.35; }
+      .operational-kpi-grid {
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-bottom: 14px;
+        background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;
+      }
+      .operational-kpi { background: #ffffff; padding: 9px 12px; display: flex; flex-direction: column; gap: 4px; }
+      .operational-kpi-label { font-size: var(--ui-font-size); font-weight: 600; color: #4a5568; }
+      .operational-kpi-value { font-size: calc(var(--ui-font-size) + 2px); font-weight: 700; color: #1e293b; font-variant-numeric: tabular-nums; }
+      .operational-kpi-sub { font-size: var(--small-font-size); color: #475569; line-height: 1.35; }
+      .operational-grid { display: grid; grid-template-columns: minmax(360px, 1.45fr) minmax(260px, 0.85fr); gap: var(--layout-gap); align-items: start; }
+      .operational-panel { border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: var(--panel-padding); min-width: 0; }
+      .operational-table-wrap { max-height: 360px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 4px; background: #ffffff; }
+      .operational-table { width: 100%; border-collapse: collapse; font-size: var(--ui-font-size); color: #2d3748; }
+      .operational-table th {
+        position: sticky; top: 0; z-index: 1; background: #f1f5f9; text-align: left; padding: 7px 8px;
+        font-size: var(--small-font-size); color: #4a5568; text-transform: uppercase; letter-spacing: 0.55px; border-bottom: 1px solid #e2e8f0;
+      }
+      .operational-table td { padding: 8px; border-bottom: 1px solid #eef2f6; font-weight: 600; vertical-align: top; }
+      .operational-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .movement-tag {
+        display: inline-flex; align-items: center; justify-content: center; min-width: 86px; border-radius: 4px; padding: 3px 6px;
+        font-size: var(--small-font-size); font-weight: 700; border: 1px solid transparent; white-space: nowrap;
+      }
+      .movement-tag.entrada-nova { background: #e8f0fe; color: #174ea6; border-color: #d2e3fc; }
+      .movement-tag.zeragem { background: #f1f3f4; color: #5f6368; border-color: #e8eaed; }
+      .movement-tag.pico-vs-media { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
+      .movement-tag.queda-brusca { background: #fff4e5; color: #b45309; border-color: #fed7aa; }
+      .movement-tag.reversao { background: #f3e8fd; color: #7e22ce; border-color: #e9d5ff; }
+      .movement-tag.normal { background: #e6f4ea; color: #137333; border-color: #ceead6; }
+      .operational-attention-list { display: flex; flex-direction: column; gap: 1px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+      .operational-attention-row { background: #ffffff; padding: 9px 10px; font-size: var(--ui-font-size); color: #334155; line-height: 1.4; }
+      .operational-generated-text { background: #ffffff; border-left: 4px solid #cbd5e0; border-radius: 4px; padding: 10px 12px; color: #334155; font-size: var(--ui-font-size); line-height: 1.5; }
+      .operational-empty { color: #64748b; font-size: var(--ui-font-size); padding: 16px 4px; }
       .main-visualization-layout { display: flex; width: 100%; gap: var(--layout-gap); margin-bottom: 22px; flex-shrink: 0; align-items: stretch; }
       .visualization-column { display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
       .visualization-column.monthly-col { flex: 3; }
@@ -408,6 +440,8 @@
       :host([data-layout="stacked"]) .filter-container-finance { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
       :host([data-layout="stacked"]) .executive-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       :host([data-layout="stacked"]) .executive-grid { grid-template-columns: 1fr; }
+      :host([data-layout="stacked"]) .operational-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      :host([data-layout="stacked"]) .operational-grid { grid-template-columns: 1fr; }
       :host([data-layout="stacked"]) .main-visualization-layout { flex-direction: column; }
       :host([data-layout="stacked"]) .visualization-column.ytd-col { border-left: none; border-top: 1px solid #e2e8f0; padding-left: 0; padding-top: 14px; }
       :host([data-layout="stacked"]) .insight-grid { grid-template-columns: 1fr; }
@@ -415,6 +449,7 @@
       :host([data-size="compact"]) .cell-value,
       :host([data-size="compact"]) .cell-status-wrapper { justify-content: flex-start; text-align: left; }
       :host([data-size="compact"]) .executive-kpi-grid { grid-template-columns: 1fr; }
+      :host([data-size="compact"]) .operational-kpi-grid { grid-template-columns: 1fr; }
       :host([data-size="compact"]) .executive-summary-row { grid-template-columns: 1fr; }
       :host([data-size="compact"]) .executive-summary-metric { flex-direction: column; align-items: flex-start; }
       :host([data-size="compact"]) .waterfall-chart { min-height: 190px; height: 190px; }
@@ -473,6 +508,7 @@
       <div class="view-tabs" role="tablist" aria-label="Visões do widget">
         <button class="view-tab active" id="executiveTabBtn" type="button" role="tab" aria-selected="true">Executivo</button>
         <button class="view-tab" id="diagnosticTabBtn" type="button" role="tab" aria-selected="false">Diagnóstico</button>
+        <button class="view-tab" id="operationalTabBtn" type="button" role="tab" aria-selected="false">Operacional</button>
       </div>
       <div class="view-panel active" id="executiveView">
         <div class="executive-kpi-grid">
@@ -575,6 +611,20 @@
           <div class="highlight-content-text" id="highlightContentText"></div>
         </div>
       </div>
+      </div>
+      <div class="view-panel" id="operationalView">
+        <div class="operational-kpi-grid" id="operationalSummaryCards"></div>
+        <div class="operational-grid">
+          <div class="operational-panel">
+            <div class="executive-panel-title">Movimentações Atípicas</div>
+            <div class="operational-table-wrap" id="operationalTableWrap"></div>
+          </div>
+          <div class="operational-panel">
+            <div class="executive-panel-title">Atenção Controladoria</div>
+            <div class="operational-attention-list" id="operationalAttentionWrap"></div>
+            <div class="operational-generated-text" id="operationalGeneratedText"></div>
+          </div>
+        </div>
       </div>
       <div class="bar-tooltip" id="barTooltip" aria-hidden="true"></div>
     </div>
@@ -1230,8 +1280,10 @@
         this._exportPptBtn = this._shadowRoot.getElementById("exportPptBtn");
         this._executiveTabBtn = this._shadowRoot.getElementById("executiveTabBtn");
         this._diagnosticTabBtn = this._shadowRoot.getElementById("diagnosticTabBtn");
+        this._operationalTabBtn = this._shadowRoot.getElementById("operationalTabBtn");
         this._executiveView = this._shadowRoot.getElementById("executiveView");
         this._diagnosticView = this._shadowRoot.getElementById("diagnosticView");
+        this._operationalView = this._shadowRoot.getElementById("operationalView");
         this._execActualYtd = this._shadowRoot.getElementById("execActualYtd");
         this._execActualYtdSub = this._shadowRoot.getElementById("execActualYtdSub");
         this._execForecast = this._shadowRoot.getElementById("execForecast");
@@ -1245,6 +1297,10 @@
         this._waterfallYtdBtn = this._shadowRoot.getElementById("waterfallYtdBtn");
         this._waterfallMomBtn = this._shadowRoot.getElementById("waterfallMomBtn");
         this._executiveSummaryList = this._shadowRoot.getElementById("executiveSummaryList");
+        this._operationalSummaryCards = this._shadowRoot.getElementById("operationalSummaryCards");
+        this._operationalTableWrap = this._shadowRoot.getElementById("operationalTableWrap");
+        this._operationalAttentionWrap = this._shadowRoot.getElementById("operationalAttentionWrap");
+        this._operationalGeneratedText = this._shadowRoot.getElementById("operationalGeneratedText");
         this._widgetTitle = this._shadowRoot.getElementById("widgetTitle");
         this._periodSummaryBanner = this._shadowRoot.getElementById("periodSummaryBanner");
         
@@ -1306,6 +1362,7 @@
         });
         this._executiveTabBtn.addEventListener("click", () => this._setActiveView("executive"));
         this._diagnosticTabBtn.addEventListener("click", () => this._setActiveView("diagnostic"));
+        this._operationalTabBtn.addEventListener("click", () => this._setActiveView("operational"));
         this._exportPptBtn.addEventListener("click", () => this._exportCurrentViewToPpt());
         this._waterfallYtdBtn.addEventListener("click", () => this._setWaterfallMode("ytd"));
         this._waterfallMomBtn.addEventListener("click", () => this._setWaterfallMode("mom"));
@@ -1687,11 +1744,13 @@
     }
 
     _setActiveView(viewName) {
-      this._activeView = viewName === "diagnostic" ? viewName : "executive";
+      this._activeView = viewName === "diagnostic" || viewName === "operational" ? viewName : "executive";
       const isExecutive = this._activeView === "executive";
       const isDiagnostic = this._activeView === "diagnostic";
+      const isOperational = this._activeView === "operational";
       if (this._executiveView) this._executiveView.classList.toggle("active", isExecutive);
       if (this._diagnosticView) this._diagnosticView.classList.toggle("active", isDiagnostic);
+      if (this._operationalView) this._operationalView.classList.toggle("active", isOperational);
       if (this._executiveTabBtn) {
         this._executiveTabBtn.classList.toggle("active", isExecutive);
         this._executiveTabBtn.setAttribute("aria-selected", isExecutive ? "true" : "false");
@@ -1700,8 +1759,12 @@
         this._diagnosticTabBtn.classList.toggle("active", isDiagnostic);
         this._diagnosticTabBtn.setAttribute("aria-selected", isDiagnostic ? "true" : "false");
       }
+      if (this._operationalTabBtn) {
+        this._operationalTabBtn.classList.toggle("active", isOperational);
+        this._operationalTabBtn.setAttribute("aria-selected", isOperational ? "true" : "false");
+      }
       if (this._lastAnalyticsViewContext) this._renderAnalyticsViews();
-      if (isDiagnostic) {
+      if (isDiagnostic || isOperational) {
         requestAnimationFrame(() => this.requestLayoutUpdate());
       }
     }
@@ -1911,6 +1974,7 @@
       }
       if (this._isHighlightDetailOpen) this._renderHighlightDetailItems();
       this._renderExecutiveView(context);
+      this._renderOperationalView(context);
     }
 
     _renderExecutiveView(context) {
@@ -2065,6 +2129,285 @@
       this._executiveSummaryList.appendChild(fragment);
     }
 
+    _buildOperationalMovementAnalysis(context) {
+      const emptyResult = {
+        summaryCards: [],
+        movementRows: [],
+        attentionRows: [],
+        generatedText: "Sem dados suficientes para comparar movimentações operacionais no período selecionado."
+      };
+      if (!context || !context.currentBarNode || !context.fullSeriesById || !this._currentData || !Array.isArray(this._currentData.data)) {
+        return emptyResult;
+      }
+
+      const currentNode = context.currentBarNode;
+      const previousNode = currentNode.previousSeriesData || null;
+      const currentId = String(currentNode.id);
+      const previousId = previousNode ? String(previousNode.id) : "";
+      const currentYear = currentNode.yearValue;
+      const currentMonth = currentNode.monthNum;
+      const previousYtdMonthIds = new Set();
+      context.fullSeriesById.forEach((seriesNode, timeId) => {
+        if (seriesNode.yearValue === currentYear && seriesNode.monthNum < currentMonth) {
+          previousYtdMonthIds.add(String(timeId));
+        }
+      });
+      const averagePeriods = previousYtdMonthIds.size;
+      const movementMap = new Map();
+      const ensureMovement = (itemName, accountName) => {
+        const key = `${itemName}||${accountName}`;
+        if (!movementMap.has(key)) {
+          movementMap.set(key, {
+            itemName,
+            accountName,
+            currentValue: 0,
+            previousValue: 0,
+            ytdBeforeValue: 0
+          });
+        }
+        return movementMap.get(key);
+      };
+
+      this._currentData.data.forEach(row => {
+        const tempoObj = this._tempoDimId ? row[this._tempoDimId] : null;
+        if (!tempoObj) return;
+        const timeId = String(tempoObj.id);
+        const seriesNode = context.fullSeriesById.get(timeId);
+        if (!seriesNode) return;
+        const isCurrentMonth = timeId === currentId;
+        const isPreviousMonth = previousId && timeId === previousId;
+        const isPreviousYtdMonth = previousYtdMonthIds.has(timeId);
+        if (!isCurrentMonth && !isPreviousMonth && !isPreviousYtdMonth) return;
+
+        if (this._versaoDimId && this._isBudgetVersionObject(row[this._versaoDimId])) return;
+        const itemName = this._getRowMemberLabel(row, this._itemFinanceiroDimId, "Item não informado");
+        if (this._shouldIgnoreCompositionMember(itemName)) return;
+        let accountName = this._contaContabilDimId ? this._getRowMemberLabel(row, this._contaContabilDimId, "Conta não vinculada") : "Conta não vinculada";
+        if (this._shouldIgnoreCompositionMember(accountName)) accountName = "Conta não vinculada";
+        const value = this._parseValue(row[this._measId] ? (row[this._measId].formattedValue || row[this._measId].raw || 0) : 0);
+        const movement = ensureMovement(itemName, accountName);
+        if (isCurrentMonth) movement.currentValue += value;
+        if (isPreviousMonth) movement.previousValue += value;
+        if (isPreviousYtdMonth) movement.ytdBeforeValue += value;
+      });
+
+      const rowsBase = Array.from(movementMap.values());
+      const totalCurrentAbs = rowsBase.reduce((sum, item) => sum + Math.abs(item.currentValue), 0);
+      const materialityFloor = Math.max(1000, totalCurrentAbs * 0.005);
+      const severityRank = {
+        "Reversão": 6,
+        "Entrada nova": 5,
+        "Zeragem": 5,
+        "Pico vs média": 4,
+        "Queda brusca": 4,
+        "Normal": 1
+      };
+
+      const movementRows = rowsBase
+        .map(item => {
+          const averageValue = averagePeriods > 0 ? item.ytdBeforeValue / averagePeriods : 0;
+          const momDelta = item.currentValue - item.previousValue;
+          const avgDelta = item.currentValue - averageValue;
+          const momPct = Math.abs(item.previousValue) >= materialityFloor ? (momDelta / Math.abs(item.previousValue)) * 100 : (Math.abs(item.currentValue) >= materialityFloor ? 999 : 0);
+          const avgPct = Math.abs(averageValue) >= materialityFloor ? (avgDelta / Math.abs(averageValue)) * 100 : (Math.abs(item.currentValue) >= materialityFloor ? 999 : 0);
+          const classification = this._classifyOperationalMovement(item.currentValue, item.previousValue, averageValue, materialityFloor);
+          const score = (severityRank[classification] || 1) * 1000000000 + Math.max(Math.abs(momDelta), Math.abs(avgDelta), Math.abs(item.currentValue));
+          return {
+            ...item,
+            averageValue,
+            momDelta,
+            avgDelta,
+            momPct,
+            avgPct,
+            classification,
+            score,
+            action: this._getOperationalMovementAction(classification)
+          };
+        })
+        .filter(item => Math.max(Math.abs(item.currentValue), Math.abs(item.previousValue), Math.abs(item.averageValue)) >= materialityFloor * 0.25)
+        .sort((a, b) => b.score - a.score);
+
+      const attentionRows = movementRows
+        .filter(item => item.classification !== "Normal")
+        .slice(0, 10);
+      const counts = attentionRows.reduce((acc, item) => {
+        acc[item.classification] = (acc[item.classification] || 0) + 1;
+        return acc;
+      }, {});
+      const topAttention = attentionRows[0] || null;
+      const summaryCards = [
+        {
+          label: "Movimentações atípicas",
+          value: String(attentionRows.length),
+          sub: `${movementRows.length} combinações item/conta analisadas`
+        },
+        {
+          label: "Entradas novas",
+          value: String(counts["Entrada nova"] || 0),
+          sub: "Sem base material no mês anterior/média"
+        },
+        {
+          label: "Zeragens",
+          value: String(counts["Zeragem"] || 0),
+          sub: "Base anterior material sem realização atual"
+        },
+        {
+          label: "Maior movimento",
+          value: topAttention ? this._formatSignedMoney(Math.abs(topAttention.momDelta) >= Math.abs(topAttention.avgDelta) ? topAttention.momDelta : topAttention.avgDelta) : "-",
+          sub: topAttention ? `${topAttention.classification} | ${topAttention.itemName}` : "Sem atipicidade material"
+        }
+      ];
+
+      const generatedText = topAttention
+        ? `No mês selecionado, foram identificadas ${attentionRows.length} movimentações atípicas em ${movementRows.length} combinações de item financeiro e conta contábil. A principal ocorrência é ${topAttention.classification.toLowerCase()} em ${topAttention.itemName} / ${topAttention.accountName}, com realizado de ${this._formatSignedMoney(topAttention.currentValue)}, variação MoM de ${this._formatSignedMoney(topAttention.momDelta)} e diferença contra a média YTD anterior de ${this._formatSignedMoney(topAttention.avgDelta)}. Recomenda-se ${topAttention.action}`
+        : `No mês selecionado, não foram identificadas movimentações atípicas materiais entre as ${movementRows.length} combinações item/conta analisadas. Recomenda-se manter o monitoramento das maiores bases e revisar o limiar de materialidade caso o volume analisado seja baixo.`;
+
+      return {
+        summaryCards,
+        movementRows: movementRows.slice(0, 50),
+        attentionRows,
+        generatedText
+      };
+    }
+
+    _classifyOperationalMovement(currentValue, previousValue, averageValue, materialityFloor) {
+      const absCurrent = Math.abs(currentValue);
+      const absPrevious = Math.abs(previousValue);
+      const absAverage = Math.abs(averageValue);
+      const nearZero = materialityFloor * 0.25;
+      if (absCurrent >= materialityFloor && absPrevious >= materialityFloor && Math.sign(currentValue) !== Math.sign(previousValue)) return "Reversão";
+      if (absCurrent >= materialityFloor && absPrevious < nearZero && absAverage < nearZero) return "Entrada nova";
+      if (absCurrent < nearZero && (absPrevious >= materialityFloor || absAverage >= materialityFloor)) return "Zeragem";
+      if (absAverage >= materialityFloor) {
+        const avgRatio = (absCurrent - absAverage) / absAverage;
+        if (avgRatio >= 0.75 && absCurrent - absAverage >= materialityFloor) return "Pico vs média";
+        if (avgRatio <= -0.60 && absAverage - absCurrent >= materialityFloor) return "Queda brusca";
+      }
+      if (absPrevious >= materialityFloor) {
+        const momRatio = (absCurrent - absPrevious) / absPrevious;
+        if (momRatio >= 1.00 && absCurrent - absPrevious >= materialityFloor) return "Pico vs média";
+        if (momRatio <= -0.75 && absPrevious - absCurrent >= materialityFloor) return "Queda brusca";
+      }
+      return "Normal";
+    }
+
+    _getOperationalMovementAction(classification) {
+      switch (classification) {
+        case "Entrada nova":
+          return "validar origem da despesa, centro responsável e recorrência esperada para os próximos meses.";
+        case "Zeragem":
+          return "confirmar se houve encerramento real da despesa, postergação de lançamento ou reclassificação contábil.";
+        case "Pico vs média":
+          return "verificar competência, evento não recorrente e necessidade de ajustar premissas do forecast.";
+        case "Queda brusca":
+          return "avaliar se a redução é estrutural, sazonal ou apenas postergação de despesa.";
+        case "Reversão":
+          return "validar sinal contábil, estornos, reclassificações e consistência da natureza financeira.";
+        default:
+          return "manter monitoramento no próximo fechamento.";
+      }
+    }
+
+    _formatSignedMoney(value) {
+      const sign = value > 0 ? "+" : (value < 0 ? "-" : "");
+      return `${sign}R$ ${Math.abs(value / 1000000).toFixed(2)}M`;
+    }
+
+    _movementClassName(classification) {
+      return String(classification || "Normal")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    }
+
+    _renderOperationalView(context) {
+      if (!this._operationalView) return;
+      const analysis = this._buildOperationalMovementAnalysis(context);
+      if (this._operationalSummaryCards) {
+        this._operationalSummaryCards.textContent = "";
+        const cardFragment = document.createDocumentFragment();
+        analysis.summaryCards.forEach(card => {
+          const cardEl = document.createElement("div");
+          cardEl.className = "operational-kpi";
+          const label = document.createElement("div");
+          label.className = "operational-kpi-label";
+          label.textContent = card.label;
+          const value = document.createElement("div");
+          value.className = "operational-kpi-value";
+          value.textContent = card.value;
+          const sub = document.createElement("div");
+          sub.className = "operational-kpi-sub";
+          sub.textContent = card.sub;
+          cardEl.appendChild(label);
+          cardEl.appendChild(value);
+          cardEl.appendChild(sub);
+          cardFragment.appendChild(cardEl);
+        });
+        this._operationalSummaryCards.appendChild(cardFragment);
+      }
+
+      if (this._operationalTableWrap) {
+        if (!analysis.movementRows.length) {
+          this._operationalTableWrap.innerHTML = `<div class="operational-empty">Sem movimentações suficientes para análise operacional.</div>`;
+        } else {
+          const rowsHtml = analysis.movementRows.map(row => `
+            <tr>
+              <td><span class="movement-tag ${this._movementClassName(row.classification)}">${this._escapeHtml(row.classification)}</span></td>
+              <td>${this._escapeHtml(row.itemName)}</td>
+              <td>${this._escapeHtml(row.accountName)}</td>
+              <td class="num">${this._escapeHtml(this._formatSignedMoney(row.currentValue))}</td>
+              <td class="num">${this._escapeHtml(this._formatSignedMoney(row.previousValue))}</td>
+              <td class="num">${this._escapeHtml(this._formatSignedMoney(row.averageValue))}</td>
+              <td class="num">${this._escapeHtml(this._formatSignedMoney(row.momDelta))}</td>
+              <td class="num">${this._escapeHtml(this._formatSignedMoney(row.avgDelta))}</td>
+            </tr>
+          `).join("");
+          this._operationalTableWrap.innerHTML = `
+            <table class="operational-table">
+              <thead>
+                <tr>
+                  <th>Classificação</th>
+                  <th>Item Financeiro</th>
+                  <th>Conta Contábil</th>
+                  <th>Atual</th>
+                  <th>Mês Ant.</th>
+                  <th>Média YTD Ant.</th>
+                  <th>Δ MoM</th>
+                  <th>Δ Média</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          `;
+        }
+      }
+
+      if (this._operationalAttentionWrap) {
+        this._operationalAttentionWrap.textContent = "";
+        const attentionFragment = document.createDocumentFragment();
+        if (!analysis.attentionRows.length) {
+          const empty = document.createElement("div");
+          empty.className = "operational-attention-row";
+          empty.textContent = "Sem movimentações atípicas materiais para o período selecionado.";
+          attentionFragment.appendChild(empty);
+        } else {
+          analysis.attentionRows.slice(0, 6).forEach(row => {
+            const item = document.createElement("div");
+            item.className = "operational-attention-row";
+            const strong = document.createElement("strong");
+            strong.textContent = `${row.classification}: `;
+            item.appendChild(strong);
+            item.appendChild(document.createTextNode(`${row.itemName} / ${row.accountName}. Atual ${this._formatSignedMoney(row.currentValue)}, MoM ${this._formatSignedMoney(row.momDelta)}. Ação: ${row.action}`));
+            attentionFragment.appendChild(item);
+          });
+        }
+        this._operationalAttentionWrap.appendChild(attentionFragment);
+      }
+
+      if (this._operationalGeneratedText) {
+        this._operationalGeneratedText.textContent = analysis.generatedText;
+      }
+    }
+
     async _exportCurrentViewToPpt() {
       if (!this._widgetWrapper || !this._exportPptBtn) return;
       const originalLabel = this._exportPptBtn.textContent;
@@ -2162,6 +2505,9 @@
               <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
               <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
               <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+              <Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/>
+              <Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/>
+              <Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/>
               <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
               <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
             </Types>`)
@@ -2210,6 +2556,10 @@
             <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
               <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
               <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+              <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps" Target="presProps.xml"/>
+              <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps" Target="viewProps.xml"/>
+              <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
+              <Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>
             </Relationships>`)
         },
         {
@@ -2246,7 +2596,11 @@
               <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
               <p:clrMap accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" bg1="lt1" bg2="lt2" folHlink="folHlink" hlink="hlink" tx1="dk1" tx2="dk2"/>
               <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
-              <p:txStyles/>
+              <p:txStyles>
+                <p:titleStyle><a:lvl1pPr algn="l"><a:defRPr sz="4400"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr></p:titleStyle>
+                <p:bodyStyle><a:lvl1pPr marL="0" indent="0" algn="l"><a:defRPr sz="2800"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr></p:bodyStyle>
+                <p:otherStyle><a:lvl1pPr marL="0" indent="0" algn="l"><a:defRPr sz="1800"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr></p:otherStyle>
+              </p:txStyles>
             </p:sldMaster>`)
         },
         {
@@ -2279,17 +2633,49 @@
               <a:themeElements>
                 <a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2><a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2><a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme>
                 <a:fontScheme name="Office">
-                  <a:majorFont><a:latin typeface="Arial"/></a:majorFont>
-                  <a:minorFont><a:latin typeface="Arial"/></a:minorFont>
+                  <a:majorFont><a:latin typeface="Arial"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>
+                  <a:minorFont><a:latin typeface="Arial"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont>
                 </a:fontScheme>
                 <a:fmtScheme name="Office">
-                  <a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
-                  <a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
-                  <a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
-                  <a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst>
+                  <a:fillStyleLst>
+                    <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
+                    <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"/></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="80000"/><a:lumOff val="20000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>
+                    <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:lumMod val="80000"/><a:lumOff val="20000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"/></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>
+                  </a:fillStyleLst>
+                  <a:lnStyleLst>
+                    <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln>
+                    <a:ln w="25400" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln>
+                    <a:ln w="38100" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln>
+                  </a:lnStyleLst>
+                  <a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
+                  <a:bgFillStyleLst>
+                    <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
+                    <a:solidFill><a:schemeClr val="phClr"><a:tint val="95000"/><a:satMod val="170000"/></a:schemeClr></a:solidFill>
+                    <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"/></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="80000"/><a:lumOff val="20000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill>
+                  </a:bgFillStyleLst>
                 </a:fmtScheme>
               </a:themeElements>
             </a:theme>`)
+        },
+        {
+          path: "ppt/presProps.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+              <p:showPr><p:present/></p:showPr>
+            </p:presentationPr>`)
+        },
+        {
+          path: "ppt/viewProps.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <p:viewPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+              <p:normalViewPr><p:restoredLeft sz="15620"/><p:restoredTop sz="94660"/></p:normalViewPr>
+              <p:slideViewPr><p:cSldViewPr><p:cViewPr varScale="1"><p:scale><a:sx n="100" d="100"/><a:sy n="100" d="100"/></p:scale><p:origin x="0" y="0"/></p:cViewPr><p:guideLst/></p:cSldViewPr></p:slideViewPr>
+            </p:viewPr>`)
+        },
+        {
+          path: "ppt/tableStyles.xml",
+          data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>`)
         },
         { path: "ppt/media/image1.png", data: pngBytes }
       ];
