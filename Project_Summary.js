@@ -279,26 +279,29 @@
       .copy-text-btn.copied { background: #e6f4ea; color: #137333; border-color: #ceead6; }
       .copy-text-btn.error { background: #fce8e6; color: #c5221f; border-color: #fad2cf; }
       .waterfall-panel-header {
-        display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 10px;
         padding-bottom: 6px; border-bottom: 2px solid #cbd5e0;
       }
-      .waterfall-panel-header .executive-panel-title { margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex: 1; }
-      .waterfall-mode-tabs { display: inline-flex; border: 1px solid #dbe3ec; border-radius: 7px; background: #f8fafc; padding: 2px; gap: 2px; }
+      .waterfall-panel-header .executive-panel-title { margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex: 1 1 120px; min-width: 0; }
+      .waterfall-mode-tabs { display: inline-flex; flex: 0 1 auto; max-width: 100%; border: 1px solid #dbe3ec; border-radius: 7px; background: #f8fafc; padding: 2px; gap: 2px; }
       .waterfall-mode-btn { border: none; background: transparent; color: #475569; font-size: var(--small-font-size); font-weight: 700; border-radius: 5px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
       .waterfall-mode-btn.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
       .waterfall-caption { font-size: var(--small-font-size); color: #64748b; margin-bottom: 8px; min-height: 16px; }
       .waterfall-chart {
-        position: relative; display: flex; align-items: stretch; gap: 8px; min-height: 205px; height: 205px; overflow-x: auto; padding: 9px 8px 6px;
-        border: 1px solid #e2e8f0; border-radius: 4px; background: #ffffff;
+        --wf-step-min: 54px; --wf-gap: 6px;
+        position: relative; display: flex; align-items: stretch; gap: var(--wf-gap); width: 100%; max-width: 100%; min-width: 0;
+        min-height: 174px; height: clamp(174px, 24vw, 215px); overflow-x: auto; overflow-y: hidden; padding: 9px 8px 6px;
+        border: 1px solid #e2e8f0; border-radius: 4px; background: #ffffff; box-sizing: border-box; overscroll-behavior-x: contain;
       }
-      .waterfall-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 68px; height: 100%; position: relative; }
+      .waterfall-chart.dense { --wf-step-min: 46px; --wf-gap: 4px; }
+      .waterfall-step { display: flex; flex: 1 1 var(--wf-step-min); flex-direction: column; align-items: center; justify-content: flex-end; min-width: var(--wf-step-min); height: 100%; position: relative; }
       .waterfall-value {
-        height: 20px; display: inline-flex; align-items: flex-start; justify-content: center; font-size: calc(var(--small-font-size) - 0.5px); font-weight: 700; color: #334155;
-        white-space: nowrap; font-variant-numeric: tabular-nums; box-sizing: border-box;
+        height: 19px; max-width: 100%; min-width: 0; display: inline-flex; align-items: flex-start; justify-content: center; font-size: calc(var(--small-font-size) - 0.5px); font-weight: 700; color: #334155;
+        white-space: nowrap; font-variant-numeric: tabular-nums; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis;
       }
       .waterfall-bar-wrap { position: relative; flex: 1; width: 100%; border-bottom: 1px solid #cbd5e0; margin-top: 3px; }
       .waterfall-bar {
-        position: absolute; left: 18%; right: 18%; width: 64%; border-radius: 3px 3px 0 0; min-height: 4px;
+        position: absolute; left: 20%; right: 20%; border-radius: 3px 3px 0 0; min-height: 4px;
         box-shadow: none; cursor: help; transition: opacity 0.15s ease;
       }
       .waterfall-bar:hover { opacity: 0.82; }
@@ -307,7 +310,10 @@
       .waterfall-bar.total-end { background: var(--color-actual); }
       .waterfall-bar.positive { background: #d32f2f; }
       .waterfall-bar.negative { background: #2e7d32; }
-      .waterfall-label { margin-top: 6px; font-size: calc(var(--small-font-size) - 0.5px); font-weight: 600; color: #475569; text-align: center; line-height: 1.2; min-height: 30px; max-width: 76px; overflow: hidden; text-overflow: ellipsis; }
+      .waterfall-label {
+        margin-top: 6px; font-size: calc(var(--small-font-size) - 0.5px); font-weight: 600; color: #475569; text-align: center; line-height: 1.2;
+        min-height: 30px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word;
+      }
       .waterfall-empty { align-self: center; color: #64748b; font-size: var(--ui-font-size); padding: 20px; }
       .waterfall-tooltip-note { margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: var(--small-font-size); }
       .executive-summary-list { display: flex; flex-direction: column; gap: 1px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin: 0; }
@@ -466,7 +472,11 @@
       :host([data-size="compact"]) .operational-kpi-grid { grid-template-columns: 1fr; }
       :host([data-size="compact"]) .executive-summary-row { grid-template-columns: 1fr; }
       :host([data-size="compact"]) .executive-summary-metric { flex-direction: column; align-items: flex-start; }
-      :host([data-size="compact"]) .waterfall-chart { min-height: 190px; height: 190px; }
+      :host([data-size="compact"]) .waterfall-panel-header { align-items: stretch; flex-direction: column; }
+      :host([data-size="compact"]) .waterfall-mode-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+      :host([data-size="compact"]) .waterfall-mode-btn { white-space: normal; padding: 5px 6px; text-align: center; }
+      :host([data-size="compact"]) .waterfall-chart { --wf-step-min: 40px; --wf-gap: 3px; min-height: 168px; height: 176px; }
+      :host([data-size="compact"]) .waterfall-value { font-size: calc(var(--small-font-size) - 1px); }
     </style>
     <div id="widget-wrapper">
       <div class="widget-header">
@@ -1745,7 +1755,61 @@
       return readTextNodeBlock(root);
     }
 
-    async _writeClipboardText(text) {
+    _applyClipboardInlineStyles(source, target) {
+      const computed = getComputedStyle(source);
+      const properties = [
+        "display", "flex-direction", "grid-template-columns", "gap", "align-items", "justify-content",
+        "color", "background-color", "border", "border-left", "border-radius",
+        "padding", "margin", "font-family", "font-size", "font-weight", "line-height",
+        "text-align", "text-transform", "letter-spacing", "white-space", "font-variant-numeric"
+      ];
+      properties.forEach(prop => {
+        const value = computed.getPropertyValue(prop);
+        if (value && value !== "normal" && value !== "none" && value !== "auto") {
+          target.style.setProperty(prop, value);
+        }
+      });
+      target.style.boxSizing = "border-box";
+      target.style.maxWidth = "100%";
+    }
+
+    _cloneVisibleNodeForClipboard(node, isRoot = false) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return this._normalizeCopiedText(node.nodeValue) ? document.createTextNode(node.nodeValue) : null;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+      const element = node;
+      if (!isRoot && element.closest("button, .copy-text-btn, .highlight-toggle-btn")) return null;
+      if (!isRoot && !this._isElementVisibleForCopy(element)) return null;
+
+      const allowedTags = new Set(["DIV", "SPAN", "STRONG", "UL", "LI", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD"]);
+      const clone = document.createElement(allowedTags.has(element.tagName) ? element.tagName.toLowerCase() : "span");
+      this._applyClipboardInlineStyles(element, clone);
+
+      element.childNodes.forEach(child => {
+        const childClone = this._cloneVisibleNodeForClipboard(child);
+        if (childClone) clone.appendChild(childClone);
+      });
+
+      return clone.textContent.trim() || clone.children.length ? clone : null;
+    }
+
+    _getVisibleHtmlForCopy(root) {
+      if (!root) return "";
+      const clone = this._cloneVisibleNodeForClipboard(root, true);
+      if (!clone) return "";
+      const wrapper = document.createElement("div");
+      wrapper.style.fontFamily = "Arial, sans-serif";
+      wrapper.style.fontSize = "12px";
+      wrapper.style.lineHeight = "1.45";
+      wrapper.style.color = "#334155";
+      wrapper.style.maxWidth = "760px";
+      wrapper.appendChild(clone);
+      return wrapper.outerHTML;
+    }
+
+    async _writePlainClipboardText(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         try {
           await navigator.clipboard.writeText(text);
@@ -1769,6 +1833,45 @@
       if (!copied) throw new Error("Clipboard indisponível");
     }
 
+    _writeHtmlClipboardFallback(html) {
+      if (!document.execCommand || !html) return false;
+      const container = document.createElement("div");
+      container.contentEditable = "true";
+      container.innerHTML = html;
+      container.style.position = "fixed";
+      container.style.left = "-9999px";
+      container.style.top = "0";
+      container.style.width = "760px";
+      document.body.appendChild(container);
+
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(container);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const copied = document.execCommand("copy");
+      selection.removeAllRanges();
+      container.remove();
+      return copied;
+    }
+
+    async _writeClipboardContent(text, html) {
+      if (html && navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([text], { type: "text/plain" })
+          })]);
+          return;
+        } catch (error) {
+          // Fallback below covers restricted iframe/context permissions.
+        }
+      }
+
+      if (html && this._writeHtmlClipboardFallback(html)) return;
+      await this._writePlainClipboardText(text);
+    }
+
     _setCopyButtonFeedback(button, label, stateClass) {
       if (!button) return;
       const originalLabel = button.dataset.defaultLabel || button.textContent || "Copiar";
@@ -1790,7 +1893,8 @@
         return;
       }
       try {
-        await this._writeClipboardText(text);
+        const html = this._getVisibleHtmlForCopy(root);
+        await this._writeClipboardContent(text, html);
         this._setCopyButtonFeedback(button, "Copiado", "copied");
       } catch (error) {
         console.warn("Falha ao copiar texto", error);
@@ -2140,6 +2244,7 @@
     _renderWaterfall(model) {
       if (!this._waterfallChart) return;
       this._waterfallChart.textContent = "";
+      this._waterfallChart.classList.remove("dense");
       if (this._waterfallCaption) this._setText(this._waterfallCaption, model.caption);
 
       if (model.mode === "mom" && !model.rows.length && !model.totalDelta) {
@@ -2158,6 +2263,7 @@
         ...(Math.abs(residualGap) > 0.00001 ? [{ label: "Demais itens", delta: residualGap, type: residualGap >= 0 ? "positive" : "negative" }] : []),
         { label: model.endLabel, value: model.endValue, type: "total", role: "total-end" }
       ];
+      this._waterfallChart.classList.toggle("dense", steps.length >= 8);
 
       let current = model.startValue;
       const levels = [model.startValue, model.endValue];
@@ -2197,7 +2303,9 @@
         stepEl.className = "waterfall-step";
         const valueEl = document.createElement("div");
         valueEl.className = "waterfall-value";
-        valueEl.textContent = `${shownValue >= 0 ? "" : "-"}R$ ${Math.abs(shownValue / 1000000).toFixed(2)}M`;
+        const valueText = `${shownValue >= 0 ? "" : "-"}R$ ${Math.abs(shownValue / 1000000).toFixed(2)}M`;
+        valueEl.textContent = valueText;
+        valueEl.title = valueText;
         const wrapEl = document.createElement("div");
         wrapEl.className = "waterfall-bar-wrap";
         const barEl = document.createElement("div");
