@@ -1,4 +1,118 @@
 (function () {
+    const ENABLE_TELEMETRY = true;
+
+    class EvoGATableProfiler {
+        constructor() {
+            this.metrics = {
+                totalCycle: 0,
+                jsTime: 0,
+                domTime: 0,
+                fps: 60,
+                steps: { parsing: 0, aggregation: 0, domCreation: 0 },
+                memory: 0,
+                redundantRenders: 0,
+                dataVolume: 0,
+                filteredRows: 0
+            };
+            this._lastDataSignature = "";
+            this._fpsFrameCount = 0;
+            this._fpsLastTime = this._now();
+        }
+
+        _now() {
+            return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        }
+
+        _buildDataSignature(cubeData) {
+            const rows = cubeData && Array.isArray(cubeData.data) ? cubeData.data : [];
+            if (!rows.length) return "";
+            let hash = 2166136261;
+            const mix = (value) => {
+                const text = String(value == null ? "" : value);
+                for (let i = 0; i < text.length; i++) {
+                    hash ^= text.charCodeAt(i);
+                    hash = Math.imul(hash, 16777619);
+                }
+            };
+            const metadata = cubeData.metadata || {};
+            const dimensions = metadata.dimensions || {};
+            const measures = metadata.mainStructureMembers || {};
+            Object.keys(dimensions).forEach(key => {
+                const dim = dimensions[key] || {};
+                mix(key); mix(dim.id); mix(dim.description); mix(dim.label);
+            });
+            Object.keys(measures).forEach(key => {
+                const measure = measures[key] || {};
+                mix(key); mix(measure.id); mix(measure.description); mix(measure.label);
+            });
+            mix(rows.length);
+            rows.forEach(row => {
+                Object.keys(row || {}).forEach(key => {
+                    const cell = row[key];
+                    mix(key);
+                    if (cell && typeof cell === "object") {
+                        mix(cell.id);
+                        mix(cell.label || cell.description);
+                        mix(cell.formattedValue !== undefined ? cell.formattedValue : cell.raw);
+                    } else {
+                        mix(cell);
+                    }
+                });
+            });
+            return `${rows.length}:${hash >>> 0}`;
+        }
+
+        verifyRedundancy(cubeData) {
+            if (!ENABLE_TELEMETRY || !cubeData) return false;
+            try {
+                const signature = this._buildDataSignature(cubeData);
+                if (!signature) return false;
+                if (this._lastDataSignature === signature) {
+                    this.metrics.redundantRenders++;
+                    return true;
+                }
+                this._lastDataSignature = signature;
+            } catch (e) { return false; }
+            return false;
+        }
+
+        startFPSMonitor() {
+            if (!ENABLE_TELEMETRY || typeof requestAnimationFrame === "undefined") return;
+            this._fpsFrameCount = 0;
+            this._fpsLastTime = this._now();
+            const run = () => {
+                this._fpsFrameCount++;
+                const now = this._now();
+                if (now - this._fpsLastTime >= 500) {
+                    this.metrics.fps = Math.round((this._fpsFrameCount * 1000) / (now - this._fpsLastTime));
+                    this._fpsFrameCount = 0;
+                    this._fpsLastTime = now;
+                } else if (this._fpsFrameCount < 60) {
+                    requestAnimationFrame(run);
+                }
+            };
+            requestAnimationFrame(run);
+        }
+
+        collectMemory() {
+            if (!ENABLE_TELEMETRY) return;
+            if (typeof performance !== "undefined" && performance.memory) {
+                this.metrics.memory = performance.memory.usedJSHeapSize;
+            }
+        }
+
+        runStressProjection(baseRows, sampleJSTime) {
+            if (!baseRows || baseRows === 0) return { k10: 0, k25: 0, k50: 0, k100: 0 };
+            const baseValue = sampleJSTime / baseRows;
+            return {
+                k10: baseValue * 10000 * 1.02,
+                k25: baseValue * 25000 * 1.05,
+                k50: baseValue * 50000 * 1.08,
+                k100: baseValue * 100000 * 1.12
+            };
+        }
+    }
+
     let template = document.createElement("template");
     template.innerHTML = `
         <style>
@@ -33,6 +147,125 @@
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             }
+            .header-top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 8px;
+            }
+            .header-top .table-title { margin: 0; }
+            .header-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                position: relative;
+                flex-shrink: 0;
+            }
+            .month-filter {
+                min-width: 132px;
+                height: 28px;
+                border: 1px solid #CBD5E0;
+                border-radius: 4px;
+                background: #FFFFFF;
+                color: #334155;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 11.5px;
+                font-weight: 600;
+                padding: 0 8px;
+                cursor: pointer;
+            }
+            .month-filter:disabled {
+                color: #94A3B8;
+                background: #F8FAFC;
+                cursor: not-allowed;
+            }
+            .telemetry-btn {
+                height: 28px;
+                border: 1px solid #CBD5E0;
+                border-radius: 4px;
+                background: #F1F5F9;
+                color: #475569;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 11.5px;
+                font-weight: 700;
+                padding: 0 10px;
+                cursor: pointer;
+            }
+            .telemetry-btn:hover { background: #E2E8F0; color: #1E293B; }
+            .telemetry-modal {
+                display: none;
+                position: absolute;
+                top: 40px;
+                right: 16px;
+                width: 330px;
+                max-width: calc(100% - 32px);
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+                z-index: 1000;
+                padding: 14px;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: 11px;
+                color: #334155;
+            }
+            .telemetry-modal.show { display: block; }
+            .telemetry-title {
+                font-size: 11.5px;
+                font-weight: 700;
+                color: #1E293B;
+                margin-bottom: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #EDF2F7;
+                padding-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .telemetry-close {
+                background: none;
+                border: none;
+                font-size: 16px;
+                cursor: pointer;
+                color: #94A3B8;
+                font-weight: 700;
+                line-height: 1;
+            }
+            .telemetry-close:hover { color: #64748B; }
+            .telemetry-section-title {
+                font-size: 10px;
+                font-weight: 700;
+                color: #475569;
+                text-transform: uppercase;
+                margin: 10px 0 4px 0;
+                background: #F1F5F9;
+                padding: 2px 6px;
+                border-radius: 3px;
+            }
+            .telemetry-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 5px 0;
+                border-bottom: 1px dashed #F1F5F9;
+                align-items: center;
+            }
+            .telemetry-label { font-weight: 600; color: #64748B; }
+            .telemetry-val {
+                font-weight: 700;
+                color: #0F172A;
+                font-variant-numeric: tabular-nums;
+                background: #F8FAFC;
+                padding: 1px 6px;
+                border-radius: 4px;
+                border: 1px solid #E2E8F0;
+                white-space: nowrap;
+            }
+            .stress-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10.5px; }
+            .stress-table th { text-align: left; background: #E2E8F0; color: #334155; padding: 3px 6px; font-weight: 700; }
+            .stress-table td { padding: 4px 6px; border-bottom: 1px solid #EDF2F7; font-weight: 600; }
             .table-summary {
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 font-size: 11.5px; 
@@ -197,6 +430,40 @@
         <div id="widget-wrapper">
             <div id="header-container"></div>
             <div id="table-container"></div>
+            <div class="telemetry-modal" id="telemetryModal">
+                <div class="telemetry-title">
+                    <span>Métricas de Performance</span>
+                    <button class="telemetry-close" id="closeTelemetry" type="button">×</button>
+                </div>
+
+                <div class="telemetry-section-title">Ciclo de Vida Total</div>
+                <div class="telemetry-row"><span class="telemetry-label">Tempo Total Ciclo:</span><span class="telemetry-val" id="tmTotal">0.00 ms</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">Engine JS Puro:</span><span class="telemetry-val" id="tmJS">0.00 ms</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">Pintura e Layout:</span><span class="telemetry-val" id="tmDOM">0.00 ms</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">Estabilidade (FPS):</span><span class="telemetry-val" id="tmFPS">60 FPS</span></div>
+
+                <div class="telemetry-section-title">Amostragem por Etapa</div>
+                <div class="telemetry-row"><span class="telemetry-label">1. Ingestão e Filtro:</span><span class="telemetry-val" id="stParsing">0.00 ms</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">2. Agregação Hierárquica:</span><span class="telemetry-val" id="stAggr">0.00 ms</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">3. Construção DOM:</span><span class="telemetry-val" id="stDOM">0.00 ms</span></div>
+
+                <div class="telemetry-section-title">Diagnóstico de Saúde</div>
+                <div class="telemetry-row"><span class="telemetry-label">Memória Heap V8:</span><span class="telemetry-val" id="tmMem">0.00 MB</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">Re-renders Redundantes:</span><span class="telemetry-val" id="tmRedund">0</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">Volume SAC:</span><span class="telemetry-val" id="tmVol">0 rows</span></div>
+                <div class="telemetry-row"><span class="telemetry-label">Linhas Filtradas:</span><span class="telemetry-val" id="tmFiltered">0 rows</span></div>
+
+                <div class="telemetry-section-title">Simulação de Estresse Operacional</div>
+                <table class="stress-table">
+                    <thead><tr><th>Carga</th><th>Cenário Preditivo (JS)</th></tr></thead>
+                    <tbody>
+                        <tr><td>10k linhas</td><td id="st10k">-</td></tr>
+                        <tr><td>25k linhas</td><td id="st25k">-</td></tr>
+                        <tr><td>50k linhas</td><td id="st50k">-</td></tr>
+                        <tr><td>100k linhas</td><td id="st100k">-</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     `;
 
@@ -208,7 +475,32 @@
             this._props = {};
             this._sortState = { col: null, dir: 'asc' };
             this._expandedRows = new Set();
-            this._currentData = null; 
+            this._currentData = null;
+            this._selectedMonth = "__all__";
+            this._profiler = new EvoGATableProfiler();
+            this._telemetryModal = this._shadowRoot.getElementById("telemetryModal");
+            this._closeTelemetry = this._shadowRoot.getElementById("closeTelemetry");
+            this._telemetryLabels = {
+                total: this._shadowRoot.getElementById("tmTotal"),
+                js: this._shadowRoot.getElementById("tmJS"),
+                dom: this._shadowRoot.getElementById("tmDOM"),
+                fps: this._shadowRoot.getElementById("tmFPS"),
+                parsing: this._shadowRoot.getElementById("stParsing"),
+                aggregation: this._shadowRoot.getElementById("stAggr"),
+                domCreation: this._shadowRoot.getElementById("stDOM"),
+                memory: this._shadowRoot.getElementById("tmMem"),
+                redundant: this._shadowRoot.getElementById("tmRedund"),
+                volume: this._shadowRoot.getElementById("tmVol"),
+                filtered: this._shadowRoot.getElementById("tmFiltered"),
+                k10: this._shadowRoot.getElementById("st10k"),
+                k25: this._shadowRoot.getElementById("st25k"),
+                k50: this._shadowRoot.getElementById("st50k"),
+                k100: this._shadowRoot.getElementById("st100k")
+            };
+            if (this._closeTelemetry) {
+                this._closeTelemetry.addEventListener("click", () => this._telemetryModal.classList.remove("show"));
+            }
+            this._profiler.startFPSMonitor();
         }
 
         onCustomWidgetBeforeUpdate(changedProperties) {
@@ -217,12 +509,106 @@
 
         onCustomWidgetAfterUpdate(changedProperties) {
             if ("financialData" in changedProperties && this.financialData) {
+                this._profiler.verifyRedundancy(this.financialData);
                 this._currentData = this.financialData;
                 this.renderTable();
             }
         }
 
+        _setText(element, value) {
+            if (element) element.textContent = String(value);
+        }
+
+        _sortMonthOptions(options) {
+            const monthOrder = {
+                "JAN": 1, "JANEIRO": 1, "01": 1, "1": 1,
+                "FEV": 2, "FEVEREIRO": 2, "FEB": 2, "02": 2, "2": 2,
+                "MAR": 3, "MARCO": 3, "MARÇO": 3, "03": 3, "3": 3,
+                "ABR": 4, "ABRIL": 4, "APR": 4, "04": 4, "4": 4,
+                "MAI": 5, "MAIO": 5, "MAY": 5, "05": 5, "5": 5,
+                "JUN": 6, "JUNHO": 6, "06": 6, "6": 6,
+                "JUL": 7, "JULHO": 7, "07": 7, "7": 7,
+                "AGO": 8, "AGOSTO": 8, "AUG": 8, "08": 8, "8": 8,
+                "SET": 9, "SETEMBRO": 9, "SEP": 9, "09": 9, "9": 9,
+                "OUT": 10, "OUTUBRO": 10, "OCT": 10, "10": 10,
+                "NOV": 11, "NOVEMBRO": 11, "11": 11,
+                "DEZ": 12, "DEZEMBRO": 12, "DEC": 12, "12": 12
+            };
+            const normalize = (value) => String(value || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .trim();
+            const getOrder = (value) => {
+                const normalized = normalize(value);
+                const direct = monthOrder[normalized];
+                if (direct) return direct;
+                const firstToken = normalized.split(/[\s/.-]+/)[0];
+                return monthOrder[firstToken] || 999;
+            };
+            return [...options].sort((a, b) => {
+                const orderA = getOrder(a);
+                const orderB = getOrder(b);
+                if (orderA !== orderB) return orderA - orderB;
+                return String(a).localeCompare(String(b), "pt-BR");
+            });
+        }
+
+        _bindHeaderControls(monthOptions, hasMonthFilter) {
+            const monthSelect = this._shadowRoot.getElementById("monthFilter");
+            const telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
+            if (monthSelect) {
+                monthSelect.addEventListener("change", (event) => {
+                    this._selectedMonth = event.target.value || "__all__";
+                    this.renderTable();
+                });
+            }
+            if (telemetryBtn && ENABLE_TELEMETRY) {
+                telemetryBtn.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    this._telemetryModal.classList.toggle("show");
+                });
+            }
+            if (!hasMonthFilter && monthSelect) monthSelect.disabled = true;
+        }
+
+        _updateTelemetry(tStart, tDOMStart, tEndJS, sourceRows, filteredRows) {
+            if (!ENABLE_TELEMETRY) return;
+            const paint = () => {
+                const tFinalPaint = this._profiler._now();
+                const jsTotalTime = tEndJS - tStart;
+                const domTotalTime = tFinalPaint - tDOMStart;
+                this._profiler.metrics.totalCycle = tFinalPaint - tStart;
+                this._profiler.metrics.jsTime = jsTotalTime;
+                this._profiler.metrics.domTime = domTotalTime;
+                this._profiler.metrics.dataVolume = sourceRows;
+                this._profiler.metrics.filteredRows = filteredRows;
+                this._profiler.collectMemory();
+
+                this._setText(this._telemetryLabels.total, `${this._profiler.metrics.totalCycle.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.js, `${jsTotalTime.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.dom, `${domTotalTime.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.fps, `${this._profiler.metrics.fps} FPS`);
+                this._setText(this._telemetryLabels.parsing, `${this._profiler.metrics.steps.parsing.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.aggregation, `${this._profiler.metrics.steps.aggregation.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.domCreation, `${this._profiler.metrics.steps.domCreation.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.memory, `${(this._profiler.metrics.memory / 1024 / 1024).toFixed(2)} MB`);
+                this._setText(this._telemetryLabels.redundant, this._profiler.metrics.redundantRenders);
+                this._setText(this._telemetryLabels.volume, `${sourceRows} rows`);
+                this._setText(this._telemetryLabels.filtered, `${filteredRows} rows`);
+
+                const stress = this._profiler.runStressProjection(Math.max(filteredRows, 1), jsTotalTime);
+                this._setText(this._telemetryLabels.k10, `${stress.k10.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.k25, `${stress.k25.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.k50, `${stress.k50.toFixed(2)} ms`);
+                this._setText(this._telemetryLabels.k100, `${stress.k100.toFixed(2)} ms`);
+            };
+            if (typeof requestAnimationFrame !== "undefined") requestAnimationFrame(paint);
+            else paint();
+        }
+
         renderTable() {
+            const tArrivalData = this._profiler._now();
             const financialData = this._currentData;
             const headerContainer = this._shadowRoot.getElementById("header-container");
             const container = this._shadowRoot.getElementById("table-container");
@@ -236,6 +622,7 @@
             }
 
             try {
+                const tParsingStart = this._profiler._now();
                 const dimensions = financialData.metadata.dimensions || {};
                 const measures = financialData.metadata.mainStructureMembers || {};
 
@@ -256,12 +643,28 @@
                     const normalized = normalizeText(value);
                     return normalized.includes("ORCADO") || normalized.includes("REALIZADO");
                 };
+                const isMonthDimension = (dimKey) => {
+                    const dimName = normalizeText(getName(dimensions[dimKey]));
+                    return dimName.includes("MES") || dimName.includes("MONTH") || dimName.includes("COMPETENCIA") || dimName.includes("PERIODO") || dimName.includes("DATA");
+                };
 
                 let colDimKey = dimKeys.find(dimKey =>
                     financialData.data.some(row => isVersionMember(getName(row[dimKey])))
-                ) || dimKeys[3];
+                ) || dimKeys[dimKeys.length - 1];
 
-                const hierarchyDimKeys = dimKeys.filter(dimKey => dimKey !== colDimKey);
+                const monthDimKey = dimKeys.find(dimKey => dimKey !== colDimKey && isMonthDimension(dimKey));
+                const monthOptions = monthDimKey
+                    ? this._sortMonthOptions(Array.from(new Set(financialData.data.map(row => getName(row[monthDimKey])).filter(Boolean))))
+                    : [];
+                if (this._selectedMonth !== "__all__" && !monthOptions.includes(this._selectedMonth)) {
+                    this._selectedMonth = "__all__";
+                }
+
+                const rowsForRender = monthDimKey && this._selectedMonth !== "__all__"
+                    ? financialData.data.filter(row => getName(row[monthDimKey]) === this._selectedMonth)
+                    : financialData.data;
+
+                const hierarchyDimKeys = dimKeys.filter(dimKey => dimKey !== colDimKey && dimKey !== monthDimKey);
                 if (hierarchyDimKeys.length < 4) {
                     container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Não foi possível identificar a dimensão de versão (Orçado/Realizado). Verifique se uma dimensão contém os membros Orçado e Realizado.</div>";
                     return;
@@ -329,8 +732,10 @@
 
                 const dataMap = {};
                 const uniqueColsSet = new Set();
+                this._profiler.metrics.steps.parsing = this._profiler._now() - tParsingStart;
+                const tAggregationStart = this._profiler._now();
 
-                financialData.data.forEach(row => {
+                rowsForRender.forEach(row => {
                     const calcNode = getName(row[calcDimKey]);
                     const ccNivel1 = getName(row[ccNivel1DimKey]);
                     const ccNivel2 = getName(row[ccNivel2DimKey]);
@@ -447,12 +852,30 @@
                     ofensoresText = " Não foram identificados centros de custo operando acima do orçamento.";
                 }
 
+                this._profiler.metrics.steps.aggregation = this._profiler._now() - tAggregationStart;
+                const tDOMStart = this._profiler._now();
+                const monthOptionsHtml = monthOptions.map(month =>
+                    `<option value="${escapeHtml(month)}" ${this._selectedMonth === month ? "selected" : ""}>${escapeHtml(month)}</option>`
+                ).join("");
+                const selectedAll = this._selectedMonth === "__all__" ? "selected" : "";
+                const monthDisabled = monthOptions.length ? "" : "disabled";
+
                 headerContainer.innerHTML = `
-                    <h1 class="table-title">Overview - Acompanhamento Orçamentário</h1>
+                    <div class="header-top">
+                        <h1 class="table-title">Overview - Acompanhamento Orçamentário</h1>
+                        <div class="header-actions">
+                            <select class="month-filter" id="monthFilter" ${monthDisabled} aria-label="Filtrar mês">
+                                <option value="__all__" ${selectedAll}>Todos os meses</option>
+                                ${monthOptionsHtml}
+                            </select>
+                            <button class="telemetry-btn" id="telemetryBtn" type="button">Telemetria</button>
+                        </div>
+                    </div>
                     <p class="table-summary ${varianceClass}">
                         No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado.${ofensoresText}
                     </p>
                 `;
+                this._bindHeaderControls(monthOptions, Boolean(monthDimKey));
 
                 if (this._sortState.col) {
                     tableData.sort((a, b) => {
@@ -610,6 +1033,9 @@
                         this.renderTable(); 
                     });
                 });
+
+                this._profiler.metrics.steps.domCreation = this._profiler._now() - tDOMStart;
+                this._updateTelemetry(tArrivalData, tDOMStart, this._profiler._now(), financialData.data.length, rowsForRender.length);
 
             } catch (error) {
                 container.innerHTML = `<div style='padding:10px; color:red;'>Erro ao renderizar: ${error.message}</div>`;
