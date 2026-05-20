@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.11 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.12 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -616,8 +616,8 @@
                 font-weight: 700;
                 color: #2c3e50;
                 margin: 0 0 8px 0;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
+                text-transform: none;
+                letter-spacing: 0.1px;
             }
             .header-top {
                 display: flex;
@@ -2002,6 +2002,19 @@
                         value: getMeasureValueFromRow(row)
                     };
                 });
+                const nonSegregatedFactsForTitle = sourceFacts.filter(fact =>
+                    !EvoGABudgetOffenderEngine._matchExcludedTerm([fact.calcNode, fact.ccNivel1, fact.ccNivel2, fact.conta])
+                );
+                const titleFacts = nonSegregatedFactsForTitle.length ? nonSegregatedFactsForTitle : sourceFacts;
+                const selectedAccountNames = Array.from(new Set(
+                    titleFacts
+                        .map(fact => fact.conta)
+                        .filter(name => name && name !== "N/D")
+                )).sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
+                const selectedIndicatorLabel = selectedAccountNames.length === 1
+                    ? selectedAccountNames[0]
+                    : (selectedAccountNames.length > 1 ? `${selectedAccountNames.length} contas selecionadas` : "Conta não selecionada");
+                const dynamicWidgetTitle = `Executive Budget - ${selectedIndicatorLabel}`;
                 const rowsForRender = selectedMonthHasFilter
                     ? sourceFacts.filter(fact => fact.month === this._selectedMonth)
                     : sourceFacts;
@@ -2361,7 +2374,7 @@
 
                 headerContainer.innerHTML = `
                     <div class="header-top">
-                        <h1 class="table-title">G&A Executive Oversight Engine</h1>
+                        <h1 class="table-title">${escapeHtml(dynamicWidgetTitle)}</h1>
                         <div class="header-actions">
                             <button class="telemetry-btn" id="telemetryBtn" type="button">Telemetria</button>
                         </div>
@@ -2628,9 +2641,9 @@
                                 <div class="pareto-scale"><span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span></div>
                             </div>
                         </div>
-                        ${excludedEffectHtml}
                         ${budgetDetailControlsHtml}
                         <div class="driver-list">${driversListHtml}</div>
+                        ${excludedEffectHtml}
                     </div>
                     <p class="table-summary ${varianceClass}">
                         No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado. A lista de ofensores considera o desvio orçamentário por Departamento/Gerência, excluindo IFRS 16, Outros, PBA e Rateio, até cobrir ao menos ${escapeHtml(paretoTargetCoverageText)} do desvio relevante.${ofensoresText}
