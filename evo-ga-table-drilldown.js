@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.9 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.10 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -397,6 +397,7 @@
             if ((!rows && !facts) || (!facts && !currentMonth)) {
                 return {
                     drivers: [],
+                    remainingDrivers: [],
                     totalBudgetDeviation: 0,
                     coverage: 0,
                     excludedRows: 0,
@@ -454,7 +455,7 @@
                 EvoGABudgetOffenderEngine._addVersionValue(departmentMap[key].current, fact.col, fact.value);
             });
 
-            const allDrivers = Object.values(departmentMap).map(item => {
+            const allDepartmentDrivers = Object.values(departmentMap).map(item => {
                 const currentDesvio = item.current.actual - item.current.budget;
                 const percentConsumption = item.current.budget > 0 ? (item.current.actual / item.current.budget) * 100 : (item.current.actual > 0 ? Infinity : 0);
                 return {
@@ -470,10 +471,11 @@
                     recurrenceMonths: currentDesvio > 0 ? 1 : 0,
                     isExecutiveNoise: currentDesvio <= 0
                 };
-            }).filter(item => item.budgetVariance > 0);
+            }).filter(item => Math.abs(item.budgetVariance) > 0);
 
-            const totalBudgetDeviation = allDrivers.reduce((sum, item) => sum + item.budgetVariance, 0);
-            const sortedDrivers = allDrivers.sort((a, b) => b.budgetVariance - a.budgetVariance);
+            const positiveDrivers = allDepartmentDrivers.filter(item => item.budgetVariance > 0);
+            const totalBudgetDeviation = positiveDrivers.reduce((sum, item) => sum + item.budgetVariance, 0);
+            const sortedDrivers = positiveDrivers.sort((a, b) => b.budgetVariance - a.budgetVariance);
             const selectedDrivers = [];
             let cumulative = 0;
             for (const item of sortedDrivers) {
@@ -486,6 +488,10 @@
                 });
                 if ((cumulative / totalBudgetDeviation) >= targetCoverage) break;
             }
+            const selectedDriverKeys = new Set(selectedDrivers.map(item => item.key));
+            const remainingDrivers = allDepartmentDrivers
+                .filter(item => !selectedDriverKeys.has(item.key))
+                .sort((a, b) => Math.abs(b.budgetVariance) - Math.abs(a.budgetVariance));
             const excludedDesvio = excludedSummary.actual - excludedSummary.budget;
             const excludedTerms = Object.values(excludedSummary.termsMap).map(item => ({
                 ...item,
@@ -495,6 +501,7 @@
 
             return {
                 drivers: selectedDrivers,
+                remainingDrivers,
                 totalBudgetDeviation,
                 coverage: totalBudgetDeviation > 0 ? cumulative / totalBudgetDeviation : 0,
                 targetCoverage,
@@ -1149,44 +1156,36 @@
             }
             .excluded-effect-value.alert { color: #B91C1C; }
             .excluded-effect-value.saving { color: #166534; }
-            .reconciliation-strip {
-                display: grid;
-                grid-template-columns: repeat(4, minmax(130px, 1fr));
-                gap: 8px;
+            .budget-detail-controls {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 6px;
                 margin: 0 0 9px 0;
             }
-            .reconciliation-item {
-                min-width: 0;
-                padding: 7px 9px;
-                border: 1px solid #E2E8F0;
-                border-radius: 6px;
+            .budget-detail-btn {
+                min-height: 28px;
+                padding: 5px 9px;
+                border: 1px solid #D6E0EA;
+                border-radius: 4px;
                 background: #FFFFFF;
+                color: #243443;
+                font-size: 11px;
+                font-weight: 600;
+                line-height: 1.2;
+                cursor: pointer;
             }
-            .reconciliation-item.total {
-                border-left: 4px solid #1F4E79;
+            .budget-detail-btn:hover {
+                border-color: #9FB2C7;
                 background: #F8FAFC;
             }
-            .reconciliation-label {
-                color: #475569;
-                font-size: 10px;
-                font-weight: 700;
-                line-height: 1.25;
-                text-transform: uppercase;
-                letter-spacing: 0.35px;
+            .budget-detail-btn.active {
+                border-color: #1F4E79;
+                background: #F4F7FA;
+                color: #12344D;
+                box-shadow: inset 3px 0 0 #1F4E79;
             }
-            .reconciliation-value {
-                margin-top: 2px;
-                color: #1e293b;
-                font-size: 12.5px;
-                font-weight: 700;
-                line-height: 1.25;
-                font-variant-numeric: tabular-nums;
-                white-space: nowrap;
-            }
-            .reconciliation-value.alert { color: #B91C1C; }
-            .reconciliation-value.saving { color: #166534; }
-            .reconciliation-note {
-                margin-top: 2px;
+            .budget-detail-note {
                 color: #64748b;
                 font-size: 10.5px;
                 font-weight: 500;
@@ -1226,7 +1225,6 @@
                 .driver-metric { text-align: left; }
                 .excluded-effect { grid-template-columns: 1fr; }
                 .excluded-effect-metric { text-align: left; }
-                .reconciliation-strip { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
                 .pareto-control { width: 100%; }
             }
             @media (max-width: 760px) {
@@ -1234,7 +1232,6 @@
                 .executive-headline { flex-direction: column; gap: 2px; }
                 .executive-kpi-grid { grid-template-columns: 1fr; }
                 .executive-kpi.primary { grid-column: auto; }
-                .reconciliation-strip { grid-template-columns: 1fr; }
                 .pareto-control { grid-template-columns: 1fr; }
             }
 
@@ -1500,6 +1497,7 @@
             this._hasManualMonthSelection = false;
             this._activeView = "executive";
             this._paretoCoverage = EVO_GA_BUDGET_OFFENDER_CONFIG.paretoCoverage;
+            this._budgetDetailView = "pareto";
             this._isDropdownOpen = false;
             this._normalizeCache = new Map();
             this._periodPartsCache = new Map();
@@ -2219,6 +2217,15 @@
                         recurrenceMonths: node ? node.recurrenceMonths : driver.recurrenceMonths
                     };
                 });
+                const remainingBudgetDrivers = (budgetOffenderAnalysis.remainingDrivers || []).map(driver => {
+                    const node = departmentNodeByKey.get(driver.key);
+                    return {
+                        ...driver,
+                        trendDirection: node ? node.trendDirection : driver.trendDirection,
+                        recurrenceType: node ? node.recurrenceType : driver.recurrenceType,
+                        recurrenceMonths: node ? node.recurrenceMonths : driver.recurrenceMonths
+                    };
+                });
                 const ofensores = executiveDrivers.slice(0, 3);
                 const ofensorKeys = new Set(ofensores.map(item => item.key));
 
@@ -2277,11 +2284,6 @@
                 const excludedShareText = excludedShareBase > 0 ? `${((excludedGrossAbs / excludedShareBase) * 100).toFixed(1)}%` : "-";
                 const excludedValueClass = excludedSummary.desvio > 0 ? "alert" : (excludedSummary.desvio < 0 ? "saving" : "neutral");
                 const reconciliationRemainder = totalGlobalDesvio - visibleParetoDeviation - (excludedSummary.desvio || 0);
-                const reconciliationClassFor = (value) => value > 0 ? "alert" : (value < 0 ? "saving" : "neutral");
-                const reconciliationShareText = (value) => {
-                    if (!totalGlobalDesvio) return "-";
-                    return `${((value / totalGlobalDesvio) * 100).toFixed(1)}%`;
-                };
                 const excludedTermsText = excludedTermItems.length
                     ? excludedTermItems.map(item => `${escapeHtml(item.term)} ${formatNumber(Math.abs(item.desvio), true, true, item.desvio)}`).join(" · ")
                     : escapeHtml(excludedTermsLabel);
@@ -2308,49 +2310,43 @@
                         <div class="excluded-effect-metric"><span class="executive-label">Desvio</span><span class="excluded-effect-value">-</span></div>
                     </div>
                 `;
-                // Reconciliacao mensal: mostra onde fica o desvio que nao entrou
-                // no corte do Pareto, fechando com o total Real x Orcado do mes.
-                const reconciliationHtml = `
-                    <div class="reconciliation-strip" aria-label="Reconciliação do desvio mensal">
-                        <div class="reconciliation-item">
-                            <div class="reconciliation-label">Pareto exibido</div>
-                            <div class="reconciliation-value ${reconciliationClassFor(visibleParetoDeviation)}">${formatNumber(Math.abs(visibleParetoDeviation), true, true, visibleParetoDeviation)}</div>
-                            <div class="reconciliation-note">${executiveDrivers.length} departamentos · ${escapeHtml(reconciliationShareText(visibleParetoDeviation))}</div>
-                        </div>
-                        <div class="reconciliation-item">
-                            <div class="reconciliation-label">Demais variações</div>
-                            <div class="reconciliation-value ${reconciliationClassFor(reconciliationRemainder)}">${formatNumber(Math.abs(reconciliationRemainder), true, true, reconciliationRemainder)}</div>
-                            <div class="reconciliation-note">fora do Pareto · ${escapeHtml(reconciliationShareText(reconciliationRemainder))}</div>
-                        </div>
-                        <div class="reconciliation-item">
-                            <div class="reconciliation-label">Efeito segregado</div>
-                            <div class="reconciliation-value ${reconciliationClassFor(excludedSummary.desvio || 0)}">${formatNumber(Math.abs(excludedSummary.desvio || 0), true, true, excludedSummary.desvio || 0)}</div>
-                            <div class="reconciliation-note">${excludedRowsCount} linhas · ${escapeHtml(reconciliationShareText(excludedSummary.desvio || 0))}</div>
-                        </div>
-                        <div class="reconciliation-item total">
-                            <div class="reconciliation-label">Desvio total</div>
-                            <div class="reconciliation-value ${reconciliationClassFor(totalGlobalDesvio)}">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</div>
-                            <div class="reconciliation-note">Real x Orçado do mês · 100.0%</div>
-                        </div>
+                // Controle de detalhamento: alterna entre Pareto e demais variacoes
+                // sem transformar a reconciliacao em mais um conjunto de KPIs.
+                const budgetDetailView = this._budgetDetailView === "remaining" ? "remaining" : "pareto";
+                const budgetDetailControlsHtml = `
+                    <div class="budget-detail-controls" aria-label="Detalhamento dos desvios do orçamento">
+                        <button class="budget-detail-btn ${budgetDetailView === "pareto" ? "active" : ""}" type="button" data-budget-detail-view="pareto">Apresentar os departamentos do Pareto</button>
+                        <button class="budget-detail-btn ${budgetDetailView === "remaining" ? "active" : ""}" type="button" data-budget-detail-view="remaining">Apresentar as demais variações</button>
+                        <span class="budget-detail-note">Fechamento: Pareto + demais variações + efeito segregado = desvio total Real x Orçado.</span>
                     </div>
                 `;
-                const driversListHtml = executiveDrivers.length ? executiveDrivers.map((driver, index) => {
-                    const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.budgetVariance);
-                    const driverConsumptionPct = driver.valOrcado > 0 ? (driver.valRealizado / driver.valOrcado) * 100 : null;
-                    const driverConsumptionText = driverConsumptionPct !== null
-                        ? formatPercentage(driverConsumptionPct)
-                        : (driver.valRealizado > 0 ? "Sem orçamento" : "-");
-                    return `
-                        <div class="driver-row">
-                            <div>
-                                <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
+                const buildBudgetDriverRowsHtml = (drivers, mode) => {
+                    if (!drivers.length) {
+                        if (mode === "remaining") return `<div class="driver-meta">Não há demais variações fora do Pareto no período selecionado.</div>`;
+                        return `<div class="driver-meta">${excludedRowsCount > 0 && excludedGrossAbs > 0 ? "O desvio orçamentário relevante do período está concentrado no grupo segregado acima; não há departamentos adicionais no Pareto." : "Não há desvio orçamentário relevante por Departamento no período selecionado."}</div>`;
+                    }
+                    const shareBase = mode === "remaining" ? Math.abs(reconciliationRemainder) : (budgetOffenderAnalysis.totalBudgetDeviation || 0);
+                    return drivers.map((driver, index) => {
+                        const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.budgetVariance);
+                        const driverConsumptionPct = driver.valOrcado > 0 ? (driver.valRealizado / driver.valOrcado) * 100 : null;
+                        const driverConsumptionText = driverConsumptionPct !== null
+                            ? formatPercentage(driverConsumptionPct)
+                            : (driver.valRealizado > 0 ? "Sem orçamento" : "-");
+                        const contributionText = shareBase > 0 ? `${((Math.abs(driver.budgetVariance) / shareBase) * 100).toFixed(1)}%` : "-";
+                        return `
+                            <div class="driver-row">
+                                <div>
+                                    <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
+                                </div>
+                                <div class="driver-metric"><span class="executive-label">${mode === "remaining" ? "Variação" : "Desvio orçamento"}</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.budgetVariance), true, true, driver.budgetVariance)}</span></div>
+                                <div class="driver-metric"><span class="executive-label">${mode === "remaining" ? "Peso no restante" : "Contribuição"}</span><span class="driver-value ${driverValueClass}">${escapeHtml(contributionText)}</span></div>
+                                <div class="driver-metric"><span class="executive-label">Consumo</span><span class="driver-value">${escapeHtml(driverConsumptionText)}</span></div>
                             </div>
-                            <div class="driver-metric"><span class="executive-label">Desvio orçamento</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.budgetVariance), true, true, driver.budgetVariance)}</span></div>
-                            <div class="driver-metric"><span class="executive-label">Contribuição</span><span class="driver-value ${driverValueClass}">${driver.contributionPct.toFixed(1)}%</span></div>
-                            <div class="driver-metric"><span class="executive-label">Consumo</span><span class="driver-value">${escapeHtml(driverConsumptionText)}</span></div>
-                        </div>
-                    `;
-                }).join("") : `<div class="driver-meta">${excludedRowsCount > 0 && excludedGrossAbs > 0 ? "O desvio orçamentário relevante do período está concentrado no grupo segregado acima; não há departamentos adicionais no Pareto." : "Não há desvio orçamentário relevante por Departamento no período selecionado."}</div>`;
+                        `;
+                    }).join("");
+                };
+                const visibleBudgetDrivers = budgetDetailView === "remaining" ? remainingBudgetDrivers : executiveDrivers;
+                const driversListHtml = buildBudgetDriverRowsHtml(visibleBudgetDrivers, budgetDetailView);
                 this._profiler.metrics.steps.aggregation = this._profiler._now() - tAggregationStart;
                 const tDOMStart = this._profiler._now();
 
@@ -2657,7 +2653,7 @@
                             </div>
                         </div>
                         ${excludedEffectHtml}
-                        ${reconciliationHtml}
+                        ${budgetDetailControlsHtml}
                         <div class="driver-list">${driversListHtml}</div>
                     </div>
                     <p class="table-summary ${varianceClass}">
@@ -2706,6 +2702,15 @@
                         applyParetoCoverage(nextValue);
                     });
                 }
+                container.querySelectorAll("[data-budget-detail-view]").forEach(button => {
+                    button.addEventListener("click", (event) => {
+                        const nextView = event.currentTarget.getAttribute("data-budget-detail-view");
+                        if (nextView !== "pareto" && nextView !== "remaining") return;
+                        if (this._budgetDetailView === nextView) return;
+                        this._budgetDetailView = nextView;
+                        this.renderTable();
+                    });
+                });
 
                 // Eventos da tabela: ordenar colunas e abrir/fechar niveis da hierarquia.
                 container.onclick = (event) => {
