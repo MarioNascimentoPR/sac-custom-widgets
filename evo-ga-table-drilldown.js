@@ -1,5 +1,12 @@
-// Evo GA Executive Oversight Engine v1.3.6 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.4 - governed budget oversight.
 (function () {
+    // =========================================================================
+    // CONFIGURACOES GERAIS
+    // -------------------------------------------------------------------------
+    // Esta area concentra parametros globais e listas de apoio.
+    // Manutencoes simples, como mudar o Pareto default ou termos segregados,
+    // normalmente comecam aqui.
+    // =========================================================================
     const ENABLE_TELEMETRY = true;
     const EVO_GA_MONTH_MAP = {
         JAN: 1, JANEIRO: 1,
@@ -25,6 +32,12 @@
         return match ? match.token : null;
     };
 
+    // =========================================================================
+    // TELEMETRIA E PERFORMANCE
+    // -------------------------------------------------------------------------
+    // Mede tempo de processamento, renderizacao, volume de linhas e projecoes de
+    // carga. Nao interfere no calculo financeiro; serve para diagnostico.
+    // =========================================================================
     class EvoGATableProfiler {
         constructor() {
             this.metrics = {
@@ -137,6 +150,12 @@
         }
     }
 
+    // =========================================================================
+    // HIERARQUIA OFICIAL E PARAMETROS DE NEGOCIO
+    // -------------------------------------------------------------------------
+    // A hierarquia abaixo descreve como o widget organiza as dimensoes recebidas
+    // do SAC. O widget nao cria nova semantica; ele apenas consome essa estrutura.
+    // =========================================================================
     const EVO_GA_HIERARCHY = [
         { key: "vp", label: "VP" },
         { key: "diretoria", label: "Diretoria" },
@@ -151,16 +170,9 @@
         noiseVarianceAbs: 100000
     };
 
-    const EVO_GA_MOM_OFFENDER_CONFIG = {
+    const EVO_GA_BUDGET_OFFENDER_CONFIG = {
         paretoCoverage: 0.80,
         excludedTerms: ["IFRS 16", "OUTROS", "PBA", "RATEIO"]
-    };
-
-    const EVO_GA_RECOMMENDATION_CONFIG = {
-        materialYtdPct: 5,
-        materialYtdAbs: 500000,
-        savingConcentrationTop1: 0.50,
-        savingConcentrationTop3: 0.80
     };
 
     const EVO_GA_TREND_LABELS = {
@@ -178,6 +190,12 @@
         none: "sem recorrência"
     };
 
+    // =========================================================================
+    // TREND ENGINE
+    // -------------------------------------------------------------------------
+    // Analisa a serie temporal disponivel para indicar deterioracao, melhora,
+    // estabilidade e recorrencia. Usa somente os valores recebidos do SAC.
+    // =========================================================================
     class EvoGATrendEngine {
         static buildProfile(monthlyValues) {
             const series = (monthlyValues || []).map(item => item.actual - item.budget);
@@ -203,6 +221,12 @@
         }
     }
 
+    // =========================================================================
+    // AGREGACAO FINANCEIRA
+    // -------------------------------------------------------------------------
+    // Soma Realizado, Orcado, Desvio e Consumo para cada nivel da hierarquia.
+    // Esta e a base para as tabelas, KPIs e leituras executivas.
+    // =========================================================================
     class EvoGAAggregationEngine {
         static addValue(valuesMap, col, value) {
             valuesMap[col] = (valuesMap[col] || 0) + value;
@@ -271,6 +295,12 @@
         }
     }
 
+    // =========================================================================
+    // MATERIALIDADE E STATUS ORCAMENTARIO
+    // -------------------------------------------------------------------------
+    // Calcula relevancia do desvio e separa ruido operacional de sinal executivo.
+    // Nao classifica contas por natureza; usa apenas magnitude e representatividade.
+    // =========================================================================
     class EvoGAMaterialityEngine {
         static classifyBudgetStatus(budget, actual, varianceAbs, variancePct) {
             if (budget === 0 && actual === 0) return "Sem movimento";
@@ -311,7 +341,14 @@
         }
     }
 
-    class EvoGAMoMEngine {
+    // =========================================================================
+    // PARETO DE OFENSORES DO ORCAMENTO
+    // -------------------------------------------------------------------------
+    // Seleciona os Departamentos que explicam o percentual definido do desvio
+    // positivo do periodo. IFRS 16, Outros, PBA e Rateio ficam fora da tabela e
+    // sao apresentados no bloco "Efeito segregado fora do Pareto".
+    // =========================================================================
+    class EvoGABudgetOffenderEngine {
         static _normalize(value) {
             return String(value || "")
                 .normalize("NFD")
@@ -320,9 +357,9 @@
                 .trim();
         }
 
-        static _hasExcludedTerm(values) {
-            const text = values.map(value => EvoGAMoMEngine._normalize(value)).join(" | ");
-            return EVO_GA_MOM_OFFENDER_CONFIG.excludedTerms.some(term => text.includes(EvoGAMoMEngine._normalize(term)));
+        static _matchExcludedTerm(values) {
+            const text = values.map(value => EvoGABudgetOffenderEngine._normalize(value)).join(" | ");
+            return EVO_GA_BUDGET_OFFENDER_CONFIG.excludedTerms.find(term => text.includes(EvoGABudgetOffenderEngine._normalize(term))) || null;
         }
 
         static _emptyPeriod() {
@@ -330,7 +367,7 @@
         }
 
         static _addVersionValue(target, versionName, value) {
-            const version = EvoGAMoMEngine._normalize(versionName);
+            const version = EvoGABudgetOffenderEngine._normalize(versionName);
             if (version.includes("ORCADO")) target.budget += value;
             else if (version.includes("REALIZADO")) target.actual += value;
         }
@@ -346,10 +383,18 @@
                 getMeasureValueFromRow,
                 paretoCoverage
             } = config;
-            const targetCoverage = Number.isFinite(paretoCoverage) ? paretoCoverage : EVO_GA_MOM_OFFENDER_CONFIG.paretoCoverage;
+            const targetCoverage = Number.isFinite(paretoCoverage) ? paretoCoverage : EVO_GA_BUDGET_OFFENDER_CONFIG.paretoCoverage;
 
-            if ((!rows && !facts) || !currentMonth || !previousMonth) {
-                return { drivers: [], totalMoMDeviation: 0, coverage: 0, excludedRows: 0, currentMonth, previousMonth };
+            if ((!rows && !facts) || (!facts && !currentMonth)) {
+                return {
+                    drivers: [],
+                    totalBudgetDeviation: 0,
+                    coverage: 0,
+                    excludedRows: 0,
+                    excludedSummary: { budget: 0, actual: 0, desvio: 0, absDesvio: 0, rows: 0, terms: [] },
+                    currentMonth,
+                    previousMonth
+                };
             }
 
             const sourceFacts = Array.isArray(facts) ? facts : (rows || []).map(row => ({
@@ -363,18 +408,27 @@
                 value: getMeasureValueFromRow(row)
             }));
             const departmentMap = {};
+            const excludedSummary = { budget: 0, actual: 0, rows: 0, termsMap: {} };
             let excludedRows = 0;
             sourceFacts.forEach(fact => {
                 const rowMonth = fact.month;
-                if (rowMonth !== currentMonth && rowMonth !== previousMonth) return;
+                if (!Array.isArray(facts) && currentMonth && rowMonth !== currentMonth) return;
 
                 const calcNode = fact.calcNode;
                 const ccNivel1 = fact.ccNivel1;
                 const ccNivel2 = fact.ccNivel2;
                 const ccNivel3 = fact.ccNivel3;
                 const conta = fact.conta;
-                if (EvoGAMoMEngine._hasExcludedTerm([calcNode, ccNivel1, ccNivel2, ccNivel3, conta])) {
+                const excludedTerm = EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, ccNivel3, conta]);
+                if (excludedTerm) {
                     excludedRows++;
+                    excludedSummary.rows++;
+                    if (!excludedSummary.termsMap[excludedTerm]) {
+                        excludedSummary.termsMap[excludedTerm] = { term: excludedTerm, budget: 0, actual: 0, rows: 0 };
+                    }
+                    excludedSummary.termsMap[excludedTerm].rows++;
+                    EvoGABudgetOffenderEngine._addVersionValue(excludedSummary, fact.col, fact.value);
+                    EvoGABudgetOffenderEngine._addVersionValue(excludedSummary.termsMap[excludedTerm], fact.col, fact.value);
                     return;
                 }
 
@@ -384,91 +438,79 @@
                         key,
                         name: ccNivel3,
                         hierarchyLabel: "Departamento",
-                        current: EvoGAMoMEngine._emptyPeriod(),
-                        previous: EvoGAMoMEngine._emptyPeriod()
+                        current: EvoGABudgetOffenderEngine._emptyPeriod()
                     };
                 }
 
-                const target = rowMonth === currentMonth ? departmentMap[key].current : departmentMap[key].previous;
-                EvoGAMoMEngine._addVersionValue(target, fact.col, fact.value);
+                EvoGABudgetOffenderEngine._addVersionValue(departmentMap[key].current, fact.col, fact.value);
             });
 
             const allDrivers = Object.values(departmentMap).map(item => {
                 const currentDesvio = item.current.actual - item.current.budget;
-                const previousDesvio = item.previous.actual - item.previous.budget;
-                const momVariance = currentDesvio - previousDesvio;
                 const percentConsumption = item.current.budget > 0 ? (item.current.actual / item.current.budget) * 100 : (item.current.actual > 0 ? Infinity : 0);
                 return {
                     ...item,
                     valOrcado: item.current.budget,
                     valRealizado: item.current.actual,
                     desvio: currentDesvio,
-                    previousDesvio,
-                    momVariance,
+                    budgetVariance: currentDesvio,
                     percentConsumption,
                     variancePct: item.current.budget > 0 ? (currentDesvio / item.current.budget) * 100 : 0,
-                    trendDirection: momVariance > 0 ? "worsening" : (momVariance < 0 ? "improving" : "stable"),
+                    trendDirection: currentDesvio > 0 ? "worsening" : (currentDesvio < 0 ? "improving" : "stable"),
                     recurrenceType: "isolated",
-                    recurrenceMonths: momVariance > 0 ? 1 : 0,
-                    isExecutiveNoise: momVariance <= 0
+                    recurrenceMonths: currentDesvio > 0 ? 1 : 0,
+                    isExecutiveNoise: currentDesvio <= 0
                 };
-            }).filter(item => item.momVariance > 0);
+            }).filter(item => item.budgetVariance > 0);
 
-            const totalMoMDeviation = allDrivers.reduce((sum, item) => sum + item.momVariance, 0);
-            const sortedDrivers = allDrivers.sort((a, b) => b.momVariance - a.momVariance);
+            const totalBudgetDeviation = allDrivers.reduce((sum, item) => sum + item.budgetVariance, 0);
+            const sortedDrivers = allDrivers.sort((a, b) => b.budgetVariance - a.budgetVariance);
             const selectedDrivers = [];
             let cumulative = 0;
             for (const item of sortedDrivers) {
-                if (totalMoMDeviation <= 0) break;
-                cumulative += item.momVariance;
+                if (totalBudgetDeviation <= 0) break;
+                cumulative += item.budgetVariance;
                 selectedDrivers.push({
                     ...item,
-                    contributionPct: (item.momVariance / totalMoMDeviation) * 100,
-                    cumulativeContributionPct: (cumulative / totalMoMDeviation) * 100
+                    contributionPct: (item.budgetVariance / totalBudgetDeviation) * 100,
+                    cumulativeContributionPct: (cumulative / totalBudgetDeviation) * 100
                 });
-                if ((cumulative / totalMoMDeviation) >= targetCoverage) break;
+                if ((cumulative / totalBudgetDeviation) >= targetCoverage) break;
             }
+            const excludedDesvio = excludedSummary.actual - excludedSummary.budget;
+            const excludedTerms = Object.values(excludedSummary.termsMap).map(item => ({
+                ...item,
+                desvio: item.actual - item.budget,
+                absDesvio: Math.abs(item.actual - item.budget)
+            })).sort((a, b) => b.absDesvio - a.absDesvio);
 
             return {
                 drivers: selectedDrivers,
-                totalMoMDeviation,
-                coverage: totalMoMDeviation > 0 ? cumulative / totalMoMDeviation : 0,
+                totalBudgetDeviation,
+                coverage: totalBudgetDeviation > 0 ? cumulative / totalBudgetDeviation : 0,
                 targetCoverage,
                 excludedRows,
+                excludedSummary: {
+                    budget: excludedSummary.budget,
+                    actual: excludedSummary.actual,
+                    desvio: excludedDesvio,
+                    absDesvio: Math.abs(excludedDesvio),
+                    rows: excludedSummary.rows,
+                    terms: excludedTerms
+                },
                 currentMonth,
                 previousMonth
             };
         }
     }
 
+    // =========================================================================
+    // NARRATIVA EXECUTIVA
+    // -------------------------------------------------------------------------
+    // Monta os textos do Resumo Executivo: headline, contexto, YTD, principais
+    // ofensores e tendencia. Esta camada deve explicar, nao recalcular dados.
+    // =========================================================================
     class EvoGANarrativeEngine {
-        static buildRecommendation(context) {
-            const topDriver = context.drivers[0];
-            const topDepartment = topDriver ? topDriver.name : "departamento principal";
-            const savingProfile = context.savingProfile || {};
-            const topSaving = savingProfile.topDepartment || "departamento principal";
-
-            if (context.hasUnbudgetedDeviation) {
-                return "Tratar como exceção orçamentária: validar classificação do lançamento sem orçamento, confirmar responsável e regularizar no forecast antes de novas liberações.";
-            }
-            if (context.hasAccelerationDeviation) {
-                return `Priorizar contenção no Departamento ${topDepartment}, pois há aceleração recente do desvio. Revisar compromissos recorrentes, travar novas solicitações discricionárias e atualizar o forecast com plano de mitigação.`;
-            }
-            if (context.hasRecurringDeviation) {
-                return `Conduzir revisão recorrente no Departamento ${topDepartment}, separando efeito estrutural de efeito pontual e pactuando ação corretiva com acompanhamento no próximo ciclo mensal.`;
-            }
-            if (context.hasMaterialYtdDeviation) {
-                return "Escalar o desvio YTD para revisão executiva, reavaliar premissas do orçamento anual e formalizar plano de recuperação ou reforecast para o saldo do exercício.";
-            }
-            if (context.hasConcentratedSaving) {
-                return `Preservar o saving concentrado no Departamento ${topSaving}, validando se a economia é sustentável ou apenas postergação de despesa antes de incorporar ganho ao forecast.`;
-            }
-            if (context.hasDiffuseSaving) {
-                return "Monitorar o saving difuso sem converter automaticamente em folga orçamentária; validar se a economia decorre de disciplina operacional ou postergação distribuída de despesas.";
-            }
-            return "Manter acompanhamento ordinário no ciclo de forecast e preservar disciplina de aprovação, sem necessidade de ação executiva adicional no período.";
-        }
-
         static build(drivers, totalDesvio, totalPct, context = {}) {
             const driverNames = drivers.slice(0, 3).map(item => item.name);
             const driverText = driverNames.length ? driverNames.join("; ") : "sem concentração material";
@@ -478,18 +520,30 @@
                 ? `${topTrend} por ${topDriver.recurrenceMonths} período(s) recente(s)`
                 : topTrend;
             const directionText = totalDesvio > 0 ? "pressão administrativa acima do orçamento" : "aderência orçamentária no período";
-            const recommendation = EvoGANarrativeEngine.buildRecommendation({ drivers, totalDesvio, totalPct, ...context });
+            const ytdDesvio = Number(context.ytdDesvio) || 0;
+            const ytdVariancePct = Number.isFinite(context.ytdVariancePct) ? context.ytdVariancePct : 0;
+            const ytdConsumptionText = context.ytdConsumptionText || "-";
+            const ytdLabel = context.ytdLabel || "YTD";
+            const ytdDirectionText = ytdDesvio > 0 ? "pressão acumulada" : (ytdDesvio < 0 ? "saving acumulado" : "aderência acumulada");
+            const ytdContext = context.ytdBudget > 0
+                ? `${ytdLabel}: ${ytdDirectionText} de ${ytdVariancePct.toFixed(1)}% e consumo de ${ytdConsumptionText} do orçamento acumulado.`
+                : `${ytdLabel}: sem orçamento acumulado disponível para comparação percentual.`;
             return {
                 headline: totalDesvio > 0 ? "DISCIPLINA ORÇAMENTÁRIA G&A: PRESSÃO ACIMA DO PLANEJADO" : "DISCIPLINA ORÇAMENTÁRIA G&A: ADERÊNCIA AO PLANEJADO",
                 keyDrivers: `Principais ofensores oficiais: ${driverText}.`,
                 rootCause: topDriver ? `A concentração está no Departamento ${topDriver.name}, conforme estrutura governada do modelo.` : "Não há vetor oficial dominante com desvio relevante.",
                 trend: `Tendência: ${trendText}.`,
-                recommendation,
-                riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A.`
+                riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A. ${ytdContext}`
             };
         }
     }
 
+    // =========================================================================
+    // APOIO VISUAL
+    // -------------------------------------------------------------------------
+    // Pequenos auxiliares para classes CSS e estados visuais. Mantem as regras
+    // de apresentacao fora dos calculos principais.
+    // =========================================================================
     class EvoGAUIRenderer {
         static driverValueClass(value) {
             if (value > 0) return "driver-value-alert";
@@ -502,6 +556,12 @@
         }
     }
 
+    // =========================================================================
+    // TEMPLATE, ESTILOS E ESTRUTURA BASE DO WIDGET
+    // -------------------------------------------------------------------------
+    // O HTML/CSS abaixo e clonado para cada instancia do custom widget.
+    // Alteracoes de fonte, cor, espacamento, cards e abas normalmente ficam aqui.
+    // =========================================================================
     let template = document.createElement("template");
     template.innerHTML = `
         <style>
@@ -786,7 +846,7 @@
             }
             .executive-grid {
                 display: grid;
-                grid-template-columns: 1.2fr 1fr 1fr;
+                grid-template-columns: 1.35fr 1fr;
                 gap: 10px;
                 font-size: 11.5px;
                 line-height: 1.45;
@@ -842,7 +902,7 @@
             .view-panel.active { display: block; }
             .executive-kpi-grid {
                 display: grid;
-                grid-template-columns: minmax(0, 1.25fr) repeat(4, minmax(0, 1fr));
+                grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
                 gap: 6px;
                 margin-bottom: 8px;
                 align-items: stretch;
@@ -929,6 +989,44 @@
                 letter-spacing: 0.6px;
                 margin-bottom: 8px;
             }
+            .operational-stack {
+                display: grid;
+                gap: 12px;
+            }
+            .operational-section {
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                background: #FFFFFF;
+                overflow: auto;
+            }
+            .operational-section-header {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 8px 10px;
+                background: #F8FAFC;
+                border-bottom: 1px solid #E2E8F0;
+                position: sticky;
+                top: 0;
+                z-index: 20;
+            }
+            .operational-section-title {
+                font-size: 11px;
+                font-weight: 700;
+                color: #2d3748;
+                text-transform: uppercase;
+                letter-spacing: 0.45px;
+            }
+            .operational-section-sub {
+                font-size: 10.5px;
+                color: #64748b;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+            .operational-table-wrap {
+                overflow: auto;
+            }
             .driver-list { display: grid; gap: 8px; }
             .pareto-control {
                 display: grid;
@@ -994,6 +1092,54 @@
                 font-weight: 600;
                 padding: 0 1px;
             }
+            .excluded-effect {
+                display: grid;
+                grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(105px, 0.7fr));
+                gap: 8px;
+                align-items: center;
+                margin: 0 0 9px 0;
+                padding: 8px 10px;
+                border: 1px solid #E2E8F0;
+                border-left: 4px solid #64748B;
+                border-radius: 6px;
+                background: #F8FAFC;
+                font-size: 11px;
+            }
+            .excluded-effect.alert { border-left-color: #B91C1C; }
+            .excluded-effect.saving { border-left-color: #166534; }
+            .excluded-effect-title {
+                font-weight: 700;
+                color: #2d3748;
+                text-transform: uppercase;
+                letter-spacing: 0.45px;
+            }
+            .excluded-effect-sub {
+                margin-top: 2px;
+                color: #64748b;
+                font-weight: 500;
+                line-height: 1.35;
+            }
+            .excluded-effect-breakdown {
+                margin-top: 3px;
+                color: #475569;
+                font-weight: 600;
+                line-height: 1.35;
+            }
+            .excluded-effect-metric {
+                min-width: 0;
+                text-align: right;
+            }
+            .excluded-effect-value {
+                display: block;
+                color: #1e293b;
+                font-size: 12.5px;
+                font-weight: 700;
+                line-height: 1.25;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            .excluded-effect-value.alert { color: #B91C1C; }
+            .excluded-effect-value.saving { color: #166534; }
             .driver-row {
                 display: grid;
                 grid-template-columns: 1.35fr minmax(120px, 0.8fr) minmax(96px, 0.65fr) minmax(92px, 0.65fr);
@@ -1032,6 +1178,8 @@
                 .diagnostic-grid { grid-template-columns: 1fr; }
                 .driver-row { grid-template-columns: 1fr; }
                 .driver-metric { text-align: left; }
+                .excluded-effect { grid-template-columns: 1fr; }
+                .excluded-effect-metric { text-align: left; }
                 .pareto-control { width: 100%; }
             }
             @media (max-width: 760px) {
@@ -1246,21 +1394,32 @@
         </div>
     `;
 
+    // =========================================================================
+    // COMPONENTE PRINCIPAL DO CUSTOM WIDGET
+    // -------------------------------------------------------------------------
+    // Controla ciclo de vida, estado interno, filtros, renderizacao e eventos.
+    // O SAC chama este componente quando envia ou atualiza os dados.
+    // =========================================================================
     class EvoGATable extends HTMLElement {
         constructor() {
             super();
             this._shadowRoot = this.attachShadow({ mode: "open" });
             this._shadowRoot.appendChild(template.content.cloneNode(true));
+
+            // Estado interno da tela: ordenacao, linhas abertas, filtro de mes,
+            // aba ativa, percentual do Pareto e caches de texto/periodo.
             this._sortState = { col: null, dir: 'asc' };
             this._expandedRows = new Set();
             this._currentData = null;
             this._selectedMonth = "__all__";
             this._hasManualMonthSelection = false;
             this._activeView = "executive";
-            this._paretoCoverage = EVO_GA_MOM_OFFENDER_CONFIG.paretoCoverage;
+            this._paretoCoverage = EVO_GA_BUDGET_OFFENDER_CONFIG.paretoCoverage;
             this._isDropdownOpen = false;
             this._normalizeCache = new Map();
             this._periodPartsCache = new Map();
+            this._refreshOperationalView = null;
+            this._paretoRenderTimer = null;
             this._profiler = new EvoGATableProfiler();
             this._boundWindowClick = (event) => {
                 const path = event.composedPath ? event.composedPath() : [];
@@ -1306,11 +1465,17 @@
 
         disconnectedCallback() {
             if (typeof window !== "undefined") window.removeEventListener("click", this._boundWindowClick);
+            if (this._paretoRenderTimer) {
+                clearTimeout(this._paretoRenderTimer);
+                this._paretoRenderTimer = null;
+            }
         }
 
         onCustomWidgetBeforeUpdate() {}
 
         onCustomWidgetAfterUpdate(changedProperties) {
+            // Entrada principal do SAC: quando os dados mudam, o widget guarda a
+            // base recebida e refaz a tela.
             if ("financialData" in changedProperties && this.financialData) {
                 this._profiler.verifyRedundancy(this.financialData);
                 this._currentData = this.financialData;
@@ -1323,6 +1488,8 @@
         }
 
         _setActiveView(viewName) {
+            // Troca entre Resumo Executivo, Diagnostico e Operacional.
+            // A guia Operacional e renderizada sob demanda para preservar performance.
             if (this._activeView === viewName) return;
             this._activeView = viewName;
             const hasRenderedPanels = this._shadowRoot.getElementById("executiveView");
@@ -1336,6 +1503,10 @@
             this._shadowRoot.querySelectorAll(".view-panel").forEach(panel => {
                 panel.classList.toggle("active", panel.id === `${viewName}View`);
             });
+            if (viewName === "operational" && this._refreshOperationalView) {
+                const operationalView = this._shadowRoot.getElementById("operationalView");
+                if (operationalView && !operationalView.innerHTML.trim()) this._refreshOperationalView();
+            }
         }
 
         _toggleDropdownDOM() {
@@ -1344,6 +1515,8 @@
         }
 
         _normalizeText(value) {
+            // Normalizacao usada para comparar textos vindos do SAC sem depender
+            // de acento, caixa alta/baixa ou espacos extras.
             const cacheKey = String(value || "");
             const cached = this._normalizeCache.get(cacheKey);
             if (cached !== undefined) return cached;
@@ -1358,6 +1531,8 @@
         }
 
         _getPeriodParts(value) {
+            // Interpreta periodos em formatos comuns do SAC, como Abr/2026,
+            // 202604 ou 04/2026. Esse resultado alimenta filtro de mes e YTD.
             const text = String(value || "").trim();
             const cached = this._periodPartsCache.get(text);
             if (cached) return cached;
@@ -1446,6 +1621,8 @@
         }
 
         _findDefaultMonthOption(monthOptions) {
+            // Regra de abertura: se existir dimensao de mes, o default tenta usar
+            // o mes anterior ao mes atual. Se nao encontrar, usa o periodo mais recente.
             if (!monthOptions || monthOptions.length === 0) return "__all__";
             const target = this._getPreviousMonthReference();
             const exactMatch = monthOptions.find(option => {
@@ -1467,6 +1644,8 @@
         }
 
         _bindHeaderControls(monthOptions, hasMonthFilter) {
+            // Controles do cabecalho: dropdown de mes agrupado por ano,
+            // troca de abas e abertura da telemetria.
             const monthTrigger = this._shadowRoot.getElementById("treeDropdownTrigger");
             const monthMenu = this._shadowRoot.getElementById("treeDropdownContent");
             const telemetryBtn = this._shadowRoot.getElementById("telemetryBtn");
@@ -1513,15 +1692,18 @@
         }
 
         _dispatchMonthFilterChanged() {
-                    this.dispatchEvent(new CustomEvent("monthFilterChanged", {
-                        detail: {
-                            selectedMonth: this._selectedMonth === "__all__" ? null : this._selectedMonth,
-                            isAllMonths: this._selectedMonth === "__all__"
-                        }
-                    }));
+            // Evento publico para o SAC/story saber que o usuario alterou
+            // o periodo de analise no painel.
+            this.dispatchEvent(new CustomEvent("monthFilterChanged", {
+                detail: {
+                    selectedMonth: this._selectedMonth === "__all__" ? null : this._selectedMonth,
+                    isAllMonths: this._selectedMonth === "__all__"
+                }
+            }));
         }
 
         _updateTelemetry(tStart, tDOMStart, tEndJS, sourceRows, filteredRows) {
+            // Atualiza os numeros exibidos no modal de telemetria.
             if (!ENABLE_TELEMETRY) return;
             const paint = () => {
                 const tFinalPaint = this._profiler._now();
@@ -1557,6 +1739,11 @@
         }
 
         renderTable() {
+            // Ciclo principal de renderizacao:
+            // 1) le metadados do SAC;
+            // 2) identifica dimensoes;
+            // 3) agrega periodo/YTD;
+            // 4) monta Resumo Executivo, Diagnostico e Operacional.
             const tArrivalData = this._profiler._now();
             const financialData = this._currentData;
             const headerContainer = this._shadowRoot.getElementById("header-container");
@@ -1583,6 +1770,9 @@
                     return;
                 }
 
+                // Identificacao das dimensoes recebidas do SAC.
+                // A ordem esperada e: VP > Diretoria > Gerencia > Departamento
+                // > Conta > Versao > Mes opcional.
                 const getName = (obj) => obj ? (obj.label || obj.description || obj.id || "N/D") : "N/D";
                 const normalizeText = (value) => this._normalizeText(value);
                 const isVersionMember = (value) => {
@@ -1656,6 +1846,9 @@
                     '"': '&quot;',
                     "'": '&#39;'
                 }[char]));
+                // Conversao de valores e formatacao pt-BR.
+                // O SAC pode enviar numero cru ou texto formatado; esta etapa
+                // padroniza tudo antes dos calculos.
                 const parseNumber = (val) => {
                     if (typeof val === 'number') return val;
                     if (!val || val === "-") return 0;
@@ -1697,8 +1890,6 @@
 
                 const headerName = getName(dimensions[calcDimKey]);
 
-                const dataMap = {};
-                const uniqueColsSet = new Set();
                 this._profiler.metrics.steps.parsing = this._profiler._now() - tParsingStart;
                 const tAggregationStart = this._profiler._now();
                 const monthlyIndex = {};
@@ -1724,6 +1915,9 @@
                     }
                     return parseNumber(value);
                 };
+                // Fatos normalizados: cada linha do SAC vira um objeto simples
+                // usado por todas as engines. Isso evita reler a estrutura SAC
+                // varias vezes durante a renderizacao.
                 const monthIndexMap = new Map(monthOptions.map((month, index) => [month, index]));
                 const sourceFacts = financialData.data.map(row => {
                     const col = getName(row[colDimKey]);
@@ -1745,6 +1939,7 @@
                 const selectedMonthIndex = this._selectedMonth === "__all__" ? -1 : (monthIndexMap.has(this._selectedMonth) ? monthIndexMap.get(this._selectedMonth) : -1);
                 const selectedPeriod = this._getPeriodParts(this._selectedMonth);
                 const selectedHasCalendarPeriod = selectedPeriod.year !== "Sem ano" && selectedPeriod.month >= 1 && selectedPeriod.month <= 12;
+                // Recorte YTD: usa todos os meses do mesmo ano ate o mes selecionado.
                 const ytdRows = monthDimKey && selectedMonthIndex >= 0
                     ? sourceFacts.filter(fact => {
                         const rowMonth = fact.month;
@@ -1763,17 +1958,87 @@
                 }, { budget: 0, actual: 0 });
                 const ytdTotals = sumRowsByVersion(ytdRows);
 
-                rowsForRender.forEach(fact => {
-                    const calcNode = fact.calcNode;
-                    const ccNivel1 = fact.ccNivel1;
-                    const ccNivel2 = fact.ccNivel2;
-                    const ccNivel3 = fact.ccNivel3;
-                    const conta = fact.conta;
-                    const col = fact.col;
-                    uniqueColsSet.add(col);
+                // Montagem da arvore operacional completa:
+                // VP > Diretoria > Gerencia > Departamento > Conta.
+                // Esta arvore e mais pesada e por isso so e usada na guia Operacional.
+                const buildHierarchyFromFacts = (facts) => {
+                    const dataMap = {};
+                    const uniqueColsSet = new Set();
+                    facts.forEach(fact => {
+                        uniqueColsSet.add(fact.col);
+                        EvoGAAggregationEngine.addRow(dataMap, {
+                            calcNode: fact.calcNode,
+                            ccNivel1: fact.ccNivel1,
+                            ccNivel2: fact.ccNivel2,
+                            ccNivel3: fact.ccNivel3,
+                            conta: fact.conta
+                        }, fact.col, fact.value);
+                    });
 
-                    EvoGAAggregationEngine.addRow(dataMap, { calcNode, ccNivel1, ccNivel2, ccNivel3, conta }, col, fact.value);
-                });
+                    const uniqueCols = Array.from(uniqueColsSet);
+                    const buildRowMetrics = (name, valuesMap, level = 0, path = []) =>
+                        EvoGAAggregationEngine.buildRowMetrics(name, valuesMap, uniqueCols, level, path);
+
+                    const tableData = Object.keys(dataMap).map(calcNodeName => {
+                        let calcNode = buildRowMetrics(calcNodeName, dataMap[calcNodeName].totals, 0, [calcNodeName]);
+                        calcNode.key = `calc:${calcNodeName}`;
+                        calcNode.children = Object.keys(dataMap[calcNodeName].ccNivel1).map(ccNivel1 => {
+                            let ccNivel1Node = buildRowMetrics(ccNivel1, dataMap[calcNodeName].ccNivel1[ccNivel1].totals, 1, [calcNodeName, ccNivel1]);
+                            ccNivel1Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}`;
+                            ccNivel1Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2).map(ccNivel2 => {
+                                let ccNivel2Node = buildRowMetrics(ccNivel2, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals, 2, [calcNodeName, ccNivel1, ccNivel2]);
+                                ccNivel2Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}`;
+                                ccNivel2Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3).map(ccNivel3 => {
+                                    let ccNivel3Node = buildRowMetrics(ccNivel3, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].totals, 3, [calcNodeName, ccNivel1, ccNivel2, ccNivel3]);
+                                    ccNivel3Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`;
+                                    ccNivel3Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas).map(conta => {
+                                        let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta], 4, [calcNodeName, ccNivel1, ccNivel2, ccNivel3, conta]);
+                                        contaNode.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}|conta:${conta}`;
+                                        return contaNode;
+                                    });
+                                    ccNivel3Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                                    return ccNivel3Node;
+                                });
+                                ccNivel2Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                                return ccNivel2Node;
+                            });
+                            ccNivel1Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                            return ccNivel1Node;
+                        });
+                        calcNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
+                        return calcNode;
+                    });
+
+                    return { uniqueCols, tableData };
+                };
+
+                // Resumo leve por Departamento para o Resumo Executivo.
+                // Evita montar a arvore completa quando a tela inicial so precisa
+                // dos KPIs e dos principais ofensores.
+                const buildDepartmentSummaryFromFacts = (facts) => {
+                    const departmentMap = {};
+                    const uniqueColsSet = new Set();
+                    facts.forEach(fact => {
+                        uniqueColsSet.add(fact.col);
+                        const key = `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}`;
+                        if (!departmentMap[key]) {
+                            departmentMap[key] = {
+                                key,
+                                name: fact.ccNivel3,
+                                values: {},
+                                path: [fact.calcNode, fact.ccNivel1, fact.ccNivel2, fact.ccNivel3]
+                            };
+                        }
+                        EvoGAAggregationEngine.addValue(departmentMap[key].values, fact.col, fact.value);
+                    });
+
+                    const uniqueCols = Array.from(uniqueColsSet);
+                    return Object.values(departmentMap).map(item => {
+                        const node = EvoGAAggregationEngine.buildRowMetrics(item.name, item.values, uniqueCols, 3, item.path);
+                        node.key = item.key;
+                        return node;
+                    });
+                };
 
                 if (monthDimKey) {
                     sourceFacts.forEach(fact => {
@@ -1785,53 +2050,15 @@
                     });
                 }
 
-                const uniqueCols = Array.from(uniqueColsSet);
-
-                const buildRowMetrics = (name, valuesMap, level = 0, path = []) =>
-                    EvoGAAggregationEngine.buildRowMetrics(name, valuesMap, uniqueCols, level, path);
-
-                let tableData = Object.keys(dataMap).map(calcNodeName => {
-                    let calcNode = buildRowMetrics(calcNodeName, dataMap[calcNodeName].totals, 0, [calcNodeName]);
-                    calcNode.key = `calc:${calcNodeName}`;
-                    calcNode.children = Object.keys(dataMap[calcNodeName].ccNivel1).map(ccNivel1 => {
-                        let ccNivel1Node = buildRowMetrics(ccNivel1, dataMap[calcNodeName].ccNivel1[ccNivel1].totals, 1, [calcNodeName, ccNivel1]);
-                        ccNivel1Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}`;
-                        ccNivel1Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2).map(ccNivel2 => {
-                            let ccNivel2Node = buildRowMetrics(ccNivel2, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals, 2, [calcNodeName, ccNivel1, ccNivel2]);
-                            ccNivel2Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}`;
-                            ccNivel2Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3).map(ccNivel3 => {
-                                let ccNivel3Node = buildRowMetrics(ccNivel3, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].totals, 3, [calcNodeName, ccNivel1, ccNivel2, ccNivel3]);
-                                ccNivel3Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`;
-                                ccNivel3Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas).map(conta => {
-                                    let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta], 4, [calcNodeName, ccNivel1, ccNivel2, ccNivel3, conta]);
-                                    contaNode.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}|conta:${conta}`;
-                                    return contaNode;
-                                });
-                                ccNivel3Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
-                                return ccNivel3Node;
-                            });
-                            ccNivel2Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
-                            return ccNivel2Node;
-                        });
-                        ccNivel1Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
-                        return ccNivel1Node;
-                    });
-                    calcNode.children.sort((a, b) => b.valRealizado - a.valRealizado);
-                    return calcNode;
-                });
-
-                let totalGlobalOrcado = 0;
-                let totalGlobalRealizado = 0;
-                tableData.forEach(row => {
-                    totalGlobalOrcado += row.valOrcado;
-                    totalGlobalRealizado += row.valRealizado;
-                });
+                // Totais consolidados do periodo filtrado.
+                const periodTotals = sumRowsByVersion(rowsForRender);
+                const totalGlobalOrcado = periodTotals.budget;
+                const totalGlobalRealizado = periodTotals.actual;
                 
                 const totalGlobalDesvio = totalGlobalRealizado - totalGlobalOrcado;
                 const varianceType = totalGlobalDesvio > 0 ? "desvio" : "saving";
                 const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
-                const allNodes = EvoGAAggregationEngine.collectNodes(tableData);
                 const monthlyProfileFor = (key) => {
                     const monthMap = monthlyIndex[key] || {};
                     return this._sortMonthOptions(Object.keys(monthMap)).map(month => monthMap[month]);
@@ -1843,37 +2070,42 @@
                     node.recurrenceType = trendProfile.recurrenceType;
                     node.recurrenceMonths = trendProfile.recurrenceMonths;
                 };
-                tableData.forEach(annotateNode);
-                EvoGAMaterialityEngine.annotate(allNodes, totalGlobalOrcado, totalGlobalRealizado);
-
-                const departamentos = tableData.flatMap(item =>
-                    item.children.flatMap(ccNivel1 =>
-                        ccNivel1.children.flatMap(ccNivel2 => ccNivel2.children)
-                    )
-                );
-                const selectedMoMMonth = this._selectedMonth === "__all__" ? monthOptions[monthOptions.length - 1] : this._selectedMonth;
-                const selectedMoMMonthIndex = monthIndexMap.has(selectedMoMMonth) ? monthIndexMap.get(selectedMoMMonth) : -1;
-                const previousMoMMonth = selectedMoMMonthIndex > 0 ? monthOptions[selectedMoMMonthIndex - 1] : null;
-                const momOffenderAnalysis = monthDimKey ? EvoGAMoMEngine.buildDepartmentDrivers({
-                    rows: financialData.data,
-                    facts: sourceFacts,
-                    currentMonth: selectedMoMMonth,
-                    previousMonth: previousMoMMonth,
-                    dimensionKeys: {
-                        calc: calcDimKey,
-                        cc1: ccNivel1DimKey,
-                        cc2: ccNivel2DimKey,
-                        cc3: ccNivel3DimKey,
-                        conta: contaDimKey,
-                        version: colDimKey,
-                        month: monthDimKey
-                    },
-                    getName,
-                    getMeasureValueFromRow,
+                const departamentos = buildDepartmentSummaryFromFacts(rowsForRender);
+                departamentos.forEach(annotateNode);
+                EvoGAMaterialityEngine.annotate(departamentos, totalGlobalOrcado, totalGlobalRealizado);
+                // Cache local da arvore operacional.
+                // Expandir linha, ordenar ou trocar aba nao deve recalcular tudo.
+                let monthlyHierarchy = null;
+                let ytdHierarchy = null;
+                const getOperationalHierarchies = () => {
+                    if (!monthlyHierarchy) {
+                        monthlyHierarchy = buildHierarchyFromFacts(rowsForRender);
+                        const allNodes = EvoGAAggregationEngine.collectNodes(monthlyHierarchy.tableData);
+                        monthlyHierarchy.tableData.forEach(annotateNode);
+                        EvoGAMaterialityEngine.annotate(allNodes, totalGlobalOrcado, totalGlobalRealizado);
+                    }
+                    if (!ytdHierarchy) {
+                        ytdHierarchy = buildHierarchyFromFacts(ytdRows);
+                    }
+                    return {
+                        uniqueCols: monthlyHierarchy.uniqueCols,
+                        tableData: monthlyHierarchy.tableData,
+                        ytdTableData: ytdHierarchy.tableData
+                    };
+                };
+                // Pareto orcamentario por Departamento.
+                // Considera desvio Realizado - Orcado e respeita o percentual do slider.
+                const selectedAnalysisMonth = this._selectedMonth === "__all__" ? monthOptions[monthOptions.length - 1] : this._selectedMonth;
+                const selectedAnalysisMonthIndex = monthIndexMap.has(selectedAnalysisMonth) ? monthIndexMap.get(selectedAnalysisMonth) : -1;
+                const previousAnalysisMonth = selectedAnalysisMonthIndex > 0 ? monthOptions[selectedAnalysisMonthIndex - 1] : null;
+                const budgetOffenderAnalysis = EvoGABudgetOffenderEngine.buildDepartmentDrivers({
+                    facts: rowsForRender,
+                    currentMonth: selectedAnalysisMonth,
+                    previousMonth: previousAnalysisMonth,
                     paretoCoverage: this._paretoCoverage
-                }) : { drivers: [], totalMoMDeviation: 0, coverage: 0, excludedRows: 0, currentMonth: null, previousMonth: null };
+                });
                 const departmentNodeByKey = new Map(departamentos.map(item => [item.key, item]));
-                const executiveDrivers = momOffenderAnalysis.drivers.map(driver => {
+                const executiveDrivers = budgetOffenderAnalysis.drivers.map(driver => {
                     const node = departmentNodeByKey.get(driver.key);
                     return {
                         ...driver,
@@ -1883,6 +2115,7 @@
                     };
                 });
                 const ofensores = executiveDrivers.slice(0, 3);
+                const ofensorKeys = new Set(ofensores.map(item => item.key));
 
                 ofensores.forEach(item => {
                     const node = departmentNodeByKey.get(item.key);
@@ -1901,68 +2134,83 @@
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
                 const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
-                const savingDepartments = departamentos
-                    .filter(item => item.desvio < 0)
-                    .sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio));
-                const totalSavingAbs = savingDepartments.reduce((sum, item) => sum + Math.abs(item.desvio), 0);
-                const topSavingAbs = savingDepartments[0] ? Math.abs(savingDepartments[0].desvio) : 0;
-                const top3SavingAbs = savingDepartments.slice(0, 3).reduce((sum, item) => sum + Math.abs(item.desvio), 0);
-                const savingProfile = {
-                    totalSavingAbs,
-                    topDepartment: savingDepartments[0] ? savingDepartments[0].name : null,
-                    topShare: totalSavingAbs > 0 ? topSavingAbs / totalSavingAbs : 0,
-                    top3Share: totalSavingAbs > 0 ? top3SavingAbs / totalSavingAbs : 0
-                };
-                savingProfile.isConcentrated =
-                    savingProfile.topShare >= EVO_GA_RECOMMENDATION_CONFIG.savingConcentrationTop1 ||
-                    savingProfile.top3Share >= EVO_GA_RECOMMENDATION_CONFIG.savingConcentrationTop3;
-                const recommendationContext = {
-                    hasUnbudgetedDeviation: (totalGlobalOrcado === 0 && totalGlobalRealizado > 0) ||
-                        departamentos.some(item => item.valOrcado === 0 && item.valRealizado > 0 && !item.isExecutiveNoise),
-                    hasAccelerationDeviation: executiveDrivers.some(item => item.trendDirection === "acceleration"),
-                    hasRecurringDeviation: executiveDrivers.some(item => item.recurrenceMonths >= 3 || item.recurrenceType === "recurring" || item.recurrenceType === "persistent"),
-                    hasMaterialYtdDeviation: ytdDesvio > 0 && (
-                        ytdDesvio >= EVO_GA_RECOMMENDATION_CONFIG.materialYtdAbs ||
-                        Math.abs(ytdVariancePct) >= EVO_GA_RECOMMENDATION_CONFIG.materialYtdPct
-                    ),
-                    hasConcentratedSaving: totalGlobalDesvio < 0 && totalSavingAbs > 0 && savingProfile.isConcentrated,
-                    hasDiffuseSaving: totalGlobalDesvio < 0 && totalSavingAbs > 0 && !savingProfile.isConcentrated,
-                    savingProfile
-                };
-                const executiveNarrative = EvoGANarrativeEngine.build(executiveDrivers, totalGlobalDesvio, totalVariancePct, recommendationContext);
+                const ytdConsumptionText = ytdTotals.budget > 0 ? `${((ytdTotals.actual / ytdTotals.budget) * 100).toFixed(1)}%` : "-";
                 const oversightClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const kpiConsumptionText = totalGlobalOrcado > 0 ? `${((totalGlobalRealizado / totalGlobalOrcado) * 100).toFixed(1)}%` : "-";
-                const currentPeriodTotal = totalGlobalRealizado;
-                const currentPeriodBudget = totalGlobalOrcado;
-                const previousMonthTotals = previousMoMMonth && monthDimKey
-                    ? sumRowsByVersion(sourceFacts.filter(fact => fact.month === previousMoMMonth))
+                const previousMonthTotals = previousAnalysisMonth && monthDimKey
+                    ? sumRowsByVersion(sourceFacts.filter(fact => fact.month === previousAnalysisMonth))
                     : { budget: 0, actual: 0 };
-                const realizedMoMAbs = currentPeriodTotal - previousMonthTotals.actual;
+                const realizedMoMAbs = totalGlobalRealizado - previousMonthTotals.actual;
                 const realizedMoMPct = previousMonthTotals.actual !== 0 ? (realizedMoMAbs / Math.abs(previousMonthTotals.actual)) * 100 : null;
                 const realizedMoMClass = realizedMoMAbs > 0 ? "alert" : (realizedMoMAbs < 0 ? "saving" : "neutral");
                 const realizedMoMText = realizedMoMPct === null ? "-" : `${realizedMoMPct.toFixed(1)}%`;
                 const selectedMonthDisplay = this._selectedMonth === "__all__" ? "Todos os anos" : this._getPeriodDisplayLabel(this._selectedMonth);
                 const ytdLabel = this._selectedMonth === "__all__" ? "Base completa disponível" : `YTD até ${selectedMonthDisplay}`;
                 const periodLabel = this._selectedMonth === "__all__" ? "Base completa" : selectedMonthDisplay;
-                const momPeriodLabel = momOffenderAnalysis.previousMonth && momOffenderAnalysis.currentMonth
-                    ? `${this._getPeriodDisplayLabel(momOffenderAnalysis.previousMonth)} → ${this._getPeriodDisplayLabel(momOffenderAnalysis.currentMonth)}`
+                const momPeriodLabel = budgetOffenderAnalysis.previousMonth && budgetOffenderAnalysis.currentMonth
+                    ? `${this._getPeriodDisplayLabel(budgetOffenderAnalysis.previousMonth)} → ${this._getPeriodDisplayLabel(budgetOffenderAnalysis.currentMonth)}`
                     : "MoM indisponível";
-                const momCoverageText = `${(momOffenderAnalysis.coverage * 100).toFixed(1)}%`;
-                const momTargetCoverageText = `${(this._paretoCoverage * 100).toFixed(0)}%`;
+                const executiveNarrative = EvoGANarrativeEngine.build(executiveDrivers, totalGlobalDesvio, totalVariancePct, {
+                    ytdDesvio,
+                    ytdVariancePct,
+                    ytdConsumptionText,
+                    ytdBudget: ytdTotals.budget,
+                    ytdLabel
+                });
+                const budgetCoverageText = `${(budgetOffenderAnalysis.coverage * 100).toFixed(1)}%`;
+                const paretoTargetCoverageText = `${(this._paretoCoverage * 100).toFixed(0)}%`;
+                const excludedTermsLabel = EVO_GA_BUDGET_OFFENDER_CONFIG.excludedTerms.join(", ");
+                // Efeito segregado: estes termos nao entram na tabela de ofensores.
+                // Eles aparecem em bloco proprio para nao esconder meses em que o
+                // desvio inteiro esta concentrado em IFRS 16, Outros, PBA ou Rateio.
+                const excludedSummary = budgetOffenderAnalysis.excludedSummary || { budget: 0, actual: 0, desvio: 0, absDesvio: 0, rows: 0, terms: [] };
+                const excludedTermItems = Array.isArray(excludedSummary.terms) ? excludedSummary.terms : [];
+                const excludedRowsCount = excludedSummary.rows || budgetOffenderAnalysis.excludedRows || 0;
+                const excludedGrossAbs = excludedTermItems.reduce((sum, item) => sum + (Number(item.absDesvio) || 0), 0) || excludedSummary.absDesvio || 0;
+                const excludedShareBase = (budgetOffenderAnalysis.totalBudgetDeviation || 0) + excludedGrossAbs;
+                const excludedShareText = excludedShareBase > 0 ? `${((excludedGrossAbs / excludedShareBase) * 100).toFixed(1)}%` : "-";
+                const excludedValueClass = excludedSummary.desvio > 0 ? "alert" : (excludedSummary.desvio < 0 ? "saving" : "neutral");
+                const excludedTermsText = excludedTermItems.length
+                    ? excludedTermItems.map(item => `${escapeHtml(item.term)} ${formatNumber(Math.abs(item.desvio), true, true, item.desvio)}`).join(" · ")
+                    : escapeHtml(excludedTermsLabel);
+                const excludedEffectHtml = excludedRowsCount > 0 ? `
+                    <div class="excluded-effect ${excludedValueClass}">
+                        <div>
+                            <div class="excluded-effect-title">Efeito segregado fora do Pareto</div>
+                            <div class="excluded-effect-sub">IFRS 16, Outros, PBA e Rateio · ${excludedRowsCount} linhas · peso ${escapeHtml(excludedShareText)} no desvio bruto analisado</div>
+                            <div class="excluded-effect-breakdown">${excludedTermsText}</div>
+                        </div>
+                        <div class="excluded-effect-metric"><span class="executive-label">Realizado</span><span class="excluded-effect-value">${formatKpiCurrency(excludedSummary.actual)}</span></div>
+                        <div class="excluded-effect-metric"><span class="executive-label">Orçado</span><span class="excluded-effect-value">${formatKpiCurrency(excludedSummary.budget)}</span></div>
+                        <div class="excluded-effect-metric"><span class="executive-label">Desvio</span><span class="excluded-effect-value ${excludedValueClass}">${formatNumber(Math.abs(excludedSummary.desvio), true, true, excludedSummary.desvio)}</span></div>
+                    </div>
+                ` : `
+                    <div class="excluded-effect neutral">
+                        <div>
+                            <div class="excluded-effect-title">Efeito segregado fora do Pareto</div>
+                            <div class="excluded-effect-sub">Sem efeito segregado no período selecionado.</div>
+                            <div class="excluded-effect-breakdown">${escapeHtml(excludedTermsLabel)}</div>
+                        </div>
+                        <div class="excluded-effect-metric"><span class="executive-label">Realizado</span><span class="excluded-effect-value">-</span></div>
+                        <div class="excluded-effect-metric"><span class="executive-label">Orçado</span><span class="excluded-effect-value">-</span></div>
+                        <div class="excluded-effect-metric"><span class="executive-label">Desvio</span><span class="excluded-effect-value">-</span></div>
+                    </div>
+                `;
                 const driversListHtml = executiveDrivers.length ? executiveDrivers.map((driver, index) => {
-                    const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.momVariance);
+                    const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.budgetVariance);
                     return `
                         <div class="driver-row">
                             <div>
                                 <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
-                                <div class="driver-meta">Departamento · MoM ${escapeHtml(momPeriodLabel)}</div>
+                                <div class="driver-meta">Departamento · Orçamento ${escapeHtml(periodLabel)}</div>
                             </div>
-                            <div class="driver-metric"><span class="executive-label">Variação MoM</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.momVariance), true, true, driver.momVariance)}</span></div>
+                            <div class="driver-metric"><span class="executive-label">Desvio orçamento</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.budgetVariance), true, true, driver.budgetVariance)}</span></div>
                             <div class="driver-metric"><span class="executive-label">Contribuição</span><span class="driver-value ${driverValueClass}">${driver.contributionPct.toFixed(1)}%</span></div>
-                            <div class="driver-metric"><span class="executive-label">Desvio atual</span><span class="driver-value">${formatNumber(Math.abs(driver.desvio), true, true, driver.desvio)}</span></div>
+                            <div class="driver-metric"><span class="executive-label">Consumo</span><span class="driver-value">${driver.percentConsumption === Infinity ? "∞" : formatPercentage(driver.percentConsumption)}</span></div>
                         </div>
                     `;
-                }).join("") : `<div class="driver-meta">Não há piora MoM relevante por Departamento no período selecionado.</div>`;
+                }).join("") : `<div class="driver-meta">${excludedRowsCount > 0 && excludedGrossAbs > 0 ? "O desvio orçamentário relevante do período está concentrado no grupo segregado acima; não há departamentos adicionais no Pareto." : "Não há desvio orçamentário relevante por Departamento no período selecionado."}</div>`;
+                // Guia Diagnostico: expõe criterios e volumes para auditoria simples.
                 const diagnosticHtml = `
                     <div class="diagnostic-grid">
                         <div class="executive-section">
@@ -1971,8 +2219,8 @@
                                 <div class="driver-row"><div class="driver-name">Desvio absoluto</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div><div class="driver-meta">Realizado - Orçado</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Desvio percentual</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${totalVariancePct.toFixed(1)}%</span></div><div class="driver-meta">Sobre orçamento G&A</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Consumo do orçamento</div><div class="driver-metric"><span class="driver-value">${escapeHtml(kpiConsumptionText)}</span></div><div class="driver-meta">Realizado / Orçado</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ofensores MoM considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Alvo ${escapeHtml(momTargetCoverageText)} · cobertura ${escapeHtml(momCoverageText)}</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Piora MoM total analisada</div><div class="driver-metric"><span class="driver-value driver-value-alert">${formatNumber(Math.abs(momOffenderAnalysis.totalMoMDeviation), true, true, momOffenderAnalysis.totalMoMDeviation)}</span></div><div class="driver-meta">${escapeHtml(momPeriodLabel)}</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Ofensores do orçamento considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Alvo ${escapeHtml(paretoTargetCoverageText)} · cobertura ${escapeHtml(budgetCoverageText)}</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Desvio orçamentário total analisado</div><div class="driver-metric"><span class="driver-value driver-value-alert">${formatNumber(Math.abs(budgetOffenderAnalysis.totalBudgetDeviation), true, true, budgetOffenderAnalysis.totalBudgetDeviation)}</span></div><div class="driver-meta">${escapeHtml(periodLabel)}</div><div></div></div>
                             </div>
                         </div>
                         <div class="executive-section">
@@ -1980,7 +2228,7 @@
                             <div class="driver-list">
                                 <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div class="driver-metric"><span class="driver-value">${financialData.data.length}</span></div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div class="driver-metric"><span class="driver-value">${departamentos.filter(item => item.isExecutiveNoise).length}</span></div><div class="driver-meta">Critério 2%, R$100k e baixa materialidade</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Linhas excluídas dos ofensores</div><div class="driver-metric"><span class="driver-value">${momOffenderAnalysis.excludedRows}</span></div><div class="driver-meta">${escapeHtml(EVO_GA_MOM_OFFENDER_CONFIG.excludedTerms.join(", "))}</div><div></div></div>
+                                <div class="driver-row"><div class="driver-name">Linhas excluídas dos ofensores</div><div class="driver-metric"><span class="driver-value">${budgetOffenderAnalysis.excludedRows}</span></div><div class="driver-meta">${escapeHtml(excludedTermsLabel)} · ${excludedRowsCount > 0 ? `desvio segregado ${formatNumber(Math.abs(excludedSummary.desvio), true, true, excludedSummary.desvio)}` : "sem efeito no período"}</div><div></div></div>
                                 <div class="driver-row"><div class="driver-name">Tendência principal</div><div class="driver-metric"><span class="driver-value">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatTrend(executiveDrivers[0].trendDirection)) : "-"}</span></div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatRecurrence(executiveDrivers[0].recurrenceType)) : "Sem ofensor material"}</div><div></div></div>
                             </div>
                         </div>
@@ -1989,6 +2237,8 @@
 
                 this._profiler.metrics.steps.aggregation = this._profiler._now() - tAggregationStart;
                 const tDOMStart = this._profiler._now();
+
+                // Cabecalho e slicer de mes: agrupa meses por ano e marca o periodo atual.
                 const selectedYear = this._selectedMonth === "__all__" ? null : this._getPeriodYear(this._selectedMonth);
                 const periodsByYear = monthOptions.reduce((acc, month) => {
                     const year = this._getPeriodYear(month);
@@ -2035,8 +2285,13 @@
                         </div>
                     </div>
                 `;
-                if (this._sortState.col) {
-                    tableData.sort((a, b) => {
+                // Guia Operacional: monta tabela mensal e tabela YTD com drilldown.
+                // Fica em funcao separada para permitir refresh leve em ordenacao/expansao.
+                const buildOperationalPanelHtml = () => {
+                const { uniqueCols, tableData, ytdTableData } = getOperationalHierarchies();
+                const sortHierarchyRoots = (rows) => {
+                    if (!this._sortState.col) return;
+                    rows.sort((a, b) => {
                         let valA = a[this._sortState.col] !== undefined ? a[this._sortState.col] : a.numValues[this._sortState.col];
                         let valB = b[this._sortState.col] !== undefined ? b[this._sortState.col] : b.numValues[this._sortState.col];
                         
@@ -2047,7 +2302,9 @@
                         if (valA > valB) return this._sortState.dir === 'asc' ? 1 : -1;
                         return 0;
                     });
-                }
+                };
+                sortHierarchyRoots(tableData);
+                sortHierarchyRoots(ytdTableData);
 
                 let tableHtml = `<table>`;
                 let sortIconRow = this._sortState.col === 'name' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
@@ -2079,7 +2336,7 @@
                     
                     let html = `<tr class="${rowClass} ${expandClass}" ${dataAttr}>`;
                     
-                    let flagHtml = (level === 3 && rowObj.isOfensor) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
+                    let flagHtml = (level === 3 && ofensorKeys.has(rowObj.key)) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
                     let safeName = escapeHtml(rowObj.name);
                     let nameCell = level === 4 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                     
@@ -2177,25 +2434,127 @@
                 tableHtml += `<td class="cell-consumption"><div class="consumption-wrapper"><div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div><div class="percent-value">${totalConsumptionText}</div></div></td>`;
                 tableHtml += `<td class="center cell-status">${totalStatusText !== "-" ? `<span class="status-pill ${totalStatusPillClass}">${totalStatusText}</span>` : "-"}</td></tr></tfoot></table>`;
 
+                const renderYtdRowHtml = (rowObj, level = 0) => {
+                    const hasChildren = rowObj.children && rowObj.children.length > 0;
+                    let rowClass = "row-conta";
+                    if (level === 0) rowClass = "row-cc";
+                    else if (level === 1) rowClass = "row-cc row-cc-nivel-1";
+                    else if (level === 2) rowClass = "row-cc row-cc-nivel-2";
+                    else if (level === 3) rowClass = "row-cc row-cc-nivel-3";
+                    const expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
+                    const dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
+                    const safeName = escapeHtml(rowObj.name);
+                    const nameCell = level === 4 ? safeName : `<span class="expand-icon">▶</span>${safeName}`;
+                    const ytdDesvioRow = rowObj.valRealizado - rowObj.valOrcado;
+                    const ytdVarianceClass = ytdDesvioRow > 0 ? "var-positive" : (ytdDesvioRow < 0 ? "var-negative" : "");
+
+                    return `<tr class="${rowClass} ${expandClass}" ${dataAttr}>
+                        <td>${nameCell}</td>
+                        <td class="numeric">${formatNumber(rowObj.valRealizado)}</td>
+                        <td class="numeric">${formatNumber(rowObj.valOrcado)}</td>
+                        <td class="numeric cell-variance ${ytdVarianceClass}">${ytdDesvioRow !== 0 ? formatNumber(Math.abs(ytdDesvioRow), true, true, ytdDesvioRow) : "-"}</td>
+                    </tr>`;
+                };
+
+                const appendYtdRows = (rows) => {
+                    let html = "";
+                    rows.forEach(calcRow => {
+                        html += renderYtdRowHtml(calcRow, 0);
+                        if (this._expandedRows.has(calcRow.key)) {
+                            calcRow.children.forEach(ccNivel1Row => {
+                                html += renderYtdRowHtml(ccNivel1Row, 1);
+                                if (this._expandedRows.has(ccNivel1Row.key)) {
+                                    ccNivel1Row.children.forEach(ccNivel2Row => {
+                                        html += renderYtdRowHtml(ccNivel2Row, 2);
+                                        if (this._expandedRows.has(ccNivel2Row.key)) {
+                                            ccNivel2Row.children.forEach(ccNivel3Row => {
+                                                html += renderYtdRowHtml(ccNivel3Row, 3);
+                                                if (this._expandedRows.has(ccNivel3Row.key)) {
+                                                    ccNivel3Row.children.forEach(contaRow => {
+                                                        html += renderYtdRowHtml(contaRow, 4);
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                    return html;
+                };
+
+                const ytdSortIconName = this._sortState.col === 'name' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                const ytdSortIconReal = this._sortState.col === 'valRealizado' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                const ytdSortIconBudget = this._sortState.col === 'valOrcado' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                const ytdSortIconDesvio = this._sortState.col === 'desvio' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                const ytdTotalDesvioFormatted = formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio);
+                const ytdTotalVarClass = ytdDesvio > 0 ? "var-positive" : (ytdDesvio < 0 ? "var-negative" : "");
+                let ytdTableHtml = `<table class="operational-ytd-table">
+                    <thead><tr>
+                        <th data-sort="name" class="sortable">${escapeHtml(headerName)}<span class="sort-icon">${ytdSortIconName}</span></th>
+                        <th data-sort="valRealizado" class="sortable">REAL YTD<span class="sort-icon">${ytdSortIconReal}</span></th>
+                        <th data-sort="valOrcado" class="sortable">ORÇADO YTD<span class="sort-icon">${ytdSortIconBudget}</span></th>
+                        <th data-sort="desvio" class="sortable">DESVIO YTD<span class="sort-icon">${ytdSortIconDesvio}</span></th>
+                    </tr></thead>
+                    <tbody>${appendYtdRows(ytdTableData)}</tbody>
+                    <tfoot><tr>
+                        <td>TOTAL YTD</td>
+                        <td class="numeric">${formatNumber(ytdTotals.actual)}</td>
+                        <td class="numeric">${formatNumber(ytdTotals.budget)}</td>
+                        <td class="numeric cell-variance ${ytdTotalVarClass}">${ytdDesvio !== 0 ? ytdTotalDesvioFormatted : "-"}</td>
+                    </tr></tfoot>
+                </table>`;
+
+                const operationalPanelHtml = `
+                    <div class="operational-stack">
+                        <section class="operational-section">
+                            <div class="operational-section-header">
+                                <span class="operational-section-title">Análise Mensal</span>
+                                <span class="operational-section-sub">${escapeHtml(periodLabel)}</span>
+                            </div>
+                            <div class="operational-table-wrap">${tableHtml}</div>
+                        </section>
+                        <section class="operational-section">
+                            <div class="operational-section-header">
+                                <span class="operational-section-title">Análise YTD</span>
+                                <span class="operational-section-sub">${escapeHtml(ytdLabel)}</span>
+                            </div>
+                            <div class="operational-table-wrap">${ytdTableHtml}</div>
+                        </section>
+                    </div>
+                `;
+                return operationalPanelHtml;
+                };
+                // Refresh leve da guia Operacional.
+                // Usado quando o usuario ordena ou expande linhas sem mudar dados.
+                this._refreshOperationalView = () => {
+                    const tRefreshStart = this._profiler._now();
+                    const operationalView = this._shadowRoot.getElementById("operationalView");
+                    if (operationalView) operationalView.innerHTML = buildOperationalPanelHtml();
+                    const tRefreshEnd = this._profiler._now();
+                    this._profiler.metrics.steps.parsing = 0;
+                    this._profiler.metrics.steps.aggregation = 0;
+                    this._profiler.metrics.steps.domCreation = tRefreshEnd - tRefreshStart;
+                    this._updateTelemetry(tRefreshStart, tRefreshStart, tRefreshEnd, financialData.data.length, rowsForRender.length);
+                };
+                const operationalPanelHtml = this._activeView === "operational" ? buildOperationalPanelHtml() : "";
+
+                // Guia Resumo Executivo: KPIs, narrativa, Pareto e efeito segregado.
                 const executivePanelHtml = `
                     <div class="executive-kpi-grid">
                         <div class="executive-kpi primary">
                             <div class="kpi-label">Total Realizado do Período</div>
-                            <div class="kpi-value">${formatKpiCurrency(currentPeriodTotal)}</div>
+                            <div class="kpi-value">${formatKpiCurrency(totalGlobalRealizado)}</div>
                             <div class="kpi-sub">${escapeHtml(periodLabel)} · consumo ${escapeHtml(kpiConsumptionText)}</div>
-                            <div class="kpi-detail-row"><span>Orçado</span><span>${formatKpiCurrency(currentPeriodBudget)}</span></div>
+                            <div class="kpi-detail-row"><span>Orçado</span><span>${formatKpiCurrency(totalGlobalOrcado)}</span></div>
                             <div class="kpi-detail-row"><span>Desvio</span><span>${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div>
                         </div>
-                        <div class="executive-kpi neutral">
-                            <div class="kpi-label">YTD Realizado</div>
-                            <div class="kpi-value">${formatKpiCurrency(ytdTotals.actual)}</div>
-                            <div class="kpi-sub">${escapeHtml(ytdLabel)}</div>
-                            <div class="kpi-detail-row"><span>YTD Orçado</span><span>${formatKpiCurrency(ytdTotals.budget)}</span></div>
-                        </div>
                         <div class="executive-kpi ${ytdDesvio > 0 ? "alert" : "saving"}">
-                            <div class="kpi-label">YTD Orçado e Desvio</div>
-                            <div class="kpi-value">${formatKpiCurrency(ytdTotals.budget)}</div>
-                            <div class="kpi-sub">Desvio YTD ${ytdVariancePct.toFixed(1)}%</div>
+                            <div class="kpi-label">YTD Consolidado</div>
+                            <div class="kpi-value">${formatKpiCurrency(ytdTotals.actual)}</div>
+                            <div class="kpi-sub">${escapeHtml(ytdLabel)} · consumo ${escapeHtml(ytdConsumptionText)}</div>
+                            <div class="kpi-detail-row"><span>Orçado</span><span>${formatKpiCurrency(ytdTotals.budget)}</span></div>
                             <div class="kpi-detail-row"><span>Variação</span><span>${formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio)}</span></div>
                         </div>
                         <div class="executive-kpi ${realizedMoMClass}">
@@ -2205,10 +2564,10 @@
                             <div class="kpi-detail-row"><span>Variação R$</span><span>${formatNumber(Math.abs(realizedMoMAbs), true, true, realizedMoMAbs)}</span></div>
                         </div>
                         <div class="executive-kpi neutral">
-                            <div class="kpi-label">Pareto MoM</div>
+                            <div class="kpi-label">Pareto Orçamento</div>
                             <div class="kpi-value">${executiveDrivers.length}</div>
-                            <div class="kpi-sub">departamentos · cobertura ${escapeHtml(momCoverageText)}</div>
-                            <div class="kpi-detail-row"><span>Piora MoM</span><span>${formatNumber(Math.abs(momOffenderAnalysis.totalMoMDeviation), true, true, momOffenderAnalysis.totalMoMDeviation)}</span></div>
+                            <div class="kpi-sub">departamentos · cobertura ${escapeHtml(budgetCoverageText)}</div>
+                            <div class="kpi-detail-row"><span>Desvio orçamento</span><span>${formatNumber(Math.abs(budgetOffenderAnalysis.totalBudgetDeviation), true, true, budgetOffenderAnalysis.totalBudgetDeviation)}</span></div>
                         </div>
                     </div>
                     <div class="executive-oversight ${oversightClass}">
@@ -2224,24 +2583,20 @@
                                 <span class="executive-label">Tendência e Causa</span>
                                 ${escapeHtml(executiveNarrative.trend)} ${escapeHtml(executiveNarrative.rootCause)}
                             </div>
-                            <div class="executive-text">
-                                <span class="executive-label">Recomendação</span>
-                                ${escapeHtml(executiveNarrative.recommendation)}
-                            </div>
                         </div>
                     </div>
                     <div class="executive-section">
-                        <div class="section-title">Principais Ofensores do Período por Departamento</div>
+                        <div class="section-title">Principais Ofensores do Orçamento por Departamento</div>
                         <div class="pareto-control">
                             <div class="pareto-control-header">
                                 <div>
-                                    <span class="pareto-control-title">Cobertura Pareto MoM</span>
-                                    <span class="pareto-control-sub">Quantidade mínima de departamentos para explicar a piora MoM.</span>
+                                    <span class="pareto-control-title">Cobertura Pareto Orçamento</span>
+                                    <span class="pareto-control-sub">Quantidade mínima de departamentos para explicar o desvio orçamentário.</span>
                                 </div>
-                                <output class="pareto-control-value" for="paretoCoverageSlider">${escapeHtml(momTargetCoverageText)}</output>
+                                <output class="pareto-control-value" for="paretoCoverageSlider">${escapeHtml(paretoTargetCoverageText)}</output>
                             </div>
                             <div class="pareto-slider-wrap">
-                                <input class="pareto-slider" id="paretoCoverageSlider" type="range" min="50" max="100" step="5" value="${Math.round(this._paretoCoverage * 100)}" list="paretoCoverageTicks" aria-label="Cobertura Pareto dos ofensores MoM">
+                                <input class="pareto-slider" id="paretoCoverageSlider" type="range" min="50" max="100" step="5" value="${Math.round(this._paretoCoverage * 100)}" list="paretoCoverageTicks" aria-label="Cobertura Pareto dos ofensores orçamentários">
                                 <datalist id="paretoCoverageTicks">
                                     <option value="50"></option>
                                     <option value="60"></option>
@@ -2253,10 +2608,11 @@
                                 <div class="pareto-scale"><span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span></div>
                             </div>
                         </div>
+                        ${excludedEffectHtml}
                         <div class="driver-list">${driversListHtml}</div>
                     </div>
                     <p class="table-summary ${varianceClass}">
-                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado. A lista de ofensores considera a piora MoM por Departamento, excluindo IFRS 16, Outros, PBA e Rateio, até cobrir ao menos ${escapeHtml(momTargetCoverageText)} da variação MoM relevante.${ofensoresText}
+                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado. A lista de ofensores considera o desvio orçamentário por Departamento, excluindo IFRS 16, Outros, PBA e Rateio, até cobrir ao menos ${escapeHtml(paretoTargetCoverageText)} do desvio relevante.${ofensoresText}
                     </p>
                 `;
 
@@ -2268,22 +2624,43 @@
                     </div>
                     <div class="view-panel ${this._activeView === "executive" ? "active" : ""}" id="executiveView">${executivePanelHtml}</div>
                     <div class="view-panel ${this._activeView === "diagnostic" ? "active" : ""}" id="diagnosticView">${diagnosticHtml}</div>
-                    <div class="view-panel ${this._activeView === "operational" ? "active" : ""}" id="operationalView">${tableHtml}</div>
+                    <div class="view-panel ${this._activeView === "operational" ? "active" : ""}" id="operationalView">${operationalPanelHtml}</div>
                 `;
                 this._bindHeaderControls(monthOptions, Boolean(monthDimKey));
 
+                // Slider do Pareto: atualiza a cobertura alvo com debounce para evitar
+                // renderizacoes excessivas enquanto o usuario arrasta o controle.
                 const paretoSlider = container.querySelector("#paretoCoverageSlider");
                 if (paretoSlider) {
-                    paretoSlider.addEventListener("input", (event) => {
-                        const nextValue = parseInt(event.currentTarget.value, 10);
+                    const paretoOutput = container.querySelector(".pareto-control-value");
+                    const applyParetoCoverage = (nextValue) => {
                         if (!Number.isFinite(nextValue)) return;
                         const nextCoverage = nextValue / 100;
                         if (nextCoverage === this._paretoCoverage) return;
                         this._paretoCoverage = nextCoverage;
                         this.renderTable();
+                    };
+                    paretoSlider.addEventListener("input", (event) => {
+                        const nextValue = parseInt(event.currentTarget.value, 10);
+                        if (!Number.isFinite(nextValue)) return;
+                        if (paretoOutput) paretoOutput.textContent = `${nextValue}%`;
+                        if (this._paretoRenderTimer) clearTimeout(this._paretoRenderTimer);
+                        this._paretoRenderTimer = setTimeout(() => {
+                            this._paretoRenderTimer = null;
+                            applyParetoCoverage(nextValue);
+                        }, 140);
+                    });
+                    paretoSlider.addEventListener("change", (event) => {
+                        const nextValue = parseInt(event.currentTarget.value, 10);
+                        if (this._paretoRenderTimer) {
+                            clearTimeout(this._paretoRenderTimer);
+                            this._paretoRenderTimer = null;
+                        }
+                        applyParetoCoverage(nextValue);
                     });
                 }
 
+                // Eventos da tabela: ordenar colunas e abrir/fechar niveis da hierarquia.
                 container.onclick = (event) => {
                     const eventTarget = event.target && event.target.nodeType === 1 ? event.target : (event.target ? event.target.parentElement : null);
                     const sortHeader = eventTarget && eventTarget.closest ? eventTarget.closest("th.sortable") : null;
@@ -2295,7 +2672,8 @@
                             this._sortState.col = col;
                             this._sortState.dir = 'asc';
                         }
-                        this.renderTable();
+                        if (this._refreshOperationalView) this._refreshOperationalView();
+                        else this.renderTable();
                         return;
                     }
 
@@ -2304,7 +2682,8 @@
                         const nodeKey = nodeRow.getAttribute('data-node-key');
                         if (this._expandedRows.has(nodeKey)) this._expandedRows.delete(nodeKey);
                         else this._expandedRows.add(nodeKey);
-                        this.renderTable();
+                        if (this._refreshOperationalView) this._refreshOperationalView();
+                        else this.renderTable();
                     }
                 };
 
