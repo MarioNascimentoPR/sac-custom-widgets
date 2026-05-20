@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.5 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.8 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -1176,15 +1176,9 @@
             .driver-value-alert { color: #B91C1C; }
             .driver-value-saving { color: #166534; }
             .driver-value-neutral { color: #1e293b; }
-            .diagnostic-grid {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(220px, 1fr));
-                gap: 10px;
-            }
             @media (max-width: 900px) {
                 .executive-kpi-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
                 .executive-kpi.primary { grid-row: auto; grid-column: span 2; }
-                .diagnostic-grid { grid-template-columns: 1fr; }
                 .driver-row { grid-template-columns: 1fr; }
                 .driver-metric { text-align: left; }
                 .excluded-effect { grid-template-columns: 1fr; }
@@ -1222,15 +1216,40 @@
                 vertical-align: bottom;
             }
             th:first-child { text-align: left; }
+            .drilldown-table th {
+                background-color: #F8FAFC;
+                color: #1e293b;
+                border-bottom: 1px solid #CBD5E1;
+                box-shadow: none;
+                vertical-align: middle;
+            }
             .drilldown-table .group-header {
                 text-align: center;
-                color: #334155;
-                background: #EAF0F6;
+                color: #1e293b;
+                background: #F1F5F9;
                 font-size: 10.5px;
                 letter-spacing: 0.55px;
+                border-bottom: 1px solid #CBD5E1;
             }
-            .drilldown-table thead tr:first-child th { top: 0; z-index: 14; }
-            .drilldown-table thead tr:nth-child(2) th { top: 35px; z-index: 13; }
+            .drilldown-table thead tr:first-child th {
+                top: 0;
+                z-index: 14;
+                background: #F1F5F9;
+                text-align: center;
+                padding: 9px 10px;
+            }
+            .drilldown-table thead tr:first-child th:first-child {
+                text-align: left;
+                vertical-align: middle;
+            }
+            .drilldown-table thead tr:nth-child(2) th {
+                top: 34px;
+                z-index: 13;
+                background: #F8FAFC;
+                border-bottom: 2px solid #CBD5E1;
+                text-align: right;
+            }
+            .drilldown-table thead tr:nth-child(2) th.center { text-align: center; }
             .drilldown-table .ytd-start {
                 border-left: 1px solid #CBD5E1;
             }
@@ -1509,7 +1528,7 @@
         }
 
         _setActiveView(viewName) {
-            // Troca entre Resumo Executivo, Diagnostico e Drilldown.
+            // Troca entre Resumo Executivo e Drilldown.
             // A guia Drilldown e renderizada sob demanda para preservar performance.
             if (this._activeView === viewName) return;
             this._activeView = viewName;
@@ -1764,7 +1783,7 @@
             // 1) le metadados do SAC;
             // 2) identifica dimensoes;
             // 3) agrega periodo/YTD;
-            // 4) monta Resumo Executivo, Diagnostico e Drilldown.
+            // 4) monta Resumo Executivo e Drilldown.
             const tArrivalData = this._profiler._now();
             const financialData = this._currentData;
             const headerContainer = this._shadowRoot.getElementById("header-container");
@@ -2200,6 +2219,7 @@
                 });
                 const budgetCoverageText = `${(budgetOffenderAnalysis.coverage * 100).toFixed(1)}%`;
                 const paretoTargetCoverageText = `${(this._paretoCoverage * 100).toFixed(0)}%`;
+                const visibleParetoDeviation = executiveDrivers.reduce((sum, driver) => sum + driver.budgetVariance, 0);
                 const excludedTermsLabel = EVO_GA_BUDGET_OFFENDER_CONFIG.excludedTerms.join(", ");
                 // Efeito segregado: estes termos nao entram na tabela de ofensores.
                 // Eles aparecem em bloco proprio para nao esconder meses em que o
@@ -2239,43 +2259,21 @@
                 `;
                 const driversListHtml = executiveDrivers.length ? executiveDrivers.map((driver, index) => {
                     const driverValueClass = EvoGAUIRenderer.driverValueClass(driver.budgetVariance);
+                    const driverConsumptionPct = driver.valOrcado > 0 ? (driver.valRealizado / driver.valOrcado) * 100 : null;
+                    const driverConsumptionText = driverConsumptionPct !== null
+                        ? formatPercentage(driverConsumptionPct)
+                        : (driver.valRealizado > 0 ? "Sem orçamento" : "-");
                     return `
                         <div class="driver-row">
                             <div>
                                 <div class="driver-name">${index + 1}. ${escapeHtml(driver.name)}</div>
-                                <div class="driver-meta">Departamento · Orçamento ${escapeHtml(periodLabel)}</div>
                             </div>
                             <div class="driver-metric"><span class="executive-label">Desvio orçamento</span><span class="driver-value ${driverValueClass}">${formatNumber(Math.abs(driver.budgetVariance), true, true, driver.budgetVariance)}</span></div>
                             <div class="driver-metric"><span class="executive-label">Contribuição</span><span class="driver-value ${driverValueClass}">${driver.contributionPct.toFixed(1)}%</span></div>
-                            <div class="driver-metric"><span class="executive-label">Consumo</span><span class="driver-value">${driver.percentConsumption === Infinity ? "∞" : formatPercentage(driver.percentConsumption)}</span></div>
+                            <div class="driver-metric"><span class="executive-label">Consumo</span><span class="driver-value">${escapeHtml(driverConsumptionText)}</span></div>
                         </div>
                     `;
                 }).join("") : `<div class="driver-meta">${excludedRowsCount > 0 && excludedGrossAbs > 0 ? "O desvio orçamentário relevante do período está concentrado no grupo segregado acima; não há departamentos adicionais no Pareto." : "Não há desvio orçamentário relevante por Departamento no período selecionado."}</div>`;
-                // Guia Diagnostico: expõe criterios e volumes para auditoria simples.
-                const diagnosticHtml = `
-                    <div class="diagnostic-grid">
-                        <div class="executive-section">
-                            <div class="section-title">Critérios de Relevância</div>
-                            <div class="driver-list">
-                                <div class="driver-row"><div class="driver-name">Desvio absoluto</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div><div class="driver-meta">Realizado - Orçado</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Desvio percentual</div><div class="driver-metric"><span class="driver-value ${totalGlobalDesvio > 0 ? "driver-value-alert" : "driver-value-saving"}">${totalVariancePct.toFixed(1)}%</span></div><div class="driver-meta">Sobre orçamento G&A</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Consumo do orçamento</div><div class="driver-metric"><span class="driver-value">${escapeHtml(kpiConsumptionText)}</span></div><div class="driver-meta">Realizado / Orçado</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ofensores do orçamento considerados</div><div class="driver-metric"><span class="driver-value">${executiveDrivers.length}</span></div><div class="driver-meta">Alvo ${escapeHtml(paretoTargetCoverageText)} · cobertura ${escapeHtml(budgetCoverageText)}</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Desvio orçamentário total analisado</div><div class="driver-metric"><span class="driver-value driver-value-alert">${formatNumber(Math.abs(budgetOffenderAnalysis.totalBudgetDeviation), true, true, budgetOffenderAnalysis.totalBudgetDeviation)}</span></div><div class="driver-meta">${escapeHtml(periodLabel)}</div><div></div></div>
-                            </div>
-                        </div>
-                        <div class="executive-section">
-                            <div class="section-title">Leitura Operacional</div>
-                            <div class="driver-list">
-                                <div class="driver-row"><div class="driver-name">Linhas SAC analisadas</div><div class="driver-metric"><span class="driver-value">${financialData.data.length}</span></div><div class="driver-meta">Filtradas: ${rowsForRender.length}</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Ruído operacional ocultado</div><div class="driver-metric"><span class="driver-value">${departamentos.filter(item => item.isExecutiveNoise).length}</span></div><div class="driver-meta">Critério 2%, R$100k e baixa materialidade</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Linhas excluídas dos ofensores</div><div class="driver-metric"><span class="driver-value">${budgetOffenderAnalysis.excludedRows}</span></div><div class="driver-meta">${escapeHtml(excludedTermsLabel)} · ${excludedRowsCount > 0 ? `desvio segregado ${formatNumber(Math.abs(excludedSummary.desvio), true, true, excludedSummary.desvio)}` : "sem efeito no período"}</div><div></div></div>
-                                <div class="driver-row"><div class="driver-name">Tendência principal</div><div class="driver-metric"><span class="driver-value">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatTrend(executiveDrivers[0].trendDirection)) : "-"}</span></div><div class="driver-meta">${executiveDrivers[0] ? escapeHtml(EvoGATrendEngine.formatRecurrence(executiveDrivers[0].recurrenceType)) : "Sem ofensor material"}</div><div></div></div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
                 this._profiler.metrics.steps.aggregation = this._profiler._now() - tAggregationStart;
                 const tDOMStart = this._profiler._now();
 
@@ -2540,7 +2538,7 @@
                             <div class="kpi-label">Pareto Orçamento</div>
                             <div class="kpi-value">${executiveDrivers.length}</div>
                             <div class="kpi-sub">departamentos · cobertura ${escapeHtml(budgetCoverageText)}</div>
-                            <div class="kpi-detail-row"><span>Desvio orçamento</span><span>${formatNumber(Math.abs(budgetOffenderAnalysis.totalBudgetDeviation), true, true, budgetOffenderAnalysis.totalBudgetDeviation)}</span></div>
+                            <div class="kpi-detail-row"><span>Desvio orçamento</span><span>${formatNumber(Math.abs(visibleParetoDeviation), true, true, visibleParetoDeviation)}</span></div>
                         </div>
                     </div>
                     <div class="executive-oversight ${oversightClass}">
@@ -2592,11 +2590,9 @@
                 container.innerHTML = `
                     <div class="view-tabs">
                         <button class="view-tab ${this._activeView === "executive" ? "active" : ""}" type="button" data-view="executive">Resumo Executivo</button>
-                        <button class="view-tab ${this._activeView === "diagnostic" ? "active" : ""}" type="button" data-view="diagnostic">Diagnóstico</button>
                         <button class="view-tab ${this._activeView === "operational" ? "active" : ""}" type="button" data-view="operational">Drilldown</button>
                     </div>
                     <div class="view-panel ${this._activeView === "executive" ? "active" : ""}" id="executiveView">${executivePanelHtml}</div>
-                    <div class="view-panel ${this._activeView === "diagnostic" ? "active" : ""}" id="diagnosticView">${diagnosticHtml}</div>
                     <div class="view-panel ${this._activeView === "operational" ? "active" : ""}" id="operationalView">${operationalPanelHtml}</div>
                 `;
                 this._bindHeaderControls(monthOptions, Boolean(monthDimKey));
