@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.4 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.5 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -310,6 +310,15 @@
                 Math.abs(varianceAbs) < EVO_GA_MATERIALITY_CONFIG.noiseVarianceAbs) return "Monitorar";
             if (variancePct >= 10 || varianceAbs >= 500000) return "Acima";
             return "Atenção";
+        }
+
+        static classifyYtdStatus(ytdBudget, ytdActual, annualBudget, annualConsumptionPct) {
+            const ytdDesvio = ytdActual - ytdBudget;
+            const ytdVariancePct = ytdBudget > 0 ? (ytdDesvio / ytdBudget) * 100 : (ytdActual > 0 ? Infinity : 0);
+            if (annualBudget <= 0 && ytdActual > 0) return "Crítico";
+            if (annualConsumptionPct >= 100 || ytdVariancePct >= 10) return "Crítico";
+            if (ytdDesvio > 0) return "Atenção";
+            return "Aderente";
         }
 
         static annotate(nodes, totalBudget, totalActual) {
@@ -1213,6 +1222,18 @@
                 vertical-align: bottom;
             }
             th:first-child { text-align: left; }
+            .drilldown-table .group-header {
+                text-align: center;
+                color: #334155;
+                background: #EAF0F6;
+                font-size: 10.5px;
+                letter-spacing: 0.55px;
+            }
+            .drilldown-table thead tr:first-child th { top: 0; z-index: 14; }
+            .drilldown-table thead tr:nth-child(2) th { top: 35px; z-index: 13; }
+            .drilldown-table .ytd-start {
+                border-left: 1px solid #CBD5E1;
+            }
             th.sortable { cursor: pointer; user-select: none; transition: background 0.2s; }
             th.sortable:hover { background-color: #E6E9F0; }
             .sort-icon { font-size: 10px; margin-left: 4px; color: #555; }
@@ -1488,8 +1509,8 @@
         }
 
         _setActiveView(viewName) {
-            // Troca entre Resumo Executivo, Diagnostico e Operacional.
-            // A guia Operacional e renderizada sob demanda para preservar performance.
+            // Troca entre Resumo Executivo, Diagnostico e Drilldown.
+            // A guia Drilldown e renderizada sob demanda para preservar performance.
             if (this._activeView === viewName) return;
             this._activeView = viewName;
             const hasRenderedPanels = this._shadowRoot.getElementById("executiveView");
@@ -1743,7 +1764,7 @@
             // 1) le metadados do SAC;
             // 2) identifica dimensoes;
             // 3) agrega periodo/YTD;
-            // 4) monta Resumo Executivo, Diagnostico e Operacional.
+            // 4) monta Resumo Executivo, Diagnostico e Drilldown.
             const tArrivalData = this._profiler._now();
             const financialData = this._currentData;
             const headerContainer = this._shadowRoot.getElementById("header-container");
@@ -1951,16 +1972,36 @@
                         return rowMonthIndex >= 0 && rowMonthIndex <= selectedMonthIndex;
                     })
                     : rowsForRender;
+                // Orcamento anual: usa todos os meses disponiveis do ano selecionado.
+                // O consumo da tabela Drilldown sera Realizado YTD / Orcamento anual.
+                const annualRows = monthDimKey && selectedHasCalendarPeriod
+                    ? sourceFacts.filter(fact => this._getPeriodParts(fact.month).year === selectedPeriod.year)
+                    : sourceFacts;
                 const sumRowsByVersion = (rows) => rows.reduce((acc, row) => {
                     if (row.normalizedCol.includes("ORCADO")) acc.budget += row.value;
                     else if (row.normalizedCol.includes("REALIZADO")) acc.actual += row.value;
                     return acc;
                 }, { budget: 0, actual: 0 });
                 const ytdTotals = sumRowsByVersion(ytdRows);
+                const totalAnnualBudget = sumRowsByVersion(annualRows).budget;
+                const getFactHierarchyKeys = (fact) => [
+                    `calc:${fact.calcNode}`,
+                    `calc:${fact.calcNode}|cc1:${fact.ccNivel1}`,
+                    `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`,
+                    `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}`,
+                    `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}|conta:${fact.conta}`
+                ];
+                const annualBudgetByKey = new Map();
+                annualRows.forEach(fact => {
+                    if (!fact.normalizedCol.includes("ORCADO")) return;
+                    getFactHierarchyKeys(fact).forEach(key => {
+                        annualBudgetByKey.set(key, (annualBudgetByKey.get(key) || 0) + fact.value);
+                    });
+                });
 
                 // Montagem da arvore operacional completa:
                 // VP > Diretoria > Gerencia > Departamento > Conta.
-                // Esta arvore e mais pesada e por isso so e usada na guia Operacional.
+                // Esta arvore e mais pesada e por isso so e usada na guia Drilldown.
                 const buildHierarchyFromFacts = (facts) => {
                     const dataMap = {};
                     const uniqueColsSet = new Set();
@@ -2285,248 +2326,180 @@
                         </div>
                     </div>
                 `;
-                // Guia Operacional: monta tabela mensal e tabela YTD com drilldown.
+                // Guia Drilldown: monta uma unica tabela com leitura mensal e MYTD.
                 // Fica em funcao separada para permitir refresh leve em ordenacao/expansao.
                 const buildOperationalPanelHtml = () => {
-                const { uniqueCols, tableData, ytdTableData } = getOperationalHierarchies();
-                const sortHierarchyRoots = (rows) => {
-                    if (!this._sortState.col) return;
-                    rows.sort((a, b) => {
-                        let valA = a[this._sortState.col] !== undefined ? a[this._sortState.col] : a.numValues[this._sortState.col];
-                        let valB = b[this._sortState.col] !== undefined ? b[this._sortState.col] : b.numValues[this._sortState.col];
-                        
-                        if (typeof valA === 'string' && typeof valB === 'string') {
-                            return this._sortState.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    const { tableData: monthlyTableData, ytdTableData } = getOperationalHierarchies();
+                    const monthlyNodeByKey = new Map(EvoGAAggregationEngine.collectNodes(monthlyTableData).map(node => [node.key, node]));
+                    const ytdNodeByKey = new Map(EvoGAAggregationEngine.collectNodes(ytdTableData).map(node => [node.key, node]));
+                    const emptyMetrics = { valOrcado: 0, valRealizado: 0, desvio: 0, percentConsumption: 0, isExecutiveNoise: true, children: [] };
+                    const getMonthlyMetrics = (rowObj) => monthlyNodeByKey.get(rowObj.key) || emptyMetrics;
+                    const getYtdMetrics = (rowObj) => ytdNodeByKey.get(rowObj.key) || rowObj || emptyMetrics;
+                    const getAnnualBudget = (rowObj) => annualBudgetByKey.get(rowObj.key) || 0;
+                    const getYtdConsumptionPct = (rowObj) => {
+                        const ytdNode = getYtdMetrics(rowObj);
+                        const annualBudget = getAnnualBudget(rowObj);
+                        if (annualBudget > 0) return (ytdNode.valRealizado / annualBudget) * 100;
+                        return ytdNode.valRealizado > 0 ? Infinity : 0;
+                    };
+                    const getYtdStatus = (rowObj) => {
+                        const ytdNode = getYtdMetrics(rowObj);
+                        return EvoGAMaterialityEngine.classifyYtdStatus(
+                            ytdNode.valOrcado,
+                            ytdNode.valRealizado,
+                            getAnnualBudget(rowObj),
+                            getYtdConsumptionPct(rowObj)
+                        );
+                    };
+                    const getSortValue = (rowObj) => {
+                        const monthlyNode = getMonthlyMetrics(rowObj);
+                        const ytdNode = getYtdMetrics(rowObj);
+                        const statusRank = { "Aderente": 1, "Atenção": 2, "Crítico": 3 };
+                        switch (this._sortState.col) {
+                            case "monthlyBudget": return monthlyNode.valOrcado;
+                            case "monthlyActual": return monthlyNode.valRealizado;
+                            case "monthlyVariance": return monthlyNode.desvio;
+                            case "ytdBudget": return ytdNode.valOrcado;
+                            case "ytdActual": return ytdNode.valRealizado;
+                            case "ytdVariance": return ytdNode.desvio;
+                            case "ytdConsumption": return getYtdConsumptionPct(rowObj);
+                            case "ytdStatus": return statusRank[getYtdStatus(rowObj)] || 0;
+                            case "name":
+                            default: return rowObj.name;
                         }
-                        if (valA < valB) return this._sortState.dir === 'asc' ? -1 : 1;
-                        if (valA > valB) return this._sortState.dir === 'asc' ? 1 : -1;
-                        return 0;
-                    });
-                };
-                sortHierarchyRoots(tableData);
-                sortHierarchyRoots(ytdTableData);
-
-                let tableHtml = `<table>`;
-                let sortIconRow = this._sortState.col === 'name' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                tableHtml += `<thead><tr><th data-sort="name" class="sortable">${escapeHtml(headerName)}<span class="sort-icon">${sortIconRow}</span></th>`;
-                
-                uniqueCols.forEach(col => {
-                    let sortKey = '';
-                    if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) sortKey = 'valOrcado';
-                    else if (col.toUpperCase().includes("REALIZADO")) sortKey = 'valRealizado';
-
-                    let sortIcon = this._sortState.col === sortKey ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                    let sortAttr = sortKey ? `data-sort="${sortKey}" class="sortable"` : '';
-                    tableHtml += `<th ${sortAttr}>${escapeHtml(col)}<span class="sort-icon">${sortIcon}</span></th>`;
-                });
-
-                let sortIconDesvio = this._sortState.col === 'desvio' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                tableHtml += `<th data-sort="desvio" class="sortable">DESVIO R$<span class="sort-icon">${sortIconDesvio}</span></th>`;
-                tableHtml += `<th class="numeric">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
-
-                const renderRowHtml = (rowObj, level = 0) => {
-                    const hasChildren = rowObj.children && rowObj.children.length > 0;
-                    let rowClass = "row-conta";
-                    if (level === 0) rowClass = "row-cc";
-                    else if (level === 1) rowClass = "row-cc row-cc-nivel-1";
-                    else if (level === 2) rowClass = "row-cc row-cc-nivel-2";
-                    else if (level === 3) rowClass = "row-cc row-cc-nivel-3";
-                    let expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
-                    let dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
-                    
-                    let html = `<tr class="${rowClass} ${expandClass}" ${dataAttr}>`;
-                    
-                    let flagHtml = (level === 3 && ofensorKeys.has(rowObj.key)) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
-                    let safeName = escapeHtml(rowObj.name);
-                    let nameCell = level === 4 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
-                    
-                    html += `<td>${nameCell}</td>`;
-                    
-                    uniqueCols.forEach(col => {
-                        let numValue = rowObj.numValues[col];
-                        html += `<td class="numeric">${formatNumber(numValue)}</td>`;
-                    });
-
-                    const desvioFormatted = formatNumber(Math.abs(rowObj.desvio), true, true, rowObj.desvio); 
-                    let varColorClass = rowObj.desvio > 0 ? "var-positive" : (rowObj.desvio < 0 ? "var-negative" : "");
-                    html += `<td class="numeric cell-variance ${varColorClass}">${rowObj.desvio !== 0 ? desvioFormatted : "-"}</td>`;
-
-                    let barFillWidth = rowObj.percentConsumption === Infinity ? 100 : Math.min(100, rowObj.percentConsumption || 0);
-                    let barFillClass = "fill-green";
-                    if (rowObj.executiveSeverity === "Acima" || rowObj.executiveSeverity === "Sem orçamento") barFillClass = "fill-red";
-                    else if (rowObj.executiveSeverity === "Atenção" || rowObj.percentConsumption >= 100) barFillClass = "fill-yellow";
-                    let consumptionText = rowObj.percentConsumption === Infinity ? "∞" : (rowObj.percentConsumption === 0 ? "-" : formatPercentage(rowObj.percentConsumption));
-                    
-                    if(rowObj.valOrcado === 0 && rowObj.valRealizado === 0) barFillWidth = 0;
-
-                    html += `<td class="cell-consumption">
-                        <div class="consumption-wrapper">
-                            <div class="bar-container"><div class="bar-fill ${barFillClass}" style="width: ${barFillWidth}%;"></div></div>
-                            <div class="percent-value">${consumptionText}</div>
-                        </div>
-                    </td>`;
-
-                    let statusText = rowObj.executiveSeverity || "-";
-                    let statusPillClass = EvoGAUIRenderer.statusClass(statusText, normalizeText);
-                    if (rowObj.isExecutiveNoise) { statusText = "Baixa"; statusPillClass = "status-baixa"; }
-
-                    let statusTitle = `Desvio ${formatNumber(Math.abs(rowObj.desvio), true, true, rowObj.desvio)} | ${rowObj.variancePct.toFixed(1)}% vs orçamento | ${rowObj.hierarchyLabel}: ${rowObj.name}`;
-                    let statusHtml = statusText !== "-" ? `<span class="status-pill ${statusPillClass}" title="${escapeHtml(statusTitle)}">${statusText}</span>` : "-";
-                    html += `<td class="center cell-status">${statusHtml}</td></tr>`;
-                    
-                    return html;
-                };
-                const hasVisibleSignal = (rowObj, level = 0) => {
-                    if (level === 0) return true;
-                    if (!rowObj.isExecutiveNoise) return true;
-                    return (rowObj.children || []).some(child => hasVisibleSignal(child, level + 1));
-                };
-
-                tableData.forEach(calcRow => {
-                    tableHtml += renderRowHtml(calcRow, 0);
-                    if (this._expandedRows.has(calcRow.key)) {
-                        calcRow.children.forEach(ccNivel1Row => {
-                            if (!hasVisibleSignal(ccNivel1Row, 1)) return;
-                            tableHtml += renderRowHtml(ccNivel1Row, 1);
-                            if (this._expandedRows.has(ccNivel1Row.key)) {
-                                ccNivel1Row.children.forEach(ccNivel2Row => {
-                                    if (!hasVisibleSignal(ccNivel2Row, 2)) return;
-                                    tableHtml += renderRowHtml(ccNivel2Row, 2);
-                                    if (this._expandedRows.has(ccNivel2Row.key)) {
-                                        ccNivel2Row.children.forEach(ccNivel3Row => {
-                                            if (!hasVisibleSignal(ccNivel3Row, 3)) return;
-                                            tableHtml += renderRowHtml(ccNivel3Row, 3);
-                                            if (this._expandedRows.has(ccNivel3Row.key)) {
-                                                ccNivel3Row.children.forEach(contaRow => {
-                                                    if (!hasVisibleSignal(contaRow, 4)) return;
-                                                    tableHtml += renderRowHtml(contaRow, 4);
-                                                });
-                                            }
-                                        });
-                                    }
-                                });
+                    };
+                    const sortHierarchyRows = (rows) => {
+                        if (!this._sortState.col) return;
+                        rows.sort((a, b) => {
+                            const valA = getSortValue(a);
+                            const valB = getSortValue(b);
+                            if (typeof valA === "string" && typeof valB === "string") {
+                                return this._sortState.dir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
                             }
+                            if (valA < valB) return this._sortState.dir === "asc" ? -1 : 1;
+                            if (valA > valB) return this._sortState.dir === "asc" ? 1 : -1;
+                            return 0;
                         });
-                    }
-                });
+                        rows.forEach(row => sortHierarchyRows(row.children || []));
+                    };
+                    sortHierarchyRows(ytdTableData);
 
-                tableHtml += `</tbody>`;
+                    const sortIcon = (col) => this._sortState.col === col ? (this._sortState.dir === "asc" ? " ▲" : " ▼") : "";
+                    let tableHtml = `<table class="drilldown-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" data-sort="name" class="sortable">${escapeHtml(headerName)}<span class="sort-icon">${sortIcon("name")}</span></th>
+                                <th colspan="3" class="group-header">Análise Mensal</th>
+                                <th colspan="5" class="group-header ytd-start">Análise MYTD</th>
+                            </tr>
+                            <tr>
+                                <th data-sort="monthlyBudget" class="sortable">Orçado<span class="sort-icon">${sortIcon("monthlyBudget")}</span></th>
+                                <th data-sort="monthlyActual" class="sortable">Realizado<span class="sort-icon">${sortIcon("monthlyActual")}</span></th>
+                                <th data-sort="monthlyVariance" class="sortable">Variação<span class="sort-icon">${sortIcon("monthlyVariance")}</span></th>
+                                <th data-sort="ytdBudget" class="sortable ytd-start">Orçado YTD<span class="sort-icon">${sortIcon("ytdBudget")}</span></th>
+                                <th data-sort="ytdActual" class="sortable">Realizado YTD<span class="sort-icon">${sortIcon("ytdActual")}</span></th>
+                                <th data-sort="ytdVariance" class="sortable">Variação<span class="sort-icon">${sortIcon("ytdVariance")}</span></th>
+                                <th data-sort="ytdConsumption" class="sortable">Consumo<span class="sort-icon">${sortIcon("ytdConsumption")}</span></th>
+                                <th data-sort="ytdStatus" class="sortable center">Status<span class="sort-icon">${sortIcon("ytdStatus")}</span></th>
+                            </tr>
+                        </thead><tbody>`;
 
-                const totalDesvioFormatted = formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio);
-                let totalVarColorClass = totalGlobalDesvio > 0 ? "var-positive" : (totalGlobalDesvio < 0 ? "var-negative" : "");
-                let totalPercentConsumption = totalGlobalOrcado > 0 ? (totalGlobalRealizado / totalGlobalOrcado) * 100 : (totalGlobalRealizado > 0 ? Infinity : 0);
-                
-                let totalBarFillWidth = totalPercentConsumption === Infinity ? 100 : Math.min(100, totalPercentConsumption || 0);
-                let totalBarFillClass = totalGlobalDesvio > 0 ? (totalVariancePct >= 10 ? "fill-red" : "fill-yellow") : "fill-green";
-                let totalConsumptionText = totalPercentConsumption === Infinity ? "∞" : (totalPercentConsumption === 0 ? "-" : formatPercentage(totalPercentConsumption));
-                if(totalGlobalOrcado === 0 && totalGlobalRealizado === 0) totalBarFillWidth = 0;
+                    const renderRowHtml = (rowObj, level = 0) => {
+                        const monthlyNode = getMonthlyMetrics(rowObj);
+                        const ytdNode = getYtdMetrics(rowObj);
+                        const annualBudget = getAnnualBudget(rowObj);
+                        const ytdConsumptionPct = getYtdConsumptionPct(rowObj);
+                        const statusText = getYtdStatus(rowObj);
+                        const hasChildren = rowObj.children && rowObj.children.length > 0;
+                        let rowClass = "row-conta";
+                        if (level === 0) rowClass = "row-cc";
+                        else if (level === 1) rowClass = "row-cc row-cc-nivel-1";
+                        else if (level === 2) rowClass = "row-cc row-cc-nivel-2";
+                        else if (level === 3) rowClass = "row-cc row-cc-nivel-3";
+                        const expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
+                        const dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
+                        const flagHtml = (level === 3 && ofensorKeys.has(rowObj.key)) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
+                        const safeName = escapeHtml(rowObj.name);
+                        const nameCell = level === 4 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
+                        const monthlyVarianceClass = monthlyNode.desvio > 0 ? "var-positive" : (monthlyNode.desvio < 0 ? "var-negative" : "");
+                        const ytdVarianceClass = ytdNode.desvio > 0 ? "var-positive" : (ytdNode.desvio < 0 ? "var-negative" : "");
+                        const barFillWidth = ytdConsumptionPct === Infinity ? 100 : Math.min(100, ytdConsumptionPct || 0);
+                        const barFillClass = statusText === "Crítico" ? "fill-red" : (statusText === "Atenção" ? "fill-yellow" : "fill-green");
+                        const consumptionText = ytdConsumptionPct === Infinity ? "∞" : (ytdConsumptionPct === 0 ? "-" : formatPercentage(ytdConsumptionPct));
+                        const statusPillClass = EvoGAUIRenderer.statusClass(statusText, normalizeText);
+                        const ytdVariancePct = ytdNode.valOrcado > 0 ? (ytdNode.desvio / ytdNode.valOrcado) * 100 : 0;
+                        const statusTitle = `Status YTD: ${statusText} | Desvio YTD ${formatNumber(Math.abs(ytdNode.desvio), true, true, ytdNode.desvio)} | ${ytdVariancePct.toFixed(1)}% vs orçamento YTD | Consumo ${consumptionText} do orçamento anual | Orçamento anual ${formatNumber(annualBudget)}`;
 
-                let totalStatusText = EvoGAMaterialityEngine.classifyBudgetStatus(totalGlobalOrcado, totalGlobalRealizado, totalGlobalDesvio, totalVariancePct);
-                let totalStatusPillClass = EvoGAUIRenderer.statusClass(totalStatusText, normalizeText);
+                        return `<tr class="${rowClass} ${expandClass}" ${dataAttr}>
+                            <td>${nameCell}</td>
+                            <td class="numeric">${formatNumber(monthlyNode.valOrcado)}</td>
+                            <td class="numeric">${formatNumber(monthlyNode.valRealizado)}</td>
+                            <td class="numeric cell-variance ${monthlyVarianceClass}">${monthlyNode.desvio !== 0 ? formatNumber(Math.abs(monthlyNode.desvio), true, true, monthlyNode.desvio) : "-"}</td>
+                            <td class="numeric ytd-start">${formatNumber(ytdNode.valOrcado)}</td>
+                            <td class="numeric">${formatNumber(ytdNode.valRealizado)}</td>
+                            <td class="numeric cell-variance ${ytdVarianceClass}">${ytdNode.desvio !== 0 ? formatNumber(Math.abs(ytdNode.desvio), true, true, ytdNode.desvio) : "-"}</td>
+                            <td class="cell-consumption">
+                                <div class="consumption-wrapper">
+                                    <div class="bar-container"><div class="bar-fill ${barFillClass}" style="width: ${barFillWidth}%;"></div></div>
+                                    <div class="percent-value">${consumptionText}</div>
+                                </div>
+                            </td>
+                            <td class="center cell-status"><span class="status-pill ${statusPillClass}" title="${escapeHtml(statusTitle)}">${statusText}</span></td>
+                        </tr>`;
+                    };
+                    const hasVisibleSignal = (rowObj, level = 0) => {
+                        if (level === 0) return true;
+                        const monthlyNode = getMonthlyMetrics(rowObj);
+                        if (getYtdStatus(rowObj) !== "Aderente") return true;
+                        if (monthlyNode && !monthlyNode.isExecutiveNoise) return true;
+                        return (rowObj.children || []).some(child => hasVisibleSignal(child, level + 1));
+                    };
+                    const appendRows = (rows, level = 0) => {
+                        let html = "";
+                        rows.forEach(rowObj => {
+                            if (!hasVisibleSignal(rowObj, level)) return;
+                            html += renderRowHtml(rowObj, level);
+                            if (this._expandedRows.has(rowObj.key)) html += appendRows(rowObj.children || [], level + 1);
+                        });
+                        return html;
+                    };
+                    tableHtml += appendRows(ytdTableData);
 
-                tableHtml += `<tfoot><tr><td>TOTAL GERAL</td>`;
-                uniqueCols.forEach(col => {
-                    if (col.toUpperCase().includes("ORÇADO") || col.toUpperCase().includes("ORCADO")) tableHtml += `<td class="numeric">${formatNumber(totalGlobalOrcado)}</td>`;
-                    else if (col.toUpperCase().includes("REALIZADO")) tableHtml += `<td class="numeric">${formatNumber(totalGlobalRealizado)}</td>`;
-                    else tableHtml += `<td class="numeric">-</td>`;
-                });
-                tableHtml += `<td class="numeric cell-variance ${totalVarColorClass}">${totalGlobalDesvio !== 0 ? totalDesvioFormatted : "-"}</td>`;
-                tableHtml += `<td class="cell-consumption"><div class="consumption-wrapper"><div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div><div class="percent-value">${totalConsumptionText}</div></div></td>`;
-                tableHtml += `<td class="center cell-status">${totalStatusText !== "-" ? `<span class="status-pill ${totalStatusPillClass}">${totalStatusText}</span>` : "-"}</td></tr></tfoot></table>`;
+                    const totalYtdConsumptionPct = totalAnnualBudget > 0 ? (ytdTotals.actual / totalAnnualBudget) * 100 : (ytdTotals.actual > 0 ? Infinity : 0);
+                    const totalYtdStatus = EvoGAMaterialityEngine.classifyYtdStatus(ytdTotals.budget, ytdTotals.actual, totalAnnualBudget, totalYtdConsumptionPct);
+                    const totalMonthlyVarianceClass = totalGlobalDesvio > 0 ? "var-positive" : (totalGlobalDesvio < 0 ? "var-negative" : "");
+                    const totalYtdVarianceClass = ytdDesvio > 0 ? "var-positive" : (ytdDesvio < 0 ? "var-negative" : "");
+                    const totalBarFillWidth = totalYtdConsumptionPct === Infinity ? 100 : Math.min(100, totalYtdConsumptionPct || 0);
+                    const totalBarFillClass = totalYtdStatus === "Crítico" ? "fill-red" : (totalYtdStatus === "Atenção" ? "fill-yellow" : "fill-green");
+                    const totalConsumptionText = totalYtdConsumptionPct === Infinity ? "∞" : (totalYtdConsumptionPct === 0 ? "-" : formatPercentage(totalYtdConsumptionPct));
+                    const totalStatusPillClass = EvoGAUIRenderer.statusClass(totalYtdStatus, normalizeText);
 
-                const renderYtdRowHtml = (rowObj, level = 0) => {
-                    const hasChildren = rowObj.children && rowObj.children.length > 0;
-                    let rowClass = "row-conta";
-                    if (level === 0) rowClass = "row-cc";
-                    else if (level === 1) rowClass = "row-cc row-cc-nivel-1";
-                    else if (level === 2) rowClass = "row-cc row-cc-nivel-2";
-                    else if (level === 3) rowClass = "row-cc row-cc-nivel-3";
-                    const expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
-                    const dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
-                    const safeName = escapeHtml(rowObj.name);
-                    const nameCell = level === 4 ? safeName : `<span class="expand-icon">▶</span>${safeName}`;
-                    const ytdDesvioRow = rowObj.valRealizado - rowObj.valOrcado;
-                    const ytdVarianceClass = ytdDesvioRow > 0 ? "var-positive" : (ytdDesvioRow < 0 ? "var-negative" : "");
-
-                    return `<tr class="${rowClass} ${expandClass}" ${dataAttr}>
-                        <td>${nameCell}</td>
-                        <td class="numeric">${formatNumber(rowObj.valRealizado)}</td>
-                        <td class="numeric">${formatNumber(rowObj.valOrcado)}</td>
-                        <td class="numeric cell-variance ${ytdVarianceClass}">${ytdDesvioRow !== 0 ? formatNumber(Math.abs(ytdDesvioRow), true, true, ytdDesvioRow) : "-"}</td>
-                    </tr>`;
-                };
-
-                const appendYtdRows = (rows) => {
-                    let html = "";
-                    rows.forEach(calcRow => {
-                        html += renderYtdRowHtml(calcRow, 0);
-                        if (this._expandedRows.has(calcRow.key)) {
-                            calcRow.children.forEach(ccNivel1Row => {
-                                html += renderYtdRowHtml(ccNivel1Row, 1);
-                                if (this._expandedRows.has(ccNivel1Row.key)) {
-                                    ccNivel1Row.children.forEach(ccNivel2Row => {
-                                        html += renderYtdRowHtml(ccNivel2Row, 2);
-                                        if (this._expandedRows.has(ccNivel2Row.key)) {
-                                            ccNivel2Row.children.forEach(ccNivel3Row => {
-                                                html += renderYtdRowHtml(ccNivel3Row, 3);
-                                                if (this._expandedRows.has(ccNivel3Row.key)) {
-                                                    ccNivel3Row.children.forEach(contaRow => {
-                                                        html += renderYtdRowHtml(contaRow, 4);
-                                                    });
-                                                }
-                                            });
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
-                    return html;
-                };
-
-                const ytdSortIconName = this._sortState.col === 'name' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                const ytdSortIconReal = this._sortState.col === 'valRealizado' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                const ytdSortIconBudget = this._sortState.col === 'valOrcado' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                const ytdSortIconDesvio = this._sortState.col === 'desvio' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                const ytdTotalDesvioFormatted = formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio);
-                const ytdTotalVarClass = ytdDesvio > 0 ? "var-positive" : (ytdDesvio < 0 ? "var-negative" : "");
-                let ytdTableHtml = `<table class="operational-ytd-table">
-                    <thead><tr>
-                        <th data-sort="name" class="sortable">${escapeHtml(headerName)}<span class="sort-icon">${ytdSortIconName}</span></th>
-                        <th data-sort="valRealizado" class="sortable">REAL YTD<span class="sort-icon">${ytdSortIconReal}</span></th>
-                        <th data-sort="valOrcado" class="sortable">ORÇADO YTD<span class="sort-icon">${ytdSortIconBudget}</span></th>
-                        <th data-sort="desvio" class="sortable">DESVIO YTD<span class="sort-icon">${ytdSortIconDesvio}</span></th>
-                    </tr></thead>
-                    <tbody>${appendYtdRows(ytdTableData)}</tbody>
-                    <tfoot><tr>
-                        <td>TOTAL YTD</td>
+                    tableHtml += `</tbody><tfoot><tr>
+                        <td>TOTAL GERAL</td>
+                        <td class="numeric">${formatNumber(totalGlobalOrcado)}</td>
+                        <td class="numeric">${formatNumber(totalGlobalRealizado)}</td>
+                        <td class="numeric cell-variance ${totalMonthlyVarianceClass}">${totalGlobalDesvio !== 0 ? formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio) : "-"}</td>
+                        <td class="numeric ytd-start">${formatNumber(ytdTotals.budget)}</td>
                         <td class="numeric">${formatNumber(ytdTotals.actual)}</td>
-                        <td class="numeric">${formatNumber(ytdTotals.budget)}</td>
-                        <td class="numeric cell-variance ${ytdTotalVarClass}">${ytdDesvio !== 0 ? ytdTotalDesvioFormatted : "-"}</td>
-                    </tr></tfoot>
-                </table>`;
+                        <td class="numeric cell-variance ${totalYtdVarianceClass}">${ytdDesvio !== 0 ? formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio) : "-"}</td>
+                        <td class="cell-consumption"><div class="consumption-wrapper"><div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div><div class="percent-value">${totalConsumptionText}</div></div></td>
+                        <td class="center cell-status"><span class="status-pill ${totalStatusPillClass}">${totalYtdStatus}</span></td>
+                    </tr></tfoot></table>`;
 
-                const operationalPanelHtml = `
-                    <div class="operational-stack">
-                        <section class="operational-section">
-                            <div class="operational-section-header">
-                                <span class="operational-section-title">Análise Mensal</span>
-                                <span class="operational-section-sub">${escapeHtml(periodLabel)}</span>
-                            </div>
-                            <div class="operational-table-wrap">${tableHtml}</div>
-                        </section>
-                        <section class="operational-section">
-                            <div class="operational-section-header">
-                                <span class="operational-section-title">Análise YTD</span>
-                                <span class="operational-section-sub">${escapeHtml(ytdLabel)}</span>
-                            </div>
-                            <div class="operational-table-wrap">${ytdTableHtml}</div>
-                        </section>
-                    </div>
-                `;
-                return operationalPanelHtml;
+                    const operationalPanelHtml = `
+                        <div class="operational-stack">
+                            <section class="operational-section">
+                                <div class="operational-section-header">
+                                    <span class="operational-section-title">Drilldown</span>
+                                    <span class="operational-section-sub">${escapeHtml(periodLabel)} · ${escapeHtml(ytdLabel)} · consumo sobre orçamento anual</span>
+                                </div>
+                                <div class="operational-table-wrap">${tableHtml}</div>
+                            </section>
+                        </div>
+                    `;
+                    return operationalPanelHtml;
                 };
-                // Refresh leve da guia Operacional.
+                // Refresh leve da guia Drilldown.
                 // Usado quando o usuario ordena ou expande linhas sem mudar dados.
                 this._refreshOperationalView = () => {
                     const tRefreshStart = this._profiler._now();
