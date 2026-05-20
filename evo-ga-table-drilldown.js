@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.12 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.13 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -1916,6 +1916,27 @@
                     '"': '&quot;',
                     "'": '&#39;'
                 }[char]));
+                const isGenericMeasureLabel = (value) => {
+                    const normalized = normalizeText(value).replace(/[^A-Z0-9]/g, "");
+                    if (!normalized) return true;
+                    const genericLabels = new Set([
+                        "MONTANTE", "VALOR", "VALUE", "AMOUNT", "MEDIDA", "MEASURE",
+                        "QUANTIDADE", "QUANTITY", "QTD", "QTY", "TOTAL"
+                    ]);
+                    return genericLabels.has(normalized);
+                };
+                const getSelectedMainStructureLabel = () => {
+                    const memberNames = Object.keys(measures)
+                        .map(key => {
+                            const member = measures[key] || {};
+                            return getName(member);
+                        })
+                        .filter(name => name && name !== "N/D" && !isGenericMeasureLabel(name));
+                    const uniqueNames = Array.from(new Set(memberNames));
+                    if (uniqueNames.length === 1) return uniqueNames[0];
+                    if (uniqueNames.length > 1) return uniqueNames.join(" / ");
+                    return "";
+                };
                 // Conversao de valores e formatacao pt-BR.
                 // O SAC pode enviar numero cru ou texto formatado; esta etapa
                 // padroniza tudo antes dos calculos.
@@ -2011,9 +2032,10 @@
                         .map(fact => fact.conta)
                         .filter(name => name && name !== "N/D")
                 )).sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
-                const selectedIndicatorLabel = selectedAccountNames.length === 1
+                const selectedMainStructureLabel = getSelectedMainStructureLabel();
+                const selectedIndicatorLabel = selectedMainStructureLabel || (selectedAccountNames.length === 1
                     ? selectedAccountNames[0]
-                    : (selectedAccountNames.length > 1 ? `${selectedAccountNames.length} contas selecionadas` : "Conta não selecionada");
+                    : (selectedAccountNames.length > 1 ? `${selectedAccountNames.length} contas selecionadas` : "Conta não selecionada"));
                 const dynamicWidgetTitle = `Executive Budget - ${selectedIndicatorLabel}`;
                 const rowsForRender = selectedMonthHasFilter
                     ? sourceFacts.filter(fact => fact.month === this._selectedMonth)
