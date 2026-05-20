@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.10 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.11 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -159,8 +159,7 @@
     const EVO_GA_HIERARCHY = [
         { key: "vp", label: "VP" },
         { key: "diretoria", label: "Diretoria" },
-        { key: "gerencia", label: "Gerência" },
-        { key: "departamento", label: "Departamento" },
+        { key: "departamentoGerencia", label: "Departamento/Gerência" },
         { key: "conta", label: "Conta Contábil" }
     ];
 
@@ -233,7 +232,7 @@
         }
 
         static addRow(dataMap, rowContext, col, value) {
-            const { calcNode, ccNivel1, ccNivel2, ccNivel3, conta } = rowContext;
+            const { calcNode, ccNivel1, ccNivel2, conta } = rowContext;
             if (!dataMap[calcNode]) {
                 dataMap[calcNode] = { totals: {}, ccNivel1: {} };
             }
@@ -241,17 +240,13 @@
                 dataMap[calcNode].ccNivel1[ccNivel1] = { totals: {}, ccNivel2: {} };
             }
             if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2]) {
-                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2] = { totals: {}, ccNivel3: {} };
+                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2] = { totals: {}, contas: {} };
             }
-            if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3]) {
-                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3] = { totals: {}, contas: {} };
-            }
-            if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta]) {
-                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta] = {};
+            if (!dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta]) {
+                dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta] = {};
             }
 
-            EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta], col, value);
-            EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].totals, col, value);
+            EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta], col, value);
             EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals, col, value);
             EvoGAAggregationEngine.addValue(dataMap[calcNode].ccNivel1[ccNivel1].totals, col, value);
             EvoGAAggregationEngine.addValue(dataMap[calcNode].totals, col, value);
@@ -353,7 +348,7 @@
     // =========================================================================
     // PARETO DE OFENSORES DO ORCAMENTO
     // -------------------------------------------------------------------------
-    // Seleciona os Departamentos que explicam o percentual definido do desvio
+    // Seleciona os itens de Departamento/Gerencia que explicam o percentual definido do desvio
     // positivo do periodo. IFRS 16, Outros, PBA e Rateio ficam fora da tabela e
     // sao apresentados no bloco "Efeito segregado fora do Pareto".
     // =========================================================================
@@ -412,7 +407,6 @@
                 calcNode: getName(row[dimensionKeys.calc]),
                 ccNivel1: getName(row[dimensionKeys.cc1]),
                 ccNivel2: getName(row[dimensionKeys.cc2]),
-                ccNivel3: getName(row[dimensionKeys.cc3]),
                 conta: getName(row[dimensionKeys.conta]),
                 col: getName(row[dimensionKeys.version]),
                 value: getMeasureValueFromRow(row)
@@ -427,9 +421,8 @@
                 const calcNode = fact.calcNode;
                 const ccNivel1 = fact.ccNivel1;
                 const ccNivel2 = fact.ccNivel2;
-                const ccNivel3 = fact.ccNivel3;
                 const conta = fact.conta;
-                const excludedTerm = EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, ccNivel3, conta]);
+                const excludedTerm = EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, conta]);
                 if (excludedTerm) {
                     excludedRows++;
                     excludedSummary.rows++;
@@ -442,12 +435,12 @@
                     return;
                 }
 
-                const key = `calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`;
+                const key = `calc:${calcNode}|cc1:${ccNivel1}|cc2:${ccNivel2}`;
                 if (!departmentMap[key]) {
                     departmentMap[key] = {
                         key,
-                        name: ccNivel3,
-                        hierarchyLabel: "Departamento",
+                        name: ccNivel2,
+                        hierarchyLabel: "Departamento/Gerência",
                         current: EvoGABudgetOffenderEngine._emptyPeriod()
                     };
                 }
@@ -547,7 +540,7 @@
             return {
                 headline: totalDesvio > 0 ? "DISCIPLINA ORÇAMENTÁRIA G&A: PRESSÃO ACIMA DO PLANEJADO" : "DISCIPLINA ORÇAMENTÁRIA G&A: ADERÊNCIA AO PLANEJADO",
                 keyDrivers: `Principais ofensores oficiais: ${driverText}.`,
-                rootCause: topDriver ? `A concentração está no Departamento ${topDriver.name}, conforme estrutura governada do modelo.` : "Não há vetor oficial dominante com desvio relevante.",
+                rootCause: topDriver ? `A concentração está em Departamento/Gerência ${topDriver.name}, conforme estrutura governada do modelo.` : "Não há vetor oficial dominante com desvio relevante.",
                 trend: `Tendência: ${trendText}.`,
                 riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A. ${ytdContext}`
             };
@@ -1321,11 +1314,6 @@
                 padding-left: 42px;
                 color: #475569;
             }
-            tr.row-cc-nivel-3 td { background-color: #F8FAFC; }
-            tr.row-cc-nivel-3 td:first-child {
-                padding-left: 58px;
-                color: #475569;
-            }
             .expand-icon { 
                 display: inline-block; 
                 width: 14px; 
@@ -1848,13 +1836,13 @@
                 const dimKeys = Object.keys(dimensions);
                 const measureKeys = Object.keys(measures);
 
-                if (dimKeys.length < 6 || measureKeys.length < 1) {
-                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 6 dimensões (1. Dimensão Calculada/VP, 2. Centro de Custo Nível 1/Diretoria, 3. Centro de Custo Nível 2/Gerência, 4. Centro de Custo Nível 3/Departamento, 5. Conta Contábil, 6. Orçado/Realizado) e 1 medida. A dimensão de mês é opcional.</div>";
+                if (dimKeys.length < 5 || measureKeys.length < 1) {
+                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Adicione 5 dimensões (1. Dimensão Calculada/VP, 2. Diretoria, 3. Departamento/Gerência, 4. Conta Contábil, 5. Orçado/Realizado) e 1 medida. A dimensão de mês é opcional.</div>";
                     return;
                 }
 
                 // Identificacao das dimensoes recebidas do SAC.
-                // A ordem esperada e: VP > Diretoria > Gerencia > Departamento
+                // A ordem esperada e: VP > Diretoria > Departamento/Gerencia
                 // > Conta > Versao > Mes opcional.
                 const getName = (obj) => obj ? (obj.label || obj.description || obj.id || "N/D") : "N/D";
                 const normalizeText = (value) => this._normalizeText(value);
@@ -1892,11 +1880,10 @@
                 const calcDimKey = orderedWithoutMonth[0];
                 const ccNivel1DimKey = orderedWithoutMonth[1];
                 const ccNivel2DimKey = orderedWithoutMonth[2];
-                const ccNivel3DimKey = orderedWithoutMonth[3];
-                const contaDimKey = orderedWithoutMonth[4];
-                const fallbackMonthDimKey = orderedWithoutMonth[5] &&
-                    financialData.data.some(row => isMonthLikeMember(getName(row[orderedWithoutMonth[5]])))
-                    ? orderedWithoutMonth[5]
+                const contaDimKey = orderedWithoutMonth[3];
+                const fallbackMonthDimKey = orderedWithoutMonth[4] &&
+                    financialData.data.some(row => isMonthLikeMember(getName(row[orderedWithoutMonth[4]])))
+                    ? orderedWithoutMonth[4]
                     : null;
                 const monthDimKey = detectedMonthDimKey || fallbackMonthDimKey || null;
                 const monthOptions = monthDimKey
@@ -1915,9 +1902,9 @@
 
                 const selectedMonthHasFilter = monthDimKey && this._selectedMonth !== "__all__";
 
-                const hierarchyDimKeys = [calcDimKey, ccNivel1DimKey, ccNivel2DimKey, ccNivel3DimKey, contaDimKey].filter(Boolean);
+                const hierarchyDimKeys = [calcDimKey, ccNivel1DimKey, ccNivel2DimKey, contaDimKey].filter(Boolean);
                 if (hierarchyDimKeys.length < EVO_GA_HIERARCHY.length) {
-                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Não foi possível identificar a hierarquia oficial VP > Diretoria > Gerência > Departamento > Conta Contábil. Verifique a ordem das dimensões no Builder e a dimensão de versão Orçado/Realizado.</div>";
+                    container.innerHTML = "<div style='padding:10px; color:#D32F2F;'>Não foi possível identificar a hierarquia oficial VP > Diretoria > Departamento/Gerência > Conta Contábil. Verifique a ordem das dimensões no Builder e a dimensão de versão Orçado/Realizado.</div>";
                     return;
                 }
                 const measureKey = measureKeys[0];
@@ -2008,7 +1995,6 @@
                         calcNode: getName(row[calcDimKey]),
                         ccNivel1: getName(row[ccNivel1DimKey]),
                         ccNivel2: getName(row[ccNivel2DimKey]),
-                        ccNivel3: getName(row[ccNivel3DimKey]),
                         conta: getName(row[contaDimKey]),
                         col,
                         normalizedCol: normalizeText(col),
@@ -2050,8 +2036,7 @@
                     `calc:${fact.calcNode}`,
                     `calc:${fact.calcNode}|cc1:${fact.ccNivel1}`,
                     `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`,
-                    `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}`,
-                    `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}|conta:${fact.conta}`
+                    `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|conta:${fact.conta}`
                 ];
                 const annualBudgetByKey = new Map();
                 annualRows.forEach(fact => {
@@ -2062,7 +2047,7 @@
                 });
 
                 // Montagem da arvore operacional completa:
-                // VP > Diretoria > Gerencia > Departamento > Conta.
+                // VP > Diretoria > Departamento/Gerencia > Conta.
                 // Esta arvore e mais pesada e por isso so e usada na guia Drilldown.
                 const buildHierarchyFromFacts = (facts) => {
                     const dataMap = {};
@@ -2073,7 +2058,6 @@
                             calcNode: fact.calcNode,
                             ccNivel1: fact.ccNivel1,
                             ccNivel2: fact.ccNivel2,
-                            ccNivel3: fact.ccNivel3,
                             conta: fact.conta
                         }, fact.col, fact.value);
                     });
@@ -2091,16 +2075,10 @@
                             ccNivel1Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2).map(ccNivel2 => {
                                 let ccNivel2Node = buildRowMetrics(ccNivel2, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].totals, 2, [calcNodeName, ccNivel1, ccNivel2]);
                                 ccNivel2Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}`;
-                                ccNivel2Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3).map(ccNivel3 => {
-                                    let ccNivel3Node = buildRowMetrics(ccNivel3, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].totals, 3, [calcNodeName, ccNivel1, ccNivel2, ccNivel3]);
-                                    ccNivel3Node.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}`;
-                                    ccNivel3Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas).map(conta => {
-                                        let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].ccNivel3[ccNivel3].contas[conta], 4, [calcNodeName, ccNivel1, ccNivel2, ccNivel3, conta]);
-                                        contaNode.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|cc3:${ccNivel3}|conta:${conta}`;
-                                        return contaNode;
-                                    });
-                                    ccNivel3Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
-                                    return ccNivel3Node;
+                                ccNivel2Node.children = Object.keys(dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas).map(conta => {
+                                    let contaNode = buildRowMetrics(conta, dataMap[calcNodeName].ccNivel1[ccNivel1].ccNivel2[ccNivel2].contas[conta], 3, [calcNodeName, ccNivel1, ccNivel2, conta]);
+                                    contaNode.key = `calc:${calcNodeName}|cc1:${ccNivel1}|cc2:${ccNivel2}|conta:${conta}`;
+                                    return contaNode;
                                 });
                                 ccNivel2Node.children.sort((a, b) => b.valRealizado - a.valRealizado);
                                 return ccNivel2Node;
@@ -2115,7 +2093,7 @@
                     return { uniqueCols, tableData };
                 };
 
-                // Resumo leve por Departamento para o Resumo Executivo.
+                // Resumo leve por Departamento/Gerencia para o Resumo Executivo.
                 // Evita montar a arvore completa quando a tela inicial so precisa
                 // dos KPIs e dos principais ofensores.
                 const buildDepartmentSummaryFromFacts = (facts) => {
@@ -2123,13 +2101,13 @@
                     const uniqueColsSet = new Set();
                     facts.forEach(fact => {
                         uniqueColsSet.add(fact.col);
-                        const key = `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}`;
+                        const key = `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`;
                         if (!departmentMap[key]) {
                             departmentMap[key] = {
                                 key,
-                                name: fact.ccNivel3,
+                                name: fact.ccNivel2,
                                 values: {},
-                                path: [fact.calcNode, fact.ccNivel1, fact.ccNivel2, fact.ccNivel3]
+                                path: [fact.calcNode, fact.ccNivel1, fact.ccNivel2]
                             };
                         }
                         EvoGAAggregationEngine.addValue(departmentMap[key].values, fact.col, fact.value);
@@ -2137,7 +2115,7 @@
 
                     const uniqueCols = Array.from(uniqueColsSet);
                     return Object.values(departmentMap).map(item => {
-                        const node = EvoGAAggregationEngine.buildRowMetrics(item.name, item.values, uniqueCols, 3, item.path);
+                        const node = EvoGAAggregationEngine.buildRowMetrics(item.name, item.values, uniqueCols, 2, item.path);
                         node.key = item.key;
                         return node;
                     });
@@ -2148,8 +2126,7 @@
                         addMonthlyValue(`calc:${fact.calcNode}`, fact.month, fact.col, fact.value);
                         addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}`, fact.month, fact.col, fact.value);
                         addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`, fact.month, fact.col, fact.value);
-                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}`, fact.month, fact.col, fact.value);
-                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|cc3:${fact.ccNivel3}|conta:${fact.conta}`, fact.month, fact.col, fact.value);
+                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|conta:${fact.conta}`, fact.month, fact.col, fact.value);
                     });
                 }
 
@@ -2196,7 +2173,7 @@
                         ytdTableData: ytdHierarchy.tableData
                     };
                 };
-                // Pareto orcamentario por Departamento.
+                // Pareto orcamentario por Departamento/Gerencia.
                 // Considera desvio Realizado - Orcado e respeita o percentual do slider.
                 const selectedAnalysisMonth = this._selectedMonth === "__all__" ? monthOptions[monthOptions.length - 1] : this._selectedMonth;
                 const selectedAnalysisMonthIndex = monthIndexMap.has(selectedAnalysisMonth) ? monthIndexMap.get(selectedAnalysisMonth) : -1;
@@ -2237,11 +2214,11 @@
                 let ofensoresText = "";
                 if (ofensores.length > 0) {
                     const names = ofensores.map(o => escapeHtml(o.name));
-                    if (names.length === 1) ofensoresText = ` O principal ofensor que exige atenção é o departamento <strong>${names[0]}</strong>.`;
+                    if (names.length === 1) ofensoresText = ` O principal ofensor que exige atenção é <strong>${names[0]}</strong>.`;
                     else if (names.length === 2) ofensoresText = ` Os principais ofensores que exigem atenção são <strong>${names[0]}</strong> e <strong>${names[1]}</strong>.`;
                     else ofensoresText = ` Os 3 principais ofensores que exigem atenção são <strong>${names[0]}</strong>, <strong>${names[1]}</strong> e <strong>${names[2]}</strong>.`;
                 } else {
-                    ofensoresText = " Não foram identificados departamentos operando acima do orçamento.";
+                    ofensoresText = " Não foram identificados itens de Departamento/Gerência operando acima do orçamento.";
                 }
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
@@ -2315,7 +2292,7 @@
                 const budgetDetailView = this._budgetDetailView === "remaining" ? "remaining" : "pareto";
                 const budgetDetailControlsHtml = `
                     <div class="budget-detail-controls" aria-label="Detalhamento dos desvios do orçamento">
-                        <button class="budget-detail-btn ${budgetDetailView === "pareto" ? "active" : ""}" type="button" data-budget-detail-view="pareto">Apresentar os departamentos do Pareto</button>
+                        <button class="budget-detail-btn ${budgetDetailView === "pareto" ? "active" : ""}" type="button" data-budget-detail-view="pareto">Apresentar Departamento/Gerência do Pareto</button>
                         <button class="budget-detail-btn ${budgetDetailView === "remaining" ? "active" : ""}" type="button" data-budget-detail-view="remaining">Apresentar as demais variações</button>
                         <span class="budget-detail-note">Fechamento: Pareto + demais variações + efeito segregado = desvio total Real x Orçado.</span>
                     </div>
@@ -2323,7 +2300,7 @@
                 const buildBudgetDriverRowsHtml = (drivers, mode) => {
                     if (!drivers.length) {
                         if (mode === "remaining") return `<div class="driver-meta">Não há demais variações fora do Pareto no período selecionado.</div>`;
-                        return `<div class="driver-meta">${excludedRowsCount > 0 && excludedGrossAbs > 0 ? "O desvio orçamentário relevante do período está concentrado no grupo segregado acima; não há departamentos adicionais no Pareto." : "Não há desvio orçamentário relevante por Departamento no período selecionado."}</div>`;
+                        return `<div class="driver-meta">${excludedRowsCount > 0 && excludedGrossAbs > 0 ? "O desvio orçamentário relevante do período está concentrado no grupo segregado acima; não há itens adicionais no Pareto." : "Não há desvio orçamentário relevante por Departamento/Gerência no período selecionado."}</div>`;
                     }
                     const shareBase = mode === "remaining" ? Math.abs(reconciliationRemainder) : (budgetOffenderAnalysis.totalBudgetDeviation || 0);
                     return drivers.map((driver, index) => {
@@ -2486,12 +2463,11 @@
                         if (level === 0) rowClass = "row-cc";
                         else if (level === 1) rowClass = "row-cc row-cc-nivel-1";
                         else if (level === 2) rowClass = "row-cc row-cc-nivel-2";
-                        else if (level === 3) rowClass = "row-cc row-cc-nivel-3";
                         const expandClass = (hasChildren && this._expandedRows.has(rowObj.key)) ? "expanded" : "";
                         const dataAttr = hasChildren ? `data-node-key="${escapeHtml(rowObj.key)}"` : "";
-                        const flagHtml = (level === 3 && ofensorKeys.has(rowObj.key)) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
+                        const flagHtml = (level === 2 && ofensorKeys.has(rowObj.key)) ? `<span class="ofensor-flag" title="Entre os 3 maiores ofensores do período">⚠️</span>` : "";
                         const safeName = escapeHtml(rowObj.name);
-                        const nameCell = level === 4 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
+                        const nameCell = level === 3 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                         const monthlyVarianceClass = monthlyNode.desvio > 0 ? "var-positive" : (monthlyNode.desvio < 0 ? "var-negative" : "");
                         const ytdVarianceClass = ytdNode.desvio > 0 ? "var-positive" : (ytdNode.desvio < 0 ? "var-negative" : "");
                         const barFillWidth = ytdConsumptionPct === Infinity ? 100 : Math.min(100, ytdConsumptionPct || 0);
@@ -2610,7 +2586,7 @@
                         <div class="executive-kpi neutral">
                             <div class="kpi-label">Pareto Orçamento</div>
                             <div class="kpi-value">${executiveDrivers.length}</div>
-                            <div class="kpi-sub">departamentos · cobertura ${escapeHtml(budgetCoverageText)}</div>
+                            <div class="kpi-sub">itens · cobertura ${escapeHtml(budgetCoverageText)}</div>
                             <div class="kpi-detail-row"><span>Desvio Pareto</span><span>${formatNumber(Math.abs(visibleParetoDeviation), true, true, visibleParetoDeviation)}</span></div>
                         </div>
                     </div>
@@ -2630,12 +2606,12 @@
                         </div>
                     </div>
                     <div class="executive-section">
-                        <div class="section-title">Principais Ofensores do Orçamento por Departamento</div>
+                        <div class="section-title">Principais Ofensores do Orçamento por Departamento/Gerência</div>
                         <div class="pareto-control">
                             <div class="pareto-control-header">
                                 <div>
                                     <span class="pareto-control-title">Cobertura Pareto Orçamento</span>
-                                    <span class="pareto-control-sub">Quantidade mínima de departamentos para explicar o desvio orçamentário.</span>
+                                    <span class="pareto-control-sub">Quantidade mínima de itens para explicar o desvio orçamentário.</span>
                                 </div>
                                 <output class="pareto-control-value" for="paretoCoverageSlider">${escapeHtml(paretoTargetCoverageText)}</output>
                             </div>
@@ -2657,7 +2633,7 @@
                         <div class="driver-list">${driversListHtml}</div>
                     </div>
                     <p class="table-summary ${varianceClass}">
-                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado. A lista de ofensores considera o desvio orçamentário por Departamento, excluindo IFRS 16, Outros, PBA e Rateio, até cobrir ao menos ${escapeHtml(paretoTargetCoverageText)} do desvio relevante.${ofensoresText}
+                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado. A lista de ofensores considera o desvio orçamentário por Departamento/Gerência, excluindo IFRS 16, Outros, PBA e Rateio, até cobrir ao menos ${escapeHtml(paretoTargetCoverageText)} do desvio relevante.${ofensoresText}
                     </p>
                 `;
 
