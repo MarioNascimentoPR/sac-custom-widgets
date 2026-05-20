@@ -2321,7 +2321,7 @@
                 });
 
                 let sortIconDesvio = this._sortState.col === 'desvio' ? (this._sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
-                tableHtml += `<th data-sort="desvio" class="sortable">VARIAÇÃO R$<span class="sort-icon">${sortIconDesvio}</span></th>`;
+                tableHtml += `<th data-sort="desvio" class="sortable">DESVIO R$<span class="sort-icon">${sortIconDesvio}</span></th>`;
                 tableHtml += `<th class="numeric">CONSUMO</th><th class="center">STATUS</th></tr></thead><tbody>`;
 
                 const renderRowHtml = (rowObj, level = 0) => {
@@ -2620,7 +2620,7 @@
                     <div class="view-tabs">
                         <button class="view-tab ${this._activeView === "executive" ? "active" : ""}" type="button" data-view="executive">Resumo Executivo</button>
                         <button class="view-tab ${this._activeView === "diagnostic" ? "active" : ""}" type="button" data-view="diagnostic">Diagnóstico</button>
-                        <button class="view-tab ${this._activeView === "operational" ? "active" : ""}" type="button" data-view="operational">Operacional</button>
+                        <button class="view-tab ${this._activeView === "operational" ? "active" : ""}" type="button" data-view="operational">Drilldown</button>
                     </div>
                     <div class="view-panel ${this._activeView === "executive" ? "active" : ""}" id="executiveView">${executivePanelHtml}</div>
                     <div class="view-panel ${this._activeView === "diagnostic" ? "active" : ""}" id="diagnosticView">${diagnosticHtml}</div>
