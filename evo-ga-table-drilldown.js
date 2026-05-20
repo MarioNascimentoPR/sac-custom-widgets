@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.8 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.9 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -1149,6 +1149,49 @@
             }
             .excluded-effect-value.alert { color: #B91C1C; }
             .excluded-effect-value.saving { color: #166534; }
+            .reconciliation-strip {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(130px, 1fr));
+                gap: 8px;
+                margin: 0 0 9px 0;
+            }
+            .reconciliation-item {
+                min-width: 0;
+                padding: 7px 9px;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                background: #FFFFFF;
+            }
+            .reconciliation-item.total {
+                border-left: 4px solid #1F4E79;
+                background: #F8FAFC;
+            }
+            .reconciliation-label {
+                color: #475569;
+                font-size: 10px;
+                font-weight: 700;
+                line-height: 1.25;
+                text-transform: uppercase;
+                letter-spacing: 0.35px;
+            }
+            .reconciliation-value {
+                margin-top: 2px;
+                color: #1e293b;
+                font-size: 12.5px;
+                font-weight: 700;
+                line-height: 1.25;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            .reconciliation-value.alert { color: #B91C1C; }
+            .reconciliation-value.saving { color: #166534; }
+            .reconciliation-note {
+                margin-top: 2px;
+                color: #64748b;
+                font-size: 10.5px;
+                font-weight: 500;
+                line-height: 1.25;
+            }
             .driver-row {
                 display: grid;
                 grid-template-columns: 1.35fr minmax(120px, 0.8fr) minmax(96px, 0.65fr) minmax(92px, 0.65fr);
@@ -1183,6 +1226,7 @@
                 .driver-metric { text-align: left; }
                 .excluded-effect { grid-template-columns: 1fr; }
                 .excluded-effect-metric { text-align: left; }
+                .reconciliation-strip { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
                 .pareto-control { width: 100%; }
             }
             @media (max-width: 760px) {
@@ -1190,6 +1234,7 @@
                 .executive-headline { flex-direction: column; gap: 2px; }
                 .executive-kpi-grid { grid-template-columns: 1fr; }
                 .executive-kpi.primary { grid-column: auto; }
+                .reconciliation-strip { grid-template-columns: 1fr; }
                 .pareto-control { grid-template-columns: 1fr; }
             }
 
@@ -2231,6 +2276,12 @@
                 const excludedShareBase = (budgetOffenderAnalysis.totalBudgetDeviation || 0) + excludedGrossAbs;
                 const excludedShareText = excludedShareBase > 0 ? `${((excludedGrossAbs / excludedShareBase) * 100).toFixed(1)}%` : "-";
                 const excludedValueClass = excludedSummary.desvio > 0 ? "alert" : (excludedSummary.desvio < 0 ? "saving" : "neutral");
+                const reconciliationRemainder = totalGlobalDesvio - visibleParetoDeviation - (excludedSummary.desvio || 0);
+                const reconciliationClassFor = (value) => value > 0 ? "alert" : (value < 0 ? "saving" : "neutral");
+                const reconciliationShareText = (value) => {
+                    if (!totalGlobalDesvio) return "-";
+                    return `${((value / totalGlobalDesvio) * 100).toFixed(1)}%`;
+                };
                 const excludedTermsText = excludedTermItems.length
                     ? excludedTermItems.map(item => `${escapeHtml(item.term)} ${formatNumber(Math.abs(item.desvio), true, true, item.desvio)}`).join(" · ")
                     : escapeHtml(excludedTermsLabel);
@@ -2255,6 +2306,32 @@
                         <div class="excluded-effect-metric"><span class="executive-label">Realizado</span><span class="excluded-effect-value">-</span></div>
                         <div class="excluded-effect-metric"><span class="executive-label">Orçado</span><span class="excluded-effect-value">-</span></div>
                         <div class="excluded-effect-metric"><span class="executive-label">Desvio</span><span class="excluded-effect-value">-</span></div>
+                    </div>
+                `;
+                // Reconciliacao mensal: mostra onde fica o desvio que nao entrou
+                // no corte do Pareto, fechando com o total Real x Orcado do mes.
+                const reconciliationHtml = `
+                    <div class="reconciliation-strip" aria-label="Reconciliação do desvio mensal">
+                        <div class="reconciliation-item">
+                            <div class="reconciliation-label">Pareto exibido</div>
+                            <div class="reconciliation-value ${reconciliationClassFor(visibleParetoDeviation)}">${formatNumber(Math.abs(visibleParetoDeviation), true, true, visibleParetoDeviation)}</div>
+                            <div class="reconciliation-note">${executiveDrivers.length} departamentos · ${escapeHtml(reconciliationShareText(visibleParetoDeviation))}</div>
+                        </div>
+                        <div class="reconciliation-item">
+                            <div class="reconciliation-label">Demais variações</div>
+                            <div class="reconciliation-value ${reconciliationClassFor(reconciliationRemainder)}">${formatNumber(Math.abs(reconciliationRemainder), true, true, reconciliationRemainder)}</div>
+                            <div class="reconciliation-note">fora do Pareto · ${escapeHtml(reconciliationShareText(reconciliationRemainder))}</div>
+                        </div>
+                        <div class="reconciliation-item">
+                            <div class="reconciliation-label">Efeito segregado</div>
+                            <div class="reconciliation-value ${reconciliationClassFor(excludedSummary.desvio || 0)}">${formatNumber(Math.abs(excludedSummary.desvio || 0), true, true, excludedSummary.desvio || 0)}</div>
+                            <div class="reconciliation-note">${excludedRowsCount} linhas · ${escapeHtml(reconciliationShareText(excludedSummary.desvio || 0))}</div>
+                        </div>
+                        <div class="reconciliation-item total">
+                            <div class="reconciliation-label">Desvio total</div>
+                            <div class="reconciliation-value ${reconciliationClassFor(totalGlobalDesvio)}">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</div>
+                            <div class="reconciliation-note">Real x Orçado do mês · 100.0%</div>
+                        </div>
                     </div>
                 `;
                 const driversListHtml = executiveDrivers.length ? executiveDrivers.map((driver, index) => {
@@ -2538,7 +2615,7 @@
                             <div class="kpi-label">Pareto Orçamento</div>
                             <div class="kpi-value">${executiveDrivers.length}</div>
                             <div class="kpi-sub">departamentos · cobertura ${escapeHtml(budgetCoverageText)}</div>
-                            <div class="kpi-detail-row"><span>Desvio orçamento</span><span>${formatNumber(Math.abs(visibleParetoDeviation), true, true, visibleParetoDeviation)}</span></div>
+                            <div class="kpi-detail-row"><span>Desvio Pareto</span><span>${formatNumber(Math.abs(visibleParetoDeviation), true, true, visibleParetoDeviation)}</span></div>
                         </div>
                     </div>
                     <div class="executive-oversight ${oversightClass}">
@@ -2580,6 +2657,7 @@
                             </div>
                         </div>
                         ${excludedEffectHtml}
+                        ${reconciliationHtml}
                         <div class="driver-list">${driversListHtml}</div>
                     </div>
                     <p class="table-summary ${varianceClass}">
