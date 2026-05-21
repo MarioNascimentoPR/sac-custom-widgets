@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.13 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.14 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -1510,6 +1510,8 @@
             this._periodPartsCache = new Map();
             this._refreshOperationalView = null;
             this._paretoRenderTimer = null;
+            this._pendingRenderFrame = null;
+            this._renderGeneration = 0;
             this._profiler = new EvoGATableProfiler();
             this._boundWindowClick = (event) => {
                 const path = event.composedPath ? event.composedPath() : [];
@@ -1555,9 +1557,14 @@
 
         disconnectedCallback() {
             if (typeof window !== "undefined") window.removeEventListener("click", this._boundWindowClick);
+            this._renderGeneration++;
             if (this._paretoRenderTimer) {
                 clearTimeout(this._paretoRenderTimer);
                 this._paretoRenderTimer = null;
+            }
+            if (this._pendingRenderFrame !== null && typeof cancelAnimationFrame !== "undefined") {
+                cancelAnimationFrame(this._pendingRenderFrame);
+                this._pendingRenderFrame = null;
             }
         }
 
@@ -1569,7 +1576,58 @@
             if ("financialData" in changedProperties && this.financialData) {
                 this._profiler.verifyRedundancy(this.financialData);
                 this._currentData = this.financialData;
-                this.renderTable();
+                // Toda nova carga deve abrir no Resumo Executivo. Se a instancia
+                // estava no Drilldown, evitar renderizar a hierarquia antes do clique.
+                this._activeView = "executive";
+                this._refreshOperationalView = null;
+                const renderGeneration = ++this._renderGeneration;
+                if (this._pendingRenderFrame !== null && typeof cancelAnimationFrame !== "undefined") {
+                    cancelAnimationFrame(this._pendingRenderFrame);
+                    this._pendingRenderFrame = null;
+                }
+                this._renderExecutiveLoadingShell();
+                const scheduleRender = (callback) => {
+                    if (typeof requestAnimationFrame !== "undefined") {
+                        this._pendingRenderFrame = requestAnimationFrame(() => {
+                            this._pendingRenderFrame = null;
+                            setTimeout(() => {
+                                if (renderGeneration === this._renderGeneration) callback();
+                            }, 0);
+                        });
+                    } else {
+                        setTimeout(() => {
+                            if (renderGeneration === this._renderGeneration) callback();
+                        }, 0);
+                    }
+                };
+                scheduleRender(() => this.renderTable());
+            }
+        }
+
+        _renderExecutiveLoadingShell() {
+            const headerContainer = this._shadowRoot.getElementById("header-container");
+            const container = this._shadowRoot.getElementById("table-container");
+            if (headerContainer) {
+                headerContainer.innerHTML = `
+                    <div class="header-top">
+                        <h1 class="table-title">Executive Budget</h1>
+                        <div class="header-actions">
+                            <button class="telemetry-btn" id="telemetryBtn" type="button">Telemetria</button>
+                        </div>
+                    </div>
+                `;
+            }
+            if (container) {
+                container.innerHTML = `
+                    <div class="view-tabs">
+                        <button class="view-tab active" type="button" data-view="executive">Resumo Executivo</button>
+                        <button class="view-tab" type="button" data-view="operational">Drilldown</button>
+                    </div>
+                    <div class="view-panel active" id="executiveView">
+                        <div style="padding:10px; color:#475569; font-size:12px; font-weight:600;">Carregando Resumo Executivo...</div>
+                    </div>
+                    <div class="view-panel" id="operationalView"></div>
+                `;
             }
         }
 
