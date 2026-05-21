@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.21 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.24 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -307,13 +307,15 @@
             return "Atenção";
         }
 
-        static classifyYtdStatus(ytdBudget, ytdActual, annualBudget, annualConsumptionPct) {
+        static classifyYtdStatus(ytdBudget, ytdActual) {
             const ytdDesvio = ytdActual - ytdBudget;
-            const ytdVariancePct = ytdBudget > 0 ? (ytdDesvio / ytdBudget) * 100 : (ytdActual > 0 ? Infinity : 0);
-            if (annualBudget <= 0 && ytdActual > 0) return "Crítico";
-            if (annualConsumptionPct >= 100 || ytdVariancePct >= 10) return "Crítico";
-            if (ytdDesvio > 0) return "Atenção";
-            return "Aderente";
+            const budgetBase = Math.abs(ytdBudget);
+            if (budgetBase === 0) return ytdActual > 0 ? "Atenção" : "Aderente";
+            if (ytdDesvio <= 0) return "Aderente";
+            const ytdVariancePct = (ytdDesvio / budgetBase) * 100;
+            if (ytdVariancePct <= 5) return "Leve desvio";
+            if (ytdVariancePct <= 10) return "Desvio moderado";
+            return "Atenção";
         }
 
         static annotate(nodes, totalBudget, totalActual) {
@@ -1521,45 +1523,86 @@
             .var-negative { color: #2E7D32; font-weight: 600; } 
             .cell-variance { white-space: nowrap; }
 
-            .cell-consumption { width: 140px; }
-            .consumption-wrapper { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
-            
-            .bar-container { position: relative; flex-grow: 1; min-width: 60px; height: 8px; background-color: #EAEAEA; border-radius: 4px; }
-            .bar-container::after { content: ''; position: absolute; right: 0; top: -2px; height: 12px; width: 2px; background-color: #2d3748; z-index: 2; border-radius: 1px; }
-            
-            .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease; z-index: 1; }
-            .fill-green { background-color: #2E7D32; }
-            .fill-yellow { background-color: #EF6C00; }
-            .fill-red { background-color: #D32F2F; }
-            .percent-value { font-size: 13px; font-weight: 500; color: #444444; width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+            .cell-consumption { width: 210px; min-width: 190px; }
+            .consumption-control {
+                display: grid;
+                gap: 4px;
+                min-width: 180px;
+            }
+            .consumption-meta {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                color: var(--text-muted);
+                font-size: 11px;
+                line-height: 1.2;
+                white-space: nowrap;
+            }
+            .consumption-meta strong {
+                color: var(--text-strong);
+                font-weight: var(--weight-semibold);
+                font-variant-numeric: tabular-nums;
+            }
+            .consumption-track {
+                position: relative;
+                height: 8px;
+                background: #DCE4EF;
+                border: 1px solid #AEBFD2;
+                border-radius: 4px;
+                overflow: visible;
+            }
+            .consumption-fill {
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: 0%;
+                border-radius: 3px;
+                transition: width 0.3s ease;
+                z-index: 1;
+            }
+            .consumption-fill.ok { background: #14B8A6; }
+            .consumption-fill.watch { background: #D97706; }
+            .consumption-fill.alert { background: var(--danger); }
+            .consumption-target {
+                position: absolute;
+                top: -3px;
+                width: 2px;
+                height: 14px;
+                background: var(--text-strong);
+                border-radius: 1px;
+                transform: translateX(-1px);
+                z-index: 2;
+            }
 
-            .cell-status { text-align: center !important; width: 90px; }
+            .cell-status { text-align: center !important; width: 128px; }
             
             .status-pill { 
                 display: inline-flex; 
                 align-items: center; 
                 justify-content: center; 
-                padding: 4px 0; 
-                width: 65px; 
+                padding: 4px 6px; 
+                min-width: 86px; 
                 box-sizing: border-box; 
                 border-radius: 4px; 
-                font-size: 12px;
-                font-weight: 700; 
+                font-size: 11px;
+                font-weight: var(--weight-semibold); 
                 text-transform: uppercase; 
-                letter-spacing: 0.5px; 
+                letter-spacing: 0; 
+                white-space: nowrap;
             }
             .status-abaixo { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; } 
-            .status-atencao { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; } 
+            .status-atencao { background-color: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; } 
             .status-acima { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; } 
             .status-baixa { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; }
             .status-baixo { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; }
-            .status-moderada { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
-            .status-moderado { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+            .status-moderada { background-color: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+            .status-moderado { background-color: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+            .status-desvio-moderado { background-color: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
             .status-alta { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; }
             .status-alto { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; }
-            .status-critica { background-color: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
-            .status-critico { background-color: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
             .status-aderente { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; }
+            .status-leve-desvio { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; }
             .status-monitorar { background-color: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
             .status-sem-movimento { background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
             .status-sem-orcamento { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; }
@@ -2661,19 +2704,49 @@
                         if (annualBudget > 0) return (ytdNode.valRealizado / annualBudget) * 100;
                         return ytdNode.valRealizado > 0 ? Infinity : 0;
                     };
+                    const ytdConsumptionTargetPct = selectedHasCalendarPeriod
+                        ? Math.min(100, Math.ceil((((selectedPeriod.month / 12) * 100) / 5)) * 5)
+                        : 100;
+                    const ytdConsumptionTargetText = `${ytdConsumptionTargetPct.toFixed(ytdConsumptionTargetPct % 1 === 0 ? 0 : 1)}%`;
+                    const formatConsumptionValue = (value) => {
+                        if (value === Infinity) return "∞";
+                        if (!Number.isFinite(value)) return "-";
+                        return `${value.toFixed(1)}%`;
+                    };
+                    const getConsumptionFillClass = (value) => {
+                        if (value === Infinity) return "alert";
+                        if (!Number.isFinite(value)) return "ok";
+                        if (value <= ytdConsumptionTargetPct) return "ok";
+                        if (value <= ytdConsumptionTargetPct + 5) return "watch";
+                        return "alert";
+                    };
+                    const buildConsumptionControlHtml = (consumptionPct, annualBudget) => {
+                        const consumptionText = formatConsumptionValue(consumptionPct);
+                        const fillWidth = consumptionPct === Infinity ? 100 : Math.min(100, Math.max(0, Number(consumptionPct) || 0));
+                        const targetPosition = Math.min(100, Math.max(0, ytdConsumptionTargetPct));
+                        const fillClass = getConsumptionFillClass(consumptionPct);
+                        const titleText = `Consumo real: ${consumptionText} | Meta YTD: ${ytdConsumptionTargetText} | Orçamento anual: ${formatNumber(annualBudget)}`;
+                        return `
+                            <div class="consumption-control" title="${escapeHtml(titleText)}">
+                                <div class="consumption-meta">
+                                    <span>Consumo: <strong>${escapeHtml(consumptionText)}</strong></span>
+                                    <span>Meta: <strong>${escapeHtml(ytdConsumptionTargetText)}</strong></span>
+                                </div>
+                                <div class="consumption-track">
+                                    <div class="consumption-fill ${fillClass}" style="width: ${fillWidth}%;"></div>
+                                    <span class="consumption-target" style="left: ${targetPosition}%;"></span>
+                                </div>
+                            </div>
+                        `;
+                    };
                     const getYtdStatus = (rowObj) => {
                         const ytdNode = getYtdMetrics(rowObj);
-                        return EvoGAMaterialityEngine.classifyYtdStatus(
-                            ytdNode.valOrcado,
-                            ytdNode.valRealizado,
-                            getAnnualBudget(rowObj),
-                            getYtdConsumptionPct(rowObj)
-                        );
+                        return EvoGAMaterialityEngine.classifyYtdStatus(ytdNode.valOrcado, ytdNode.valRealizado);
                     };
                     const getSortValue = (rowObj) => {
                         const monthlyNode = getMonthlyMetrics(rowObj);
                         const ytdNode = getYtdMetrics(rowObj);
-                        const statusRank = { "Aderente": 1, "Atenção": 2, "Crítico": 3 };
+                        const statusRank = { "Aderente": 1, "Leve desvio": 2, "Desvio moderado": 3, "Atenção": 4 };
                         switch (this._sortState.col) {
                             case "monthlyBudget": return monthlyNode.valOrcado;
                             case "monthlyActual": return monthlyNode.valRealizado;
@@ -2718,7 +2791,7 @@
                                 <th data-sort="ytdBudget" class="sortable ytd-start">Orçado YTD<span class="sort-icon">${sortIcon("ytdBudget")}</span></th>
                                 <th data-sort="ytdActual" class="sortable">Realizado YTD<span class="sort-icon">${sortIcon("ytdActual")}</span></th>
                                 <th data-sort="ytdVariance" class="sortable">Variação<span class="sort-icon">${sortIcon("ytdVariance")}</span></th>
-                                <th data-sort="ytdConsumption" class="sortable">Consumo<span class="sort-icon">${sortIcon("ytdConsumption")}</span></th>
+                                <th data-sort="ytdConsumption" class="sortable">Consumo real<span class="sort-icon">${sortIcon("ytdConsumption")}</span></th>
                                 <th data-sort="ytdStatus" class="sortable center">Status<span class="sort-icon">${sortIcon("ytdStatus")}</span></th>
                             </tr>
                         </thead><tbody>`;
@@ -2741,11 +2814,11 @@
                         const nameCell = level === 3 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                         const monthlyVarianceClass = monthlyNode.desvio > 0 ? "var-positive" : (monthlyNode.desvio < 0 ? "var-negative" : "");
                         const ytdVarianceClass = ytdNode.desvio > 0 ? "var-positive" : (ytdNode.desvio < 0 ? "var-negative" : "");
-                        const barFillWidth = ytdConsumptionPct === Infinity ? 100 : Math.min(100, ytdConsumptionPct || 0);
-                        const barFillClass = statusText === "Crítico" ? "fill-red" : (statusText === "Atenção" ? "fill-yellow" : "fill-green");
-                        const consumptionText = ytdConsumptionPct === Infinity ? "∞" : (ytdConsumptionPct === 0 ? "-" : formatPercentage(ytdConsumptionPct));
+                        const consumptionControlHtml = buildConsumptionControlHtml(ytdConsumptionPct, annualBudget);
                         const statusPillClass = EvoGAUIRenderer.statusClass(statusText, normalizeText);
-                        const ytdVariancePct = ytdNode.valOrcado > 0 ? (ytdNode.desvio / ytdNode.valOrcado) * 100 : 0;
+                        const ytdBudgetBase = Math.abs(ytdNode.valOrcado);
+                        const ytdVariancePct = ytdBudgetBase > 0 ? (ytdNode.desvio / ytdBudgetBase) * 100 : (ytdNode.valRealizado > 0 ? Infinity : 0);
+                        const consumptionText = formatConsumptionValue(ytdConsumptionPct);
                         const statusTitle = `Status YTD: ${statusText} | Desvio YTD ${formatNumber(Math.abs(ytdNode.desvio), true, true, ytdNode.desvio)} | ${ytdVariancePct.toFixed(1)}% vs orçamento YTD | Consumo ${consumptionText} do orçamento anual | Orçamento anual ${formatNumber(annualBudget)}`;
 
                         return `<tr class="${rowClass} ${expandClass}" ${dataAttr}>
@@ -2757,10 +2830,7 @@
                             <td class="numeric">${formatNumber(ytdNode.valRealizado)}</td>
                             <td class="numeric cell-variance ${ytdVarianceClass}">${ytdNode.desvio !== 0 ? formatNumber(Math.abs(ytdNode.desvio), true, true, ytdNode.desvio) : "-"}</td>
                             <td class="cell-consumption">
-                                <div class="consumption-wrapper">
-                                    <div class="bar-container"><div class="bar-fill ${barFillClass}" style="width: ${barFillWidth}%;"></div></div>
-                                    <div class="percent-value">${consumptionText}</div>
-                                </div>
+                                ${consumptionControlHtml}
                             </td>
                             <td class="center cell-status"><span class="status-pill ${statusPillClass}" title="${escapeHtml(statusTitle)}">${statusText}</span></td>
                         </tr>`;
@@ -2785,12 +2855,10 @@
 
                     const totalAnnualBudgetValue = getTotalAnnualBudget();
                     const totalYtdConsumptionPct = totalAnnualBudgetValue > 0 ? (ytdTotals.actual / totalAnnualBudgetValue) * 100 : (ytdTotals.actual > 0 ? Infinity : 0);
-                    const totalYtdStatus = EvoGAMaterialityEngine.classifyYtdStatus(ytdTotals.budget, ytdTotals.actual, totalAnnualBudgetValue, totalYtdConsumptionPct);
+                    const totalYtdStatus = EvoGAMaterialityEngine.classifyYtdStatus(ytdTotals.budget, ytdTotals.actual);
                     const totalMonthlyVarianceClass = totalGlobalDesvio > 0 ? "var-positive" : (totalGlobalDesvio < 0 ? "var-negative" : "");
                     const totalYtdVarianceClass = ytdDesvio > 0 ? "var-positive" : (ytdDesvio < 0 ? "var-negative" : "");
-                    const totalBarFillWidth = totalYtdConsumptionPct === Infinity ? 100 : Math.min(100, totalYtdConsumptionPct || 0);
-                    const totalBarFillClass = totalYtdStatus === "Crítico" ? "fill-red" : (totalYtdStatus === "Atenção" ? "fill-yellow" : "fill-green");
-                    const totalConsumptionText = totalYtdConsumptionPct === Infinity ? "∞" : (totalYtdConsumptionPct === 0 ? "-" : formatPercentage(totalYtdConsumptionPct));
+                    const totalConsumptionControlHtml = buildConsumptionControlHtml(totalYtdConsumptionPct, totalAnnualBudgetValue);
                     const totalStatusPillClass = EvoGAUIRenderer.statusClass(totalYtdStatus, normalizeText);
 
                     tableHtml += `</tbody><tfoot><tr>
@@ -2801,7 +2869,7 @@
                         <td class="numeric ytd-start">${formatNumber(ytdTotals.budget)}</td>
                         <td class="numeric">${formatNumber(ytdTotals.actual)}</td>
                         <td class="numeric cell-variance ${totalYtdVarianceClass}">${ytdDesvio !== 0 ? formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio) : "-"}</td>
-                        <td class="cell-consumption"><div class="consumption-wrapper"><div class="bar-container"><div class="bar-fill ${totalBarFillClass}" style="width: ${totalBarFillWidth}%;"></div></div><div class="percent-value">${totalConsumptionText}</div></div></td>
+                        <td class="cell-consumption">${totalConsumptionControlHtml}</td>
                         <td class="center cell-status"><span class="status-pill ${totalStatusPillClass}">${totalYtdStatus}</span></td>
                     </tr></tfoot></table>`;
 
@@ -2810,7 +2878,7 @@
                             <section class="operational-section">
                                 <div class="operational-section-header">
                                     <span class="operational-section-title">Drilldown</span>
-                                    <span class="operational-section-sub">${escapeHtml(periodLabel)} · ${escapeHtml(ytdLabel)} · consumo sobre orçamento anual</span>
+                                    <span class="operational-section-sub">${escapeHtml(periodLabel)} · ${escapeHtml(ytdLabel)} · meta consumo ${escapeHtml(ytdConsumptionTargetText)}</span>
                                 </div>
                                 <div class="operational-table-wrap">${tableHtml}</div>
                             </section>
