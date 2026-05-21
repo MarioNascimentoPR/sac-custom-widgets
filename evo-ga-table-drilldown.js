@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.19 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.21 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -871,12 +871,12 @@
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 width: 100%;
                 box-sizing: border-box;
-                margin: 0 0 10px 0;
+                margin: 0 0 14px 0;
                 background: var(--surface-soft);
                 border: 1px solid var(--border-soft);
                 border-left: 4px solid var(--text-muted);
                 border-radius: var(--radius-md);
-                padding: 12px 14px;
+                padding: 14px 16px;
                 color: var(--text-main);
             }
             .executive-oversight.summary-saving { border-left-color: var(--success); }
@@ -890,24 +890,24 @@
                 font-weight: var(--weight-emphasis);
                 text-transform: uppercase;
                 letter-spacing: 0.35px;
-                margin-bottom: 10px;
+                margin-bottom: 12px;
                 color: var(--text-strong);
             }
             .executive-grid,
             .impact-grid {
                 display: grid;
                 grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 12px;
+                gap: 14px;
                 font-size: 12.5px;
                 line-height: 1.45;
             }
             .impact-column {
                 min-width: 0;
-                padding-right: 8px;
+                padding-right: 10px;
             }
             .impact-column + .impact-column {
                 border-left: 1px solid var(--border-soft);
-                padding-left: 12px;
+                padding-left: 14px;
             }
             .impact-title {
                 display: block;
@@ -926,15 +926,15 @@
             }
             .impact-list {
                 display: grid;
-                gap: 8px;
-                margin-top: 10px;
+                gap: 10px;
+                margin-top: 12px;
             }
             .impact-metric,
             .impact-offender,
             .impact-trend-main {
                 display: flex;
                 align-items: baseline;
-                gap: 7px;
+                gap: 8px;
                 min-width: 0;
             }
             .impact-signal {
@@ -982,7 +982,7 @@
                 line-height: 1.25;
             }
             .impact-note {
-                margin-top: 10px;
+                margin-top: 12px;
                 color: var(--text-main);
                 font-size: 11.5px;
                 font-weight: var(--weight-regular);
@@ -1003,7 +1003,7 @@
                 align-items: center;
                 align-self: flex-start;
                 gap: 3px;
-                margin: 0 10px 10px 10px;
+                margin: 0 12px 12px 12px;
                 padding: 3px;
                 background: #F1F5F9;
                 border: 1px solid #DBE3EC;
@@ -1029,7 +1029,7 @@
             }
             .view-panel {
                 display: none;
-                padding: 10px;
+                padding: 12px;
                 overflow: auto;
                 flex-grow: 1;
                 min-height: 0;
@@ -1041,14 +1041,14 @@
                 display: grid;
                 grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
                 width: min(1320px, 100%);
-                gap: 12px;
-                margin-bottom: 10px;
+                gap: 14px;
+                margin-bottom: 14px;
                 align-items: stretch;
             }
             .executive-kpi {
                 border: 1px solid var(--border-soft);
                 border-radius: var(--radius-md);
-                padding: 8px 10px;
+                padding: 9px 12px;
                 background: var(--surface);
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 min-width: 0;
@@ -1115,8 +1115,8 @@
                 border: 1px solid var(--border-soft);
                 border-radius: var(--radius-md);
                 background: var(--surface);
-                padding: 12px 14px;
-                margin-bottom: 10px;
+                padding: 14px 16px;
+                margin-bottom: 12px;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
             .section-title {
@@ -1125,7 +1125,7 @@
                 color: var(--text-strong);
                 text-transform: uppercase;
                 letter-spacing: 0.25px;
-                margin-bottom: 10px;
+                margin-bottom: 12px;
             }
             .operational-stack {
                 display: grid;
@@ -1165,15 +1165,15 @@
             .operational-table-wrap {
                 overflow: auto;
             }
-            .driver-list { display: grid; gap: 10px; margin-bottom: 14px; }
+            .driver-list { display: grid; gap: 12px; margin-bottom: 16px; }
             .pareto-control {
                 display: grid;
                 grid-template-columns: minmax(170px, 1fr) minmax(220px, 260px);
                 align-items: center;
-                gap: 10px;
+                gap: 12px;
                 width: min(540px, 100%);
-                padding: 7px 9px;
-                margin-bottom: 9px;
+                padding: 8px 10px;
+                margin-bottom: 12px;
                 border: 1px solid var(--border-soft);
                 border-radius: var(--radius-md);
                 background: var(--surface-soft);
@@ -1182,7 +1182,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 8px;
+                gap: 10px;
                 font-size: 12px;
                 color: var(--text-main);
                 line-height: 1.35;
@@ -1235,8 +1235,8 @@
                 grid-template-columns: 1.35fr minmax(120px, 0.8fr) minmax(96px, 0.65fr) minmax(92px, 0.65fr);
                 gap: 8px;
                 align-items: center;
-                margin: 0 0 9px 0;
-                padding: 10px 12px;
+                margin: 2px 0 10px 0;
+                padding: 12px 14px;
                 border: 1px solid var(--border-soft);
                 border-left: 4px solid var(--text-muted);
                 border-radius: var(--radius-md);
@@ -1286,8 +1286,8 @@
                 display: flex;
                 align-items: center;
                 flex-wrap: wrap;
-                gap: 6px;
-                margin: 0 0 9px 0;
+                gap: 8px;
+                margin: 0 0 12px 0;
             }
             .budget-detail-btn {
                 min-height: 28px;
@@ -1320,12 +1320,12 @@
             .driver-row {
                 display: grid;
                 grid-template-columns: 1.35fr minmax(120px, 0.8fr) minmax(96px, 0.65fr) minmax(92px, 0.65fr);
-                gap: 8px;
+                gap: 10px;
                 align-items: center;
                 font-size: 13px;
                 border: 1px solid var(--border-soft);
                 border-radius: var(--radius-md);
-                padding: 9px 12px;
+                padding: 10px 12px;
                 background: var(--surface);
             }
             .driver-row:last-child { padding-bottom: 8px; }
