@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.14 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.15 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -557,11 +557,11 @@
                 ? `${ytdLabel}: ${ytdDirectionText} de ${ytdVariancePct.toFixed(1)}% e consumo de ${ytdConsumptionText} do orçamento acumulado.`
                 : `${ytdLabel}: sem orçamento acumulado disponível para comparação percentual.`;
             return {
-                headline: totalDesvio > 0 ? "DISCIPLINA ORÇAMENTÁRIA G&A: PRESSÃO ACIMA DO PLANEJADO" : "DISCIPLINA ORÇAMENTÁRIA G&A: ADERÊNCIA AO PLANEJADO",
+                headline: totalDesvio > 0 ? "ANÁLISE ORÇAMENTÁRIA: PRESSÃO ACIMA DO PLANEJADO" : "ANÁLISE ORÇAMENTÁRIA: ADERÊNCIA AO PLANEJADO",
                 keyDrivers: `Principais ofensores oficiais: ${driverText}.`,
                 rootCause: topDriver ? `A concentração está em Departamento/Gerência ${topDriver.name}, conforme estrutura governada do modelo.` : "Não há vetor oficial dominante com desvio relevante.",
                 trend: `Tendência: ${trendText}.`,
-                riskAssessment: `Contexto: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A. ${ytdContext}`
+                riskAssessment: `Resumo: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A. ${ytdContext}`
             };
         }
     }
@@ -600,9 +600,9 @@
                 background: #ffffff; 
                 box-sizing: border-box;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                --small-font-size: 11px;
-                --body-font-size: 12px;
-                --label-font-size: 10px;
+                --small-font-size: 12px;
+                --body-font-size: 13px;
+                --label-font-size: 10.5px;
                 --enterprise-text: #243443;
                 --enterprise-muted: #64748b;
                 --enterprise-border: #dbe3ec;
@@ -777,12 +777,12 @@
                 z-index: 1000;
                 padding: 14px;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                font-size: 11px;
+                font-size: 12px;
                 color: #334155;
             }
             .telemetry-modal.show { display: block; }
             .telemetry-title {
-                font-size: 11.5px;
+                font-size: 12.5px;
                 font-weight: 700;
                 color: #1E293B;
                 margin-bottom: 10px;
@@ -797,7 +797,7 @@
             .telemetry-close {
                 background: none;
                 border: none;
-                font-size: 16px;
+                font-size: 17px;
                 cursor: pointer;
                 color: #94A3B8;
                 font-weight: 700;
@@ -805,7 +805,7 @@
             }
             .telemetry-close:hover { color: #64748B; }
             .telemetry-section-title {
-                font-size: 10px;
+                font-size: 10.5px;
                 font-weight: 700;
                 color: #475569;
                 text-transform: uppercase;
@@ -833,12 +833,12 @@
                 border: 1px solid #E2E8F0;
                 white-space: nowrap;
             }
-            .stress-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10.5px; }
+            .stress-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }
             .stress-table th { text-align: left; background: #E2E8F0; color: #334155; padding: 3px 6px; font-weight: 700; }
             .stress-table td { padding: 4px 6px; border-bottom: 1px solid #EDF2F7; font-weight: 600; }
             .table-summary {
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                font-size: 11.5px; 
+                font-size: 12.5px; 
                 color: #334155;
                 line-height: 1.5;
                 margin: 0;
@@ -866,7 +866,7 @@
                 align-items: baseline;
                 justify-content: space-between;
                 gap: 12px;
-                font-size: 12px;
+                font-size: 13px;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.35px;
@@ -876,12 +876,12 @@
                 display: grid;
                 grid-template-columns: 1.35fr 1fr;
                 gap: 10px;
-                font-size: 11.5px;
+                font-size: 12.5px;
                 line-height: 1.45;
             }
             .executive-label {
                 display: block;
-                font-size: 10px;
+                font-size: var(--label-font-size);
                 font-weight: 600;
                 color: #4a5568;
                 text-transform: uppercase;
@@ -961,7 +961,7 @@
                 margin-top: 4px;
                 padding-top: 4px;
                 border-top: 1px solid #E2E8F0;
-                font-size: 10.5px;
+                font-size: 11.5px;
                 color: #475569;
                 font-weight: 600;
             }
@@ -972,7 +972,7 @@
                 white-space: nowrap;
             }
             .kpi-label {
-                font-size: 10px;
+                font-size: var(--label-font-size);
                 font-weight: 600;
                 color: #4a5568;
                 text-transform: uppercase;
@@ -980,7 +980,7 @@
                 margin-bottom: 3px;
             }
             .kpi-value {
-                font-size: 14px;
+                font-size: 15px;
                 font-weight: 700;
                 color: #1e293b;
                 font-variant-numeric: tabular-nums;
@@ -990,11 +990,11 @@
                 line-height: 1.2;
             }
             .executive-kpi.primary .kpi-value {
-                font-size: 17px;
+                font-size: 18px;
             }
             .kpi-sub {
                 margin-top: 2px;
-                font-size: 10.5px;
+                font-size: 11.5px;
                 color: #475569;
                 font-weight: 600;
                 white-space: nowrap;
@@ -1010,7 +1010,7 @@
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
             .section-title {
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 700;
                 color: #4a5568;
                 text-transform: uppercase;
@@ -1040,14 +1040,14 @@
                 z-index: 20;
             }
             .operational-section-title {
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 700;
                 color: #2d3748;
                 text-transform: uppercase;
                 letter-spacing: 0.45px;
             }
             .operational-section-sub {
-                font-size: 10.5px;
+                font-size: 11.5px;
                 color: #64748b;
                 font-weight: 600;
                 white-space: nowrap;
@@ -1055,7 +1055,7 @@
             .operational-table-wrap {
                 overflow: auto;
             }
-            .driver-list { display: grid; gap: 8px; }
+            .driver-list { display: grid; gap: 10px; margin-bottom: 14px; }
             .pareto-control {
                 display: grid;
                 grid-template-columns: minmax(170px, 1fr) minmax(220px, 260px);
@@ -1073,7 +1073,7 @@
                 align-items: center;
                 justify-content: space-between;
                 gap: 8px;
-                font-size: 11px;
+                font-size: 12px;
                 color: #4a5568;
                 line-height: 1.35;
             }
@@ -1115,26 +1115,30 @@
             .pareto-scale {
                 display: flex;
                 justify-content: space-between;
-                font-size: 10px;
+                font-size: 10.5px;
                 color: #64748b;
                 font-weight: 600;
                 padding: 0 1px;
             }
             .excluded-effect {
                 display: grid;
-                grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(105px, 0.7fr));
+                grid-template-columns: 1.35fr minmax(120px, 0.8fr) minmax(96px, 0.65fr) minmax(92px, 0.65fr);
                 gap: 8px;
                 align-items: center;
                 margin: 0 0 9px 0;
-                padding: 8px 10px;
+                padding: 10px 12px;
                 border: 1px solid #E2E8F0;
                 border-left: 4px solid #64748B;
                 border-radius: 6px;
                 background: #F8FAFC;
-                font-size: 11px;
+                font-size: 12px;
             }
             .excluded-effect.alert { border-left-color: #B91C1C; }
             .excluded-effect.saving { border-left-color: #166534; }
+            .excluded-effect > div:first-child,
+            .driver-row > div:first-child {
+                min-width: 0;
+            }
             .excluded-effect-title {
                 font-weight: 700;
                 color: #2d3748;
@@ -1160,7 +1164,7 @@
             .excluded-effect-value {
                 display: block;
                 color: #1e293b;
-                font-size: 12.5px;
+                font-size: 13.5px;
                 font-weight: 700;
                 line-height: 1.25;
                 font-variant-numeric: tabular-nums;
@@ -1182,7 +1186,7 @@
                 border-radius: 4px;
                 background: #FFFFFF;
                 color: #243443;
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 600;
                 line-height: 1.2;
                 cursor: pointer;
@@ -1199,7 +1203,7 @@
             }
             .budget-detail-note {
                 color: #64748b;
-                font-size: 10.5px;
+                font-size: 11.5px;
                 font-weight: 500;
                 line-height: 1.25;
             }
@@ -1208,7 +1212,7 @@
                 grid-template-columns: 1.35fr minmax(120px, 0.8fr) minmax(96px, 0.65fr) minmax(92px, 0.65fr);
                 gap: 8px;
                 align-items: center;
-                font-size: 12px;
+                font-size: 13px;
                 border: 1px solid #E2E8F0;
                 border-radius: 6px;
                 padding: 8px 10px;
@@ -1221,7 +1225,7 @@
             .driver-value {
                 display: block;
                 color: #1e293b;
-                font-size: 12.5px;
+                font-size: 13.5px;
                 font-weight: 700;
                 line-height: 1.25;
                 font-variant-numeric: tabular-nums;
@@ -1260,7 +1264,7 @@
                 background-color: #F4F6F9; 
                 z-index: 10;
                 color: #2d3748; 
-                font-size: 11px; 
+                font-size: 12px; 
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
@@ -1281,7 +1285,7 @@
                 text-align: center;
                 color: #1e293b;
                 background: #F1F5F9;
-                font-size: 10.5px;
+                font-size: 11.5px; 
                 letter-spacing: 0.55px;
                 border-bottom: 1px solid #CBD5E1;
             }
@@ -1309,7 +1313,7 @@
             }
             th.sortable { cursor: pointer; user-select: none; transition: background 0.2s; }
             th.sortable:hover { background-color: #E6E9F0; }
-            .sort-icon { font-size: 10px; margin-left: 4px; color: #555; }
+            .sort-icon { font-size: 10.5px; margin-left: 4px; color: #555; }
             
             td { 
                 padding: 6px 10px; 
@@ -1337,7 +1341,7 @@
                 display: inline-block; 
                 width: 14px; 
                 margin-right: 6px; 
-                font-size: 10px;
+                font-size: 10.5px;
                 color: #888; 
                 transition: transform 0.2s ease;
                 text-align: center;
@@ -1347,7 +1351,7 @@
             .ofensor-flag {
                 color: #EF6C00; /* Laranja para alertar ofensor (mais harmonioso que vermelho puro) */
                 margin-left: 6px;
-                font-size: 12px;
+                font-size: 13px;
                 vertical-align: middle;
                 cursor: help;
             }
@@ -1357,7 +1361,7 @@
                 border-bottom: none;
                 padding-top: 3px;
                 padding-bottom: 3px; 
-                font-size: 12px;
+                font-size: 13px;
             }
             
             tr.row-conta:last-child td {
@@ -1378,7 +1382,7 @@
                 top: 50%;
                 transform: translateY(-50%);
                 color: #CCCCCC;
-                font-size: 12px;
+                font-size: 13px;
             }
             
             tfoot td {
@@ -1410,7 +1414,7 @@
             .fill-green { background-color: #2E7D32; }
             .fill-yellow { background-color: #EF6C00; }
             .fill-red { background-color: #D32F2F; }
-            .percent-value { font-size: 12px; font-weight: 500; color: #444444; width: 45px; text-align: right; font-variant-numeric: tabular-nums; }
+            .percent-value { font-size: 13px; font-weight: 500; color: #444444; width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
 
             .cell-status { text-align: center !important; width: 90px; }
             
@@ -1422,7 +1426,7 @@
                 width: 65px; 
                 box-sizing: border-box; 
                 border-radius: 4px; 
-                font-size: 11px; 
+                font-size: 12px;
                 font-weight: 700; 
                 text-transform: uppercase; 
                 letter-spacing: 0.5px; 
@@ -2342,15 +2346,6 @@
                     if (node) node.isOfensor = true;
                 });
 
-                let ofensoresText = "";
-                if (ofensores.length > 0) {
-                    const names = ofensores.map(o => escapeHtml(o.name));
-                    if (names.length === 1) ofensoresText = ` O principal ofensor que exige atenção é <strong>${names[0]}</strong>.`;
-                    else if (names.length === 2) ofensoresText = ` Os principais ofensores que exigem atenção são <strong>${names[0]}</strong> e <strong>${names[1]}</strong>.`;
-                    else ofensoresText = ` Os 3 principais ofensores que exigem atenção são <strong>${names[0]}</strong>, <strong>${names[1]}</strong> e <strong>${names[2]}</strong>.`;
-                } else {
-                    ofensoresText = " Não foram identificados itens de Departamento/Gerência operando acima do orçamento.";
-                }
                 const totalVariancePct = totalGlobalOrcado > 0 ? (totalGlobalDesvio / totalGlobalOrcado) * 100 : 0;
                 const ytdDesvio = ytdTotals.actual - ytdTotals.budget;
                 const ytdVariancePct = ytdTotals.budget > 0 ? (ytdDesvio / ytdTotals.budget) * 100 : 0;
@@ -2388,19 +2383,23 @@
                 const excludedTermItems = Array.isArray(excludedSummary.terms) ? excludedSummary.terms : [];
                 const excludedRowsCount = excludedSummary.rows || budgetOffenderAnalysis.excludedRows || 0;
                 const excludedGrossAbs = excludedTermItems.reduce((sum, item) => sum + (Number(item.absDesvio) || 0), 0) || excludedSummary.absDesvio || 0;
-                const excludedShareBase = (budgetOffenderAnalysis.totalBudgetDeviation || 0) + excludedGrossAbs;
-                const excludedShareText = excludedShareBase > 0 ? `${((excludedGrossAbs / excludedShareBase) * 100).toFixed(1)}%` : "-";
                 const excludedValueClass = excludedSummary.desvio > 0 ? "alert" : (excludedSummary.desvio < 0 ? "saving" : "neutral");
                 const reconciliationRemainder = totalGlobalDesvio - visibleParetoDeviation - (excludedSummary.desvio || 0);
                 const excludedTermsText = excludedTermItems.length
-                    ? excludedTermItems.map(item => `${escapeHtml(item.term)} ${formatNumber(Math.abs(item.desvio), true, true, item.desvio)}`).join(" · ")
+                    ? excludedTermItems.map(item => `${escapeHtml(item.term)}: ${formatNumber(Math.abs(item.desvio), true, true, item.desvio)}`).join("; ")
                     : escapeHtml(excludedTermsLabel);
+                const excludedEffectSummaryText = excludedRowsCount > 0
+                    ? `${excludedTermsText}. Total do efeito: ${formatNumber(Math.abs(excludedSummary.desvio), true, true, excludedSummary.desvio)}; realizado total: ${formatKpiCurrency(excludedSummary.actual)}; orçado total: ${formatKpiCurrency(excludedSummary.budget)}.`
+                    : `Sem efeito segregado no período. Termos monitorados: ${escapeHtml(excludedTermsLabel)}.`;
+                const summaryInsightText = `No período, o resultado registrou ${varianceType} de R$ ${formattedGlobalDesvio} versus orçamento. O Pareto cobre ${escapeHtml(paretoTargetCoverageText)} do desvio relevante por Departamento/Gerência; efeitos segregados como IFRS 16, Outros, PBA e Rateio ficam destacados separadamente para preservar a leitura gerencial.`;
+                const topOffendersInsightText = ofensores.length
+                    ? ` Principais focos: ${ofensores.map(item => escapeHtml(item.name)).join("; ")}.`
+                    : " Não há Departamento/Gerência com desvio material acima do orçamento.";
                 const excludedEffectHtml = excludedRowsCount > 0 ? `
                     <div class="excluded-effect ${excludedValueClass}">
                         <div>
                             <div class="excluded-effect-title">Efeito segregado fora do Pareto</div>
-                            <div class="excluded-effect-sub">IFRS 16, Outros, PBA e Rateio · ${excludedRowsCount} linhas · peso ${escapeHtml(excludedShareText)} no desvio bruto analisado</div>
-                            <div class="excluded-effect-breakdown">${excludedTermsText}</div>
+                            <div class="excluded-effect-breakdown">${excludedEffectSummaryText}</div>
                         </div>
                         <div class="excluded-effect-metric"><span class="executive-label">Realizado</span><span class="excluded-effect-value">${formatKpiCurrency(excludedSummary.actual)}</span></div>
                         <div class="excluded-effect-metric"><span class="executive-label">Orçado</span><span class="excluded-effect-value">${formatKpiCurrency(excludedSummary.budget)}</span></div>
@@ -2410,8 +2409,7 @@
                     <div class="excluded-effect neutral">
                         <div>
                             <div class="excluded-effect-title">Efeito segregado fora do Pareto</div>
-                            <div class="excluded-effect-sub">Sem efeito segregado no período selecionado.</div>
-                            <div class="excluded-effect-breakdown">${escapeHtml(excludedTermsLabel)}</div>
+                            <div class="excluded-effect-breakdown">${excludedEffectSummaryText}</div>
                         </div>
                         <div class="excluded-effect-metric"><span class="executive-label">Realizado</span><span class="excluded-effect-value">-</span></div>
                         <div class="excluded-effect-metric"><span class="executive-label">Orçado</span><span class="excluded-effect-value">-</span></div>
@@ -2423,7 +2421,7 @@
                 const budgetDetailView = this._budgetDetailView === "remaining" ? "remaining" : "pareto";
                 const budgetDetailControlsHtml = `
                     <div class="budget-detail-controls" aria-label="Detalhamento dos desvios do orçamento">
-                        <button class="budget-detail-btn ${budgetDetailView === "pareto" ? "active" : ""}" type="button" data-budget-detail-view="pareto">Apresentar Departamento/Gerência do Pareto</button>
+                        <button class="budget-detail-btn ${budgetDetailView === "pareto" ? "active" : ""}" type="button" data-budget-detail-view="pareto">Principais ofensores</button>
                         <button class="budget-detail-btn ${budgetDetailView === "remaining" ? "active" : ""}" type="button" data-budget-detail-view="remaining">Apresentar as demais variações</button>
                         <span class="budget-detail-note">Fechamento: Pareto + demais variações + efeito segregado = desvio total Real x Orçado.</span>
                     </div>
@@ -2728,11 +2726,11 @@
                         </div>
                         <div class="executive-grid">
                             <div class="executive-text">
-                                <span class="executive-label">Contexto e Insight</span>
-                                ${escapeHtml(executiveNarrative.riskAssessment)} ${escapeHtml(executiveNarrative.keyDrivers)}
+                                <span class="executive-label">Insight</span>
+                                ${escapeHtml(executiveNarrative.riskAssessment)} ${escapeHtml(executiveNarrative.keyDrivers)} ${summaryInsightText}${topOffendersInsightText}
                             </div>
                             <div class="executive-text">
-                                <span class="executive-label">Tendência e Causa</span>
+                                <span class="executive-label">Tendência</span>
                                 ${escapeHtml(executiveNarrative.trend)} ${escapeHtml(executiveNarrative.rootCause)}
                             </div>
                         </div>
@@ -2742,8 +2740,8 @@
                         <div class="pareto-control">
                             <div class="pareto-control-header">
                                 <div>
-                                    <span class="pareto-control-title">Cobertura Pareto Orçamento</span>
-                                    <span class="pareto-control-sub">Quantidade mínima de itens para explicar o desvio orçamentário.</span>
+                                    <span class="pareto-control-title">Controle Pareto</span>
+                                    <span class="pareto-control-sub">Peso utilizado para explicar o desvio orçamentário.</span>
                                 </div>
                                 <output class="pareto-control-value" for="paretoCoverageSlider">${escapeHtml(paretoTargetCoverageText)}</output>
                             </div>
@@ -2764,9 +2762,6 @@
                         <div class="driver-list">${driversListHtml}</div>
                         ${excludedEffectHtml}
                     </div>
-                    <p class="table-summary ${varianceClass}">
-                        No período analisado, observamos um <strong>${varianceType} de R$ ${formattedGlobalDesvio}</strong> em relação ao orçamento planejado. A lista de ofensores considera o desvio orçamentário por Departamento/Gerência, excluindo IFRS 16, Outros, PBA e Rateio, até cobrir ao menos ${escapeHtml(paretoTargetCoverageText)} do desvio relevante.${ofensoresText}
-                    </p>
                 `;
 
                 container.innerHTML = `
