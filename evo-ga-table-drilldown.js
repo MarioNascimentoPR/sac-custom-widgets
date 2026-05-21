@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.24 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.25 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -1546,8 +1546,8 @@
             .consumption-track {
                 position: relative;
                 height: 8px;
-                background: #DCE4EF;
-                border: 1px solid #AEBFD2;
+                background: var(--surface-muted);
+                border: 1px solid var(--border-strong);
                 border-radius: 4px;
                 overflow: visible;
             }
@@ -1561,8 +1561,8 @@
                 transition: width 0.3s ease;
                 z-index: 1;
             }
-            .consumption-fill.ok { background: #14B8A6; }
-            .consumption-fill.watch { background: #D97706; }
+            .consumption-fill.ok { background: var(--success); }
+            .consumption-fill.watch { background: var(--warning); }
             .consumption-fill.alert { background: var(--danger); }
             .consumption-target {
                 position: absolute;
