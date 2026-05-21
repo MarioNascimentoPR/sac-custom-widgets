@@ -1745,7 +1745,7 @@
                         <button class="view-tab" type="button" data-view="operational">Drilldown</button>
                     </div>
                     <div class="view-panel active" id="executiveView">
-                        <div style="padding:10px; color:#475569; font-size:12px; font-weight:600;">Carregando Resumo Executivo...</div>
+                        <div style="padding:10px; color:#475569; font-size:18px; font-weight:600;">Carregando Resumo Executivo...</div>
                     </div>
                     <div class="view-panel" id="operationalView"></div>
                 `;
