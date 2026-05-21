@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.15 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.16 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -561,7 +561,7 @@
                 keyDrivers: `Principais ofensores oficiais: ${driverText}.`,
                 rootCause: topDriver ? `A concentração está em Departamento/Gerência ${topDriver.name}, conforme estrutura governada do modelo.` : "Não há vetor oficial dominante com desvio relevante.",
                 trend: `Tendência: ${trendText}.`,
-                riskAssessment: `Resumo: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento. ${ytdContext}`
+                riskAssessment: `Resumo: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A. ${ytdContext}`
             };
         }
     }
@@ -851,12 +851,13 @@
             .table-summary.summary-desvio { border-left-color: #D32F2F; }
             .executive-oversight {
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                margin: 0 0 8px 0;
+                width: min(1120px, 100%);
+                margin: 0 0 10px 0;
                 background: #F8FAFC;
                 border: 1px solid #E2E8F0;
                 border-left: 4px solid #64748B;
                 border-radius: 4px;
-                padding: 10px 12px;
+                padding: 12px 14px;
                 color: #334155;
             }
             .executive-oversight.summary-saving { border-left-color: #2E7D32; }
@@ -870,14 +871,86 @@
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.35px;
-                margin-bottom: 6px;
+                margin-bottom: 10px;
             }
-            .executive-grid {
+            .executive-grid,
+            .impact-grid {
                 display: grid;
-                grid-template-columns: 1.35fr 1fr;
-                gap: 10px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 12px;
                 font-size: 12.5px;
                 line-height: 1.45;
+            }
+            .impact-column {
+                min-width: 0;
+                padding-right: 8px;
+            }
+            .impact-column + .impact-column {
+                border-left: 1px solid #E2E8F0;
+                padding-left: 12px;
+            }
+            .impact-title {
+                display: block;
+                color: #0f172a;
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0;
+            }
+            .impact-subtitle {
+                display: block;
+                margin-top: 1px;
+                color: #64748b;
+                font-size: 11.5px;
+                font-weight: 600;
+            }
+            .impact-list {
+                display: grid;
+                gap: 8px;
+                margin-top: 10px;
+            }
+            .impact-metric,
+            .impact-offender,
+            .impact-trend-main {
+                display: flex;
+                align-items: baseline;
+                gap: 7px;
+                min-width: 0;
+            }
+            .impact-signal {
+                flex: 0 0 auto;
+                font-size: 14px;
+                line-height: 1;
+            }
+            .impact-value {
+                color: #0f172a;
+                font-size: 14px;
+                font-weight: 800;
+                line-height: 1.2;
+                font-variant-numeric: tabular-nums;
+            }
+            .impact-value.alert { color: #B91C1C; }
+            .impact-value.saving { color: #166534; }
+            .impact-detail {
+                display: block;
+                margin-top: 2px;
+                color: #475569;
+                font-size: 11.5px;
+                font-weight: 600;
+                line-height: 1.35;
+            }
+            .impact-offender-name {
+                color: #0f172a;
+                font-size: 13px;
+                font-weight: 800;
+                line-height: 1.25;
+            }
+            .impact-note {
+                margin-top: 10px;
+                color: #475569;
+                font-size: 11.5px;
+                font-weight: 600;
+                line-height: 1.4;
             }
             .executive-label {
                 display: block;
@@ -931,7 +1004,8 @@
             .executive-kpi-grid {
                 display: grid;
                 grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
-                gap: 6px;
+                width: min(1120px, 100%);
+                gap: 8px;
                 margin-bottom: 8px;
                 align-items: stretch;
             }
@@ -1237,6 +1311,13 @@
             @media (max-width: 900px) {
                 .executive-kpi-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
                 .executive-kpi.primary { grid-row: auto; grid-column: span 2; }
+                .impact-grid { grid-template-columns: 1fr; }
+                .impact-column + .impact-column {
+                    border-left: 0;
+                    border-top: 1px solid #E2E8F0;
+                    padding-left: 0;
+                    padding-top: 10px;
+                }
                 .driver-row { grid-template-columns: 1fr; }
                 .driver-metric { text-align: left; }
                 .excluded-effect { grid-template-columns: 1fr; }
@@ -1244,7 +1325,7 @@
                 .pareto-control { width: 100%; }
             }
             @media (max-width: 760px) {
-                .executive-grid { grid-template-columns: 1fr; }
+                .executive-grid, .impact-grid { grid-template-columns: 1fr; }
                 .executive-headline { flex-direction: column; gap: 2px; }
                 .executive-kpi-grid { grid-template-columns: 1fr; }
                 .executive-kpi.primary { grid-column: auto; }
@@ -2053,8 +2134,8 @@
 
                 const formatSummaryNumber = (num) => {
                     const absNum = Math.abs(num); // Garante que o sinal não vá para o texto resumo
-                    if (absNum >= 1000000) return (absNum / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "Mi";
-                    if (absNum >= 1000) return (absNum / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + "K";
+                    if (absNum >= 1000000) return (absNum / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + " Mi";
+                    if (absNum >= 1000) return (absNum / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + " K";
                     return absNum.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
                 };
 
@@ -2272,7 +2353,6 @@
                 const totalGlobalRealizado = periodTotals.actual;
                 
                 const totalGlobalDesvio = totalGlobalRealizado - totalGlobalOrcado;
-                const varianceType = totalGlobalDesvio > 0 ? "desvio" : "saving";
                 const varianceClass = totalGlobalDesvio > 0 ? "summary-desvio" : "summary-saving";
                 const formattedGlobalDesvio = formatSummaryNumber(totalGlobalDesvio);
                 const monthlyProfileFor = (key) => {
@@ -2365,13 +2445,6 @@
                 const momPeriodLabel = budgetOffenderAnalysis.previousMonth && budgetOffenderAnalysis.currentMonth
                     ? `${this._getPeriodDisplayLabel(budgetOffenderAnalysis.previousMonth)} → ${this._getPeriodDisplayLabel(budgetOffenderAnalysis.currentMonth)}`
                     : "MoM indisponível";
-                const executiveNarrative = EvoGANarrativeEngine.build(executiveDrivers, totalGlobalDesvio, totalVariancePct, {
-                    ytdDesvio,
-                    ytdVariancePct,
-                    ytdConsumptionText,
-                    ytdBudget: ytdTotals.budget,
-                    ytdLabel
-                });
                 const budgetCoverageText = `${(budgetOffenderAnalysis.coverage * 100).toFixed(1)}%`;
                 const paretoTargetCoverageText = `${(this._paretoCoverage * 100).toFixed(0)}%`;
                 const visibleParetoDeviation = executiveDrivers.reduce((sum, driver) => sum + driver.budgetVariance, 0);
@@ -2391,10 +2464,41 @@
                 const excludedEffectSummaryText = excludedRowsCount > 0
                     ? `${excludedTermsText}. Total do efeito: ${formatNumber(Math.abs(excludedSummary.desvio), true, true, excludedSummary.desvio)}; realizado total: ${formatKpiCurrency(excludedSummary.actual)}; orçado total: ${formatKpiCurrency(excludedSummary.budget)}.`
                     : `Sem efeito segregado no período. Termos monitorados: ${escapeHtml(excludedTermsLabel)}.`;
-                const summaryInsightText = `No período, o resultado registrou ${varianceType} de R$ ${formattedGlobalDesvio} versus orçamento. O Pareto cobre ${escapeHtml(paretoTargetCoverageText)} do desvio relevante por Departamento/Gerência; efeitos segregados como IFRS 16, Outros, PBA e Rateio ficam destacados separadamente para preservar a leitura gerencial.`;
-                const topOffendersInsightText = ofensores.length
-                    ? ` Principais focos: ${ofensores.map(item => escapeHtml(item.name)).join("; ")}.`
-                    : " Não há Departamento/Gerência com desvio material acima do orçamento.";
+                const formatSignedPct = (value) => `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+                const statusClass = totalGlobalDesvio > 0 ? "alert" : (totalGlobalDesvio < 0 ? "saving" : "neutral");
+                const ytdStatusClass = ytdDesvio > 0 ? "alert" : (ytdDesvio < 0 ? "saving" : "neutral");
+                const totalVarianceSignal = totalGlobalDesvio > 0 ? "🔴" : (totalGlobalDesvio < 0 ? "🟢" : "⚪");
+                const ytdVarianceSignal = ytdDesvio > 0 ? "⚠️" : (ytdDesvio < 0 ? "✅" : "⚪");
+                const trendDriver = executiveDrivers[0];
+                const trendDirection = trendDriver ? trendDriver.trendDirection : "stable";
+                const trendLabel = trendDriver ? EvoGATrendEngine.formatTrend(trendDirection) : "estável";
+                const trendSignal = trendDirection === "worsening" || trendDirection === "acceleration" ? "📈" : (trendDirection === "improving" || trendDirection === "normalization" ? "📉" : "➡️");
+                const analysisHeadline = totalGlobalDesvio > 0
+                    ? "ANÁLISE ORÇAMENTÁRIA: O PROBLEMA SALTA AOS OLHOS"
+                    : "ANÁLISE ORÇAMENTÁRIA: ORÇAMENTO SOB CONTROLE";
+                const impactOffendersHtml = ofensores.length ? ofensores.map((driver, index) => `
+                    <div class="impact-offender">
+                        <span class="impact-signal">•</span>
+                        <div>
+                            <span class="impact-offender-name">${escapeHtml(driver.name)}${index === 0 ? " (Foco principal)" : ""}</span>
+                            <span class="impact-detail">${formatNumber(Math.abs(driver.budgetVariance), true, true, driver.budgetVariance)} de desvio</span>
+                        </div>
+                    </div>
+                `).join("") : `
+                    <div class="impact-offender">
+                        <span class="impact-signal">•</span>
+                        <div>
+                            <span class="impact-offender-name">Sem vazamento material</span>
+                            <span class="impact-detail">Nenhum Departamento/Gerência acima do orçamento no Pareto.</span>
+                        </div>
+                    </div>
+                `;
+                const trendDetailText = trendDriver
+                    ? `${escapeHtml(trendDriver.name)} concentra o maior desvio; ${trendDriver.recurrenceMonths > 0 ? `${trendDriver.recurrenceMonths} período(s) recente(s) com pressão.` : "sem recorrência material recente."}`
+                    : "Sem vetor dominante no período.";
+                const impactGovernanceNote = excludedRowsCount > 0
+                    ? "Nota: Pareto gerencial exclui efeitos IFRS16, Rateio, PBA e Outros; o efeito segregado permanece destacado abaixo."
+                    : "Nota: Pareto gerencial sem efeito segregado relevante no período.";
                 const excludedEffectHtml = excludedRowsCount > 0 ? `
                     <div class="excluded-effect ${excludedValueClass}">
                         <div>
@@ -2722,16 +2826,54 @@
                     </div>
                     <div class="executive-oversight ${oversightClass}">
                         <div class="executive-headline">
-                            <span>${escapeHtml(executiveNarrative.headline)}</span>
+                            <span>${escapeHtml(analysisHeadline)}</span>
                         </div>
-                        <div class="executive-grid">
-                            <div class="executive-text">
-                                <span class="executive-label">Insight</span>
-                                ${escapeHtml(executiveNarrative.riskAssessment)} ${escapeHtml(executiveNarrative.keyDrivers)} ${summaryInsightText}${topOffendersInsightText}
+                        <div class="impact-grid">
+                            <div class="impact-column">
+                                <span class="impact-title">O Status</span>
+                                <span class="impact-subtitle">Métricas de impacto</span>
+                                <div class="impact-list">
+                                    <div class="impact-metric">
+                                        <span class="impact-signal">${totalVarianceSignal}</span>
+                                        <div>
+                                            <span class="impact-value ${statusClass}">${formatSignedPct(totalVariancePct)} vs. Orçamento G&A</span>
+                                            <span class="impact-detail">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)} de desvio no período</span>
+                                        </div>
+                                    </div>
+                                    <div class="impact-metric">
+                                        <span class="impact-signal">${ytdVarianceSignal}</span>
+                                        <div>
+                                            <span class="impact-value ${ytdStatusClass}">${formatSignedPct(ytdVariancePct)} acumulado YTD</span>
+                                            <span class="impact-detail">${formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio)} no acumulado</span>
+                                        </div>
+                                    </div>
+                                    <div class="impact-metric">
+                                        <span class="impact-signal">💸</span>
+                                        <div>
+                                            <span class="impact-value ${statusClass}">R$ ${formattedGlobalDesvio}</span>
+                                            <span class="impact-detail">desvio do mês selecionado</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="executive-text">
-                                <span class="executive-label">Tendência</span>
-                                ${escapeHtml(executiveNarrative.trend)} ${escapeHtml(executiveNarrative.rootCause)}
+                            <div class="impact-column">
+                                <span class="impact-title">Os Ofensores</span>
+                                <span class="impact-subtitle">Onde está o vazamento</span>
+                                <div class="impact-list">${impactOffendersHtml}</div>
+                            </div>
+                            <div class="impact-column">
+                                <span class="impact-title">A Tendência</span>
+                                <span class="impact-subtitle">Direção e alerta</span>
+                                <div class="impact-list">
+                                    <div class="impact-trend-main">
+                                        <span class="impact-signal">${trendSignal}</span>
+                                        <div>
+                                            <span class="impact-value ${statusClass}">Tendência: ${escapeHtml(trendLabel)}</span>
+                                            <span class="impact-detail">${trendDetailText}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="impact-note">${impactGovernanceNote}</div>
                             </div>
                         </div>
                     </div>
