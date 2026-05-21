@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.27 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.29 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -443,7 +443,7 @@
                 const conta = fact.conta;
                 const excludedTerm = Object.prototype.hasOwnProperty.call(fact, "excludedTerm")
                     ? fact.excludedTerm
-                    : EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, conta]);
+                    : EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode]);
                 if (excludedTerm) {
                     excludedRows++;
                     excludedSummary.rows++;
@@ -2268,7 +2268,7 @@
                         normalizedCol,
                         isBudget: normalizedCol.includes("ORCADO"),
                         isActual: normalizedCol.includes("REALIZADO"),
-                        excludedTerm: EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, conta]),
+                        excludedTerm: EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode]),
                         month: monthDimKey ? getName(row[monthDimKey]) : null,
                         value: getMeasureValueFromRow(row)
                     };
@@ -2704,10 +2704,15 @@
                         if (annualBudget > 0) return (ytdNode.valRealizado / annualBudget) * 100;
                         return ytdNode.valRealizado > 0 ? Infinity : 0;
                     };
-                    const ytdConsumptionTargetPct = selectedHasCalendarPeriod
-                        ? Math.min(100, Math.ceil((((selectedPeriod.month / 12) * 100) / 5)) * 5)
-                        : 100;
-                    const ytdConsumptionTargetText = `${ytdConsumptionTargetPct.toFixed(ytdConsumptionTargetPct % 1 === 0 ? 0 : 1)}%`;
+                    const getYtdConsumptionTargetPct = (ytdBudget, annualBudget) => {
+                        if (annualBudget > 0 && ytdBudget >= 0) {
+                            return Math.min(100, (ytdBudget / annualBudget) * 100);
+                        }
+                        return selectedHasCalendarPeriod
+                            ? Math.min(100, Math.ceil((((selectedPeriod.month / 12) * 100) / 5)) * 5)
+                            : 100;
+                    };
+                    const formatTargetPct = (value) => `${value.toFixed(value % 1 === 0 ? 0 : 1)}%`;
                     const formatConsumptionValue = (value) => {
                         if (value === Infinity) return "∞";
                         if (!Number.isFinite(value)) return "-";
@@ -2719,17 +2724,19 @@
                         if (normalizedStatus === "DESVIO MODERADO") return "watch";
                         return "ok";
                     };
-                    const buildConsumptionControlHtml = (consumptionPct, annualBudget, statusText) => {
+                    const buildConsumptionControlHtml = (consumptionPct, annualBudget, statusText, ytdBudget) => {
+                        const targetPct = getYtdConsumptionTargetPct(ytdBudget, annualBudget);
+                        const targetText = formatTargetPct(targetPct);
                         const consumptionText = formatConsumptionValue(consumptionPct);
                         const fillWidth = consumptionPct === Infinity ? 100 : Math.min(100, Math.max(0, Number(consumptionPct) || 0));
-                        const targetPosition = Math.min(100, Math.max(0, ytdConsumptionTargetPct));
+                        const targetPosition = Math.min(100, Math.max(0, targetPct));
                         const fillClass = getConsumptionFillClass(statusText);
-                        const titleText = `Consumo real: ${consumptionText} | Meta YTD: ${ytdConsumptionTargetText} | Status: ${statusText} | Orçamento anual: ${formatNumber(annualBudget)}`;
+                        const titleText = `Consumo real: ${consumptionText} | Meta YTD: ${targetText} | Status: ${statusText} | Orçado YTD: ${formatNumber(ytdBudget)} | Orçamento anual: ${formatNumber(annualBudget)}`;
                         return `
                             <div class="consumption-control" title="${escapeHtml(titleText)}">
                                 <div class="consumption-meta">
                                     <span>Consumo: <strong>${escapeHtml(consumptionText)}</strong></span>
-                                    <span>Meta: <strong>${escapeHtml(ytdConsumptionTargetText)}</strong></span>
+                                    <span>Meta: <strong>${escapeHtml(targetText)}</strong></span>
                                 </div>
                                 <div class="consumption-track">
                                     <div class="consumption-fill ${fillClass}" style="width: ${fillWidth}%;"></div>
@@ -2813,7 +2820,7 @@
                         const nameCell = level === 3 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                         const monthlyVarianceClass = monthlyNode.desvio > 0 ? "var-positive" : (monthlyNode.desvio < 0 ? "var-negative" : "");
                         const ytdVarianceClass = ytdNode.desvio > 0 ? "var-positive" : (ytdNode.desvio < 0 ? "var-negative" : "");
-                        const consumptionControlHtml = buildConsumptionControlHtml(ytdConsumptionPct, annualBudget, statusText);
+                        const consumptionControlHtml = buildConsumptionControlHtml(ytdConsumptionPct, annualBudget, statusText, ytdNode.valOrcado);
                         const statusPillClass = EvoGAUIRenderer.statusClass(statusText, normalizeText);
                         const ytdBudgetBase = Math.abs(ytdNode.valOrcado);
                         const ytdVariancePct = ytdBudgetBase > 0 ? (ytdNode.desvio / ytdBudgetBase) * 100 : (ytdNode.valRealizado > 0 ? Infinity : 0);
@@ -2857,7 +2864,8 @@
                     const totalYtdStatus = EvoGAMaterialityEngine.classifyYtdStatus(ytdTotals.budget, ytdTotals.actual);
                     const totalMonthlyVarianceClass = totalGlobalDesvio > 0 ? "var-positive" : (totalGlobalDesvio < 0 ? "var-negative" : "");
                     const totalYtdVarianceClass = ytdDesvio > 0 ? "var-positive" : (ytdDesvio < 0 ? "var-negative" : "");
-                    const totalConsumptionControlHtml = buildConsumptionControlHtml(totalYtdConsumptionPct, totalAnnualBudgetValue, totalYtdStatus);
+                    const totalConsumptionControlHtml = buildConsumptionControlHtml(totalYtdConsumptionPct, totalAnnualBudgetValue, totalYtdStatus, ytdTotals.budget);
+                    const totalYtdTargetText = formatTargetPct(getYtdConsumptionTargetPct(ytdTotals.budget, totalAnnualBudgetValue));
                     const totalStatusPillClass = EvoGAUIRenderer.statusClass(totalYtdStatus, normalizeText);
 
                     tableHtml += `</tbody><tfoot><tr>
@@ -2877,7 +2885,7 @@
                             <section class="operational-section">
                                 <div class="operational-section-header">
                                     <span class="operational-section-title">Drilldown</span>
-                                    <span class="operational-section-sub">${escapeHtml(periodLabel)} · ${escapeHtml(ytdLabel)} · meta consumo ${escapeHtml(ytdConsumptionTargetText)}</span>
+                                    <span class="operational-section-sub">${escapeHtml(periodLabel)} · ${escapeHtml(ytdLabel)} · meta consumo ${escapeHtml(totalYtdTargetText)}</span>
                                 </div>
                                 <div class="operational-table-wrap">${tableHtml}</div>
                             </section>
