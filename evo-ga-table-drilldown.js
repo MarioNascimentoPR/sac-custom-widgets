@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.25 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.26 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -2713,19 +2713,18 @@
                         if (!Number.isFinite(value)) return "-";
                         return `${value.toFixed(1)}%`;
                     };
-                    const getConsumptionFillClass = (value) => {
-                        if (value === Infinity) return "alert";
-                        if (!Number.isFinite(value)) return "ok";
-                        if (value <= ytdConsumptionTargetPct) return "ok";
-                        if (value <= ytdConsumptionTargetPct + 5) return "watch";
-                        return "alert";
+                    const getConsumptionFillClass = (statusText) => {
+                        const normalizedStatus = normalizeText(statusText);
+                        if (normalizedStatus === "ATENCAO") return "alert";
+                        if (normalizedStatus === "DESVIO MODERADO") return "watch";
+                        return "ok";
                     };
-                    const buildConsumptionControlHtml = (consumptionPct, annualBudget) => {
+                    const buildConsumptionControlHtml = (consumptionPct, annualBudget, statusText) => {
                         const consumptionText = formatConsumptionValue(consumptionPct);
                         const fillWidth = consumptionPct === Infinity ? 100 : Math.min(100, Math.max(0, Number(consumptionPct) || 0));
                         const targetPosition = Math.min(100, Math.max(0, ytdConsumptionTargetPct));
-                        const fillClass = getConsumptionFillClass(consumptionPct);
-                        const titleText = `Consumo real: ${consumptionText} | Meta YTD: ${ytdConsumptionTargetText} | Orçamento anual: ${formatNumber(annualBudget)}`;
+                        const fillClass = getConsumptionFillClass(statusText);
+                        const titleText = `Consumo real: ${consumptionText} | Meta YTD: ${ytdConsumptionTargetText} | Status: ${statusText} | Orçamento anual: ${formatNumber(annualBudget)}`;
                         return `
                             <div class="consumption-control" title="${escapeHtml(titleText)}">
                                 <div class="consumption-meta">
@@ -2814,7 +2813,7 @@
                         const nameCell = level === 3 ? safeName : `<span class="expand-icon">▶</span>${safeName}${flagHtml}`;
                         const monthlyVarianceClass = monthlyNode.desvio > 0 ? "var-positive" : (monthlyNode.desvio < 0 ? "var-negative" : "");
                         const ytdVarianceClass = ytdNode.desvio > 0 ? "var-positive" : (ytdNode.desvio < 0 ? "var-negative" : "");
-                        const consumptionControlHtml = buildConsumptionControlHtml(ytdConsumptionPct, annualBudget);
+                        const consumptionControlHtml = buildConsumptionControlHtml(ytdConsumptionPct, annualBudget, statusText);
                         const statusPillClass = EvoGAUIRenderer.statusClass(statusText, normalizeText);
                         const ytdBudgetBase = Math.abs(ytdNode.valOrcado);
                         const ytdVariancePct = ytdBudgetBase > 0 ? (ytdNode.desvio / ytdBudgetBase) * 100 : (ytdNode.valRealizado > 0 ? Infinity : 0);
@@ -2858,7 +2857,7 @@
                     const totalYtdStatus = EvoGAMaterialityEngine.classifyYtdStatus(ytdTotals.budget, ytdTotals.actual);
                     const totalMonthlyVarianceClass = totalGlobalDesvio > 0 ? "var-positive" : (totalGlobalDesvio < 0 ? "var-negative" : "");
                     const totalYtdVarianceClass = ytdDesvio > 0 ? "var-positive" : (ytdDesvio < 0 ? "var-negative" : "");
-                    const totalConsumptionControlHtml = buildConsumptionControlHtml(totalYtdConsumptionPct, totalAnnualBudgetValue);
+                    const totalConsumptionControlHtml = buildConsumptionControlHtml(totalYtdConsumptionPct, totalAnnualBudgetValue, totalYtdStatus);
                     const totalStatusPillClass = EvoGAUIRenderer.statusClass(totalYtdStatus, normalizeText);
 
                     tableHtml += `</tbody><tfoot><tr>
