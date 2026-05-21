@@ -1040,8 +1040,8 @@
             .executive-kpi-grid {
                 display: grid;
                 grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
-                width: min(1120px, 100%);
-                gap: 8px;
+                width: min(1320px, 100%);
+                gap: 12px;
                 margin-bottom: 10px;
                 align-items: stretch;
             }
@@ -2874,7 +2874,7 @@
                                     <div class="impact-metric">
                                         <span class="impact-signal ${statusClass}">${totalVarianceSignal}</span>
                                         <div>
-                                            <span class="impact-value ${statusClass}">${formatSignedPct(totalVariancePct)} vs. Orçamento G&A</span>
+                                            <span class="impact-value ${statusClass}">${formatSignedPct(totalVariancePct)} vs. Orçamento</span>
                                             <span class="impact-detail">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)} de desvio no período</span>
                                         </div>
                                     </div>
@@ -2896,7 +2896,7 @@
                             </div>
                             <div class="impact-column">
                                 <span class="impact-title">Os Ofensores</span>
-                                <span class="impact-subtitle">Onde está o vazamento</span>
+                                <span class="impact-subtitle">Onde está o vazamento (Período)</span>
                                 <div class="impact-list">${impactOffendersHtml}</div>
                             </div>
                             <div class="impact-column">
