@@ -361,9 +361,20 @@
                 .trim();
         }
 
+        static _getNormalizedExcludedTerms() {
+            if (!EvoGABudgetOffenderEngine._normalizedExcludedTerms) {
+                EvoGABudgetOffenderEngine._normalizedExcludedTerms = EVO_GA_BUDGET_OFFENDER_CONFIG.excludedTerms.map(term => ({
+                    term,
+                    normalized: EvoGABudgetOffenderEngine._normalize(term)
+                }));
+            }
+            return EvoGABudgetOffenderEngine._normalizedExcludedTerms;
+        }
+
         static _matchExcludedTerm(values) {
             const text = values.map(value => EvoGABudgetOffenderEngine._normalize(value)).join(" | ");
-            return EVO_GA_BUDGET_OFFENDER_CONFIG.excludedTerms.find(term => text.includes(EvoGABudgetOffenderEngine._normalize(term))) || null;
+            const match = EvoGABudgetOffenderEngine._getNormalizedExcludedTerms().find(item => text.includes(item.normalized));
+            return match ? match.term : null;
         }
 
         static _emptyPeriod() {
@@ -374,6 +385,12 @@
             const version = EvoGABudgetOffenderEngine._normalize(versionName);
             if (version.includes("ORCADO")) target.budget += value;
             else if (version.includes("REALIZADO")) target.actual += value;
+        }
+
+        static _addFactValue(target, fact) {
+            if (fact.isBudget) target.budget += fact.value;
+            else if (fact.isActual) target.actual += fact.value;
+            else EvoGABudgetOffenderEngine._addVersionValue(target, fact.col, fact.value);
         }
 
         static buildDepartmentDrivers(config) {
@@ -422,7 +439,9 @@
                 const ccNivel1 = fact.ccNivel1;
                 const ccNivel2 = fact.ccNivel2;
                 const conta = fact.conta;
-                const excludedTerm = EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, conta]);
+                const excludedTerm = Object.prototype.hasOwnProperty.call(fact, "excludedTerm")
+                    ? fact.excludedTerm
+                    : EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, conta]);
                 if (excludedTerm) {
                     excludedRows++;
                     excludedSummary.rows++;
@@ -430,8 +449,8 @@
                         excludedSummary.termsMap[excludedTerm] = { term: excludedTerm, budget: 0, actual: 0, rows: 0 };
                     }
                     excludedSummary.termsMap[excludedTerm].rows++;
-                    EvoGABudgetOffenderEngine._addVersionValue(excludedSummary, fact.col, fact.value);
-                    EvoGABudgetOffenderEngine._addVersionValue(excludedSummary.termsMap[excludedTerm], fact.col, fact.value);
+                    EvoGABudgetOffenderEngine._addFactValue(excludedSummary, fact);
+                    EvoGABudgetOffenderEngine._addFactValue(excludedSummary.termsMap[excludedTerm], fact);
                     return;
                 }
 
@@ -445,7 +464,7 @@
                     };
                 }
 
-                EvoGABudgetOffenderEngine._addVersionValue(departmentMap[key].current, fact.col, fact.value);
+                EvoGABudgetOffenderEngine._addFactValue(departmentMap[key].current, fact);
             });
 
             const allDepartmentDrivers = Object.values(departmentMap).map(item => {
@@ -1984,12 +2003,13 @@
                 this._profiler.metrics.steps.parsing = this._profiler._now() - tParsingStart;
                 const tAggregationStart = this._profiler._now();
                 const monthlyIndex = {};
-                const addMonthlyValue = (key, month, col, value) => {
+                const addMonthlyValue = (key, fact) => {
+                    const { month, value } = fact;
                     if (!month) return;
                     if (!monthlyIndex[key]) monthlyIndex[key] = {};
                     if (!monthlyIndex[key][month]) monthlyIndex[key][month] = { budget: 0, actual: 0 };
-                    if (isVersionMember(col) && normalizeText(col).includes("ORCADO")) monthlyIndex[key][month].budget += value;
-                    else if (isVersionMember(col) && normalizeText(col).includes("REALIZADO")) monthlyIndex[key][month].actual += value;
+                    if (fact.isBudget) monthlyIndex[key][month].budget += value;
+                    else if (fact.isActual) monthlyIndex[key][month].actual += value;
                 };
                 const getMeasureValueFromRow = (row) => {
                     let value = "-";
@@ -2012,19 +2032,27 @@
                 const monthIndexMap = new Map(monthOptions.map((month, index) => [month, index]));
                 const sourceFacts = financialData.data.map(row => {
                     const col = getName(row[colDimKey]);
+                    const normalizedCol = normalizeText(col);
+                    const calcNode = getName(row[calcDimKey]);
+                    const ccNivel1 = getName(row[ccNivel1DimKey]);
+                    const ccNivel2 = getName(row[ccNivel2DimKey]);
+                    const conta = getName(row[contaDimKey]);
                     return {
-                        calcNode: getName(row[calcDimKey]),
-                        ccNivel1: getName(row[ccNivel1DimKey]),
-                        ccNivel2: getName(row[ccNivel2DimKey]),
-                        conta: getName(row[contaDimKey]),
+                        calcNode,
+                        ccNivel1,
+                        ccNivel2,
+                        conta,
                         col,
-                        normalizedCol: normalizeText(col),
+                        normalizedCol,
+                        isBudget: normalizedCol.includes("ORCADO"),
+                        isActual: normalizedCol.includes("REALIZADO"),
+                        excludedTerm: EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode, ccNivel1, ccNivel2, conta]),
                         month: monthDimKey ? getName(row[monthDimKey]) : null,
                         value: getMeasureValueFromRow(row)
                     };
                 });
                 const nonSegregatedFactsForTitle = sourceFacts.filter(fact =>
-                    !EvoGABudgetOffenderEngine._matchExcludedTerm([fact.calcNode, fact.ccNivel1, fact.ccNivel2, fact.conta])
+                    !fact.excludedTerm
                 );
                 const titleFacts = nonSegregatedFactsForTitle.length ? nonSegregatedFactsForTitle : sourceFacts;
                 const selectedAccountNames = Array.from(new Set(
@@ -2055,31 +2083,45 @@
                         return rowMonthIndex >= 0 && rowMonthIndex <= selectedMonthIndex;
                     })
                     : rowsForRender;
-                // Orcamento anual: usa todos os meses disponiveis do ano selecionado.
-                // O consumo da tabela Drilldown sera Realizado YTD / Orcamento anual.
-                const annualRows = monthDimKey && selectedHasCalendarPeriod
-                    ? sourceFacts.filter(fact => this._getPeriodParts(fact.month).year === selectedPeriod.year)
-                    : sourceFacts;
                 const sumRowsByVersion = (rows) => rows.reduce((acc, row) => {
-                    if (row.normalizedCol.includes("ORCADO")) acc.budget += row.value;
-                    else if (row.normalizedCol.includes("REALIZADO")) acc.actual += row.value;
+                    if (row.isBudget) acc.budget += row.value;
+                    else if (row.isActual) acc.actual += row.value;
                     return acc;
                 }, { budget: 0, actual: 0 });
                 const ytdTotals = sumRowsByVersion(ytdRows);
-                const totalAnnualBudget = sumRowsByVersion(annualRows).budget;
+                // Orcamento anual: usado apenas no Drilldown para consumo YTD.
+                let annualRows = null;
+                let totalAnnualBudget = null;
+                const getAnnualRows = () => {
+                    if (annualRows) return annualRows;
+                    annualRows = monthDimKey && selectedHasCalendarPeriod
+                        ? sourceFacts.filter(fact => this._getPeriodParts(fact.month).year === selectedPeriod.year)
+                        : sourceFacts;
+                    return annualRows;
+                };
+                const getTotalAnnualBudget = () => {
+                    if (totalAnnualBudget !== null) return totalAnnualBudget;
+                    totalAnnualBudget = sumRowsByVersion(getAnnualRows()).budget;
+                    return totalAnnualBudget;
+                };
                 const getFactHierarchyKeys = (fact) => [
                     `calc:${fact.calcNode}`,
                     `calc:${fact.calcNode}|cc1:${fact.ccNivel1}`,
                     `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`,
                     `calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|conta:${fact.conta}`
                 ];
-                const annualBudgetByKey = new Map();
-                annualRows.forEach(fact => {
-                    if (!fact.normalizedCol.includes("ORCADO")) return;
-                    getFactHierarchyKeys(fact).forEach(key => {
-                        annualBudgetByKey.set(key, (annualBudgetByKey.get(key) || 0) + fact.value);
+                let annualBudgetByKey = null;
+                const getAnnualBudgetByKey = () => {
+                    if (annualBudgetByKey) return annualBudgetByKey;
+                    annualBudgetByKey = new Map();
+                    getAnnualRows().forEach(fact => {
+                        if (!fact.isBudget) return;
+                        getFactHierarchyKeys(fact).forEach(key => {
+                            annualBudgetByKey.set(key, (annualBudgetByKey.get(key) || 0) + fact.value);
+                        });
                     });
-                });
+                    return annualBudgetByKey;
+                };
 
                 // Montagem da arvore operacional completa:
                 // VP > Diretoria > Departamento/Gerencia > Conta.
@@ -2158,10 +2200,7 @@
 
                 if (monthDimKey) {
                     sourceFacts.forEach(fact => {
-                        addMonthlyValue(`calc:${fact.calcNode}`, fact.month, fact.col, fact.value);
-                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}`, fact.month, fact.col, fact.value);
-                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`, fact.month, fact.col, fact.value);
-                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}|conta:${fact.conta}`, fact.month, fact.col, fact.value);
+                        addMonthlyValue(`calc:${fact.calcNode}|cc1:${fact.ccNivel1}|cc2:${fact.ccNivel2}`, fact);
                     });
                 }
 
@@ -2196,7 +2235,6 @@
                     if (!monthlyHierarchy) {
                         monthlyHierarchy = buildHierarchyFromFacts(rowsForRender);
                         const allNodes = EvoGAAggregationEngine.collectNodes(monthlyHierarchy.tableData);
-                        monthlyHierarchy.tableData.forEach(annotateNode);
                         EvoGAMaterialityEngine.annotate(allNodes, totalGlobalOrcado, totalGlobalRealizado);
                     }
                     if (!ytdHierarchy) {
@@ -2418,7 +2456,7 @@
                     const emptyMetrics = { valOrcado: 0, valRealizado: 0, desvio: 0, percentConsumption: 0, isExecutiveNoise: true, children: [] };
                     const getMonthlyMetrics = (rowObj) => monthlyNodeByKey.get(rowObj.key) || emptyMetrics;
                     const getYtdMetrics = (rowObj) => ytdNodeByKey.get(rowObj.key) || rowObj || emptyMetrics;
-                    const getAnnualBudget = (rowObj) => annualBudgetByKey.get(rowObj.key) || 0;
+                    const getAnnualBudget = (rowObj) => getAnnualBudgetByKey().get(rowObj.key) || 0;
                     const getYtdConsumptionPct = (rowObj) => {
                         const ytdNode = getYtdMetrics(rowObj);
                         const annualBudget = getAnnualBudget(rowObj);
@@ -2547,8 +2585,9 @@
                     };
                     tableHtml += appendRows(ytdTableData);
 
-                    const totalYtdConsumptionPct = totalAnnualBudget > 0 ? (ytdTotals.actual / totalAnnualBudget) * 100 : (ytdTotals.actual > 0 ? Infinity : 0);
-                    const totalYtdStatus = EvoGAMaterialityEngine.classifyYtdStatus(ytdTotals.budget, ytdTotals.actual, totalAnnualBudget, totalYtdConsumptionPct);
+                    const totalAnnualBudgetValue = getTotalAnnualBudget();
+                    const totalYtdConsumptionPct = totalAnnualBudgetValue > 0 ? (ytdTotals.actual / totalAnnualBudgetValue) * 100 : (ytdTotals.actual > 0 ? Infinity : 0);
+                    const totalYtdStatus = EvoGAMaterialityEngine.classifyYtdStatus(ytdTotals.budget, ytdTotals.actual, totalAnnualBudgetValue, totalYtdConsumptionPct);
                     const totalMonthlyVarianceClass = totalGlobalDesvio > 0 ? "var-positive" : (totalGlobalDesvio < 0 ? "var-negative" : "");
                     const totalYtdVarianceClass = ytdDesvio > 0 ? "var-positive" : (ytdDesvio < 0 ? "var-negative" : "");
                     const totalBarFillWidth = totalYtdConsumptionPct === Infinity ? 100 : Math.min(100, totalYtdConsumptionPct || 0);
