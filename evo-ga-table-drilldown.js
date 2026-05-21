@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.16 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.19 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -606,6 +606,24 @@
                 --enterprise-text: #243443;
                 --enterprise-muted: #64748b;
                 --enterprise-border: #dbe3ec;
+                --surface: #FFFFFF;
+                --surface-soft: #F8FAFC;
+                --surface-muted: #F1F5F9;
+                --border-soft: #E2E8F0;
+                --border-strong: #CBD5E1;
+                --text-strong: #0F172A;
+                --text-main: #334155;
+                --text-muted: #64748B;
+                --accent: #1F4E79;
+                --danger: #B91C1C;
+                --success: #166534;
+                --warning: #B45309;
+                --radius-sm: 4px;
+                --radius-md: 6px;
+                --weight-regular: 400;
+                --weight-medium: 500;
+                --weight-semibold: 600;
+                --weight-emphasis: 650;
             }
             #widget-wrapper {
                 display: flex;
@@ -851,27 +869,29 @@
             .table-summary.summary-desvio { border-left-color: #D32F2F; }
             .executive-oversight {
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                width: min(1120px, 100%);
+                width: 100%;
+                box-sizing: border-box;
                 margin: 0 0 10px 0;
-                background: #F8FAFC;
-                border: 1px solid #E2E8F0;
-                border-left: 4px solid #64748B;
-                border-radius: 4px;
+                background: var(--surface-soft);
+                border: 1px solid var(--border-soft);
+                border-left: 4px solid var(--text-muted);
+                border-radius: var(--radius-md);
                 padding: 12px 14px;
-                color: #334155;
+                color: var(--text-main);
             }
-            .executive-oversight.summary-saving { border-left-color: #2E7D32; }
-            .executive-oversight.summary-desvio { border-left-color: #B91C1C; }
+            .executive-oversight.summary-saving { border-left-color: var(--success); }
+            .executive-oversight.summary-desvio { border-left-color: var(--danger); }
             .executive-headline {
                 display: flex;
                 align-items: baseline;
                 justify-content: space-between;
                 gap: 12px;
                 font-size: 13px;
-                font-weight: 700;
+                font-weight: var(--weight-emphasis);
                 text-transform: uppercase;
                 letter-spacing: 0.35px;
                 margin-bottom: 10px;
+                color: var(--text-strong);
             }
             .executive-grid,
             .impact-grid {
@@ -886,23 +906,23 @@
                 padding-right: 8px;
             }
             .impact-column + .impact-column {
-                border-left: 1px solid #E2E8F0;
+                border-left: 1px solid var(--border-soft);
                 padding-left: 12px;
             }
             .impact-title {
                 display: block;
-                color: #0f172a;
+                color: var(--text-strong);
                 font-size: 12px;
-                font-weight: 800;
+                font-weight: var(--weight-semibold);
                 text-transform: uppercase;
                 letter-spacing: 0;
             }
             .impact-subtitle {
                 display: block;
                 margin-top: 1px;
-                color: #64748b;
+                color: var(--text-muted);
                 font-size: 11.5px;
-                font-weight: 600;
+                font-weight: var(--weight-medium);
             }
             .impact-list {
                 display: grid;
@@ -919,37 +939,53 @@
             }
             .impact-signal {
                 flex: 0 0 auto;
-                font-size: 14px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 18px;
+                height: 18px;
+                border-radius: 999px;
+                border: 1px solid var(--border-soft);
+                background: var(--surface);
+                color: var(--text-muted);
+                font-size: 10.5px;
+                font-weight: var(--weight-emphasis);
                 line-height: 1;
+                font-variant-numeric: tabular-nums;
             }
+            .impact-signal.alert { color: var(--danger); border-color: #FCA5A5; background: #FEF2F2; }
+            .impact-signal.saving { color: var(--success); border-color: #BBF7D0; background: #F0FDF4; }
+            .impact-signal.neutral { color: var(--text-muted); }
+            .impact-signal.info { color: var(--accent); border-color: #BFDBFE; background: #EFF6FF; }
             .impact-value {
-                color: #0f172a;
+                color: var(--text-strong);
                 font-size: 14px;
-                font-weight: 800;
+                font-weight: var(--weight-semibold);
                 line-height: 1.2;
                 font-variant-numeric: tabular-nums;
             }
-            .impact-value.alert { color: #B91C1C; }
-            .impact-value.saving { color: #166534; }
+            .impact-value.alert { color: var(--danger); }
+            .impact-value.saving { color: var(--success); }
+            .impact-value.neutral { color: var(--text-strong); }
             .impact-detail {
                 display: block;
                 margin-top: 2px;
-                color: #475569;
+                color: var(--text-main);
                 font-size: 11.5px;
-                font-weight: 600;
+                font-weight: var(--weight-regular);
                 line-height: 1.35;
             }
             .impact-offender-name {
-                color: #0f172a;
+                color: var(--text-strong);
                 font-size: 13px;
-                font-weight: 800;
+                font-weight: var(--weight-semibold);
                 line-height: 1.25;
             }
             .impact-note {
                 margin-top: 10px;
-                color: #475569;
+                color: var(--text-main);
                 font-size: 11.5px;
-                font-weight: 600;
+                font-weight: var(--weight-regular);
                 line-height: 1.4;
             }
             .executive-label {
@@ -1006,57 +1042,57 @@
                 grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
                 width: min(1120px, 100%);
                 gap: 8px;
-                margin-bottom: 8px;
+                margin-bottom: 10px;
                 align-items: stretch;
             }
             .executive-kpi {
-                border: 1px solid #E2E8F0;
-                border-radius: 5px;
-                padding: 7px 8px;
-                background: #FFFFFF;
+                border: 1px solid var(--border-soft);
+                border-radius: var(--radius-md);
+                padding: 8px 10px;
+                background: var(--surface);
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 min-width: 0;
             }
             .executive-kpi.primary {
-                border-left: 4px solid #1F4E79;
-                background: #F8FAFC;
+                border-left: 4px solid var(--accent);
+                background: var(--surface-soft);
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 min-height: 76px;
             }
-            .executive-kpi.alert { border-left: 4px solid #B91C1C; }
-            .executive-kpi.saving { border-left: 4px solid #166534; }
-            .executive-kpi.neutral { border-left: 4px solid #64748B; }
+            .executive-kpi.alert { border-left: 4px solid var(--danger); }
+            .executive-kpi.saving { border-left: 4px solid var(--success); }
+            .executive-kpi.neutral { border-left: 4px solid var(--text-muted); }
             .kpi-detail-row {
                 display: flex;
                 justify-content: space-between;
                 gap: 6px;
                 margin-top: 4px;
                 padding-top: 4px;
-                border-top: 1px solid #E2E8F0;
+                border-top: 1px solid var(--border-soft);
                 font-size: 11.5px;
-                color: #475569;
-                font-weight: 600;
+                color: var(--text-main);
+                font-weight: var(--weight-medium);
             }
             .kpi-detail-row span:last-child {
-                color: #1e293b;
-                font-weight: 700;
+                color: var(--text-strong);
+                font-weight: var(--weight-semibold);
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
             }
             .kpi-label {
                 font-size: var(--label-font-size);
-                font-weight: 600;
-                color: #4a5568;
+                font-weight: var(--weight-semibold);
+                color: var(--text-muted);
                 text-transform: uppercase;
                 letter-spacing: 0;
                 margin-bottom: 3px;
             }
             .kpi-value {
                 font-size: 15px;
-                font-weight: 700;
-                color: #1e293b;
+                font-weight: var(--weight-emphasis);
+                color: var(--text-strong);
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
                 overflow: hidden;
@@ -1069,27 +1105,27 @@
             .kpi-sub {
                 margin-top: 2px;
                 font-size: 11.5px;
-                color: #475569;
-                font-weight: 600;
+                color: var(--text-main);
+                font-weight: var(--weight-medium);
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
             .executive-section {
-                border: 1px solid #E2E8F0;
-                border-radius: 6px;
-                background: #FFFFFF;
-                padding: 10px 12px;
+                border: 1px solid var(--border-soft);
+                border-radius: var(--radius-md);
+                background: var(--surface);
+                padding: 12px 14px;
                 margin-bottom: 10px;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
             .section-title {
                 font-size: 12px;
-                font-weight: 700;
-                color: #4a5568;
+                font-weight: var(--weight-emphasis);
+                color: var(--text-strong);
                 text-transform: uppercase;
-                letter-spacing: 0.6px;
-                margin-bottom: 8px;
+                letter-spacing: 0.25px;
+                margin-bottom: 10px;
             }
             .operational-stack {
                 display: grid;
@@ -1138,9 +1174,9 @@
                 width: min(540px, 100%);
                 padding: 7px 9px;
                 margin-bottom: 9px;
-                border: 1px solid #e2e8f0;
-                border-radius: 5px;
-                background: #f8fafc;
+                border: 1px solid var(--border-soft);
+                border-radius: var(--radius-md);
+                background: var(--surface-soft);
             }
             .pareto-control-header {
                 display: flex;
@@ -1148,32 +1184,32 @@
                 justify-content: space-between;
                 gap: 8px;
                 font-size: 12px;
-                color: #4a5568;
+                color: var(--text-main);
                 line-height: 1.35;
             }
             .pareto-control-title {
-                font-weight: 700;
-                color: #2d3748;
+                font-weight: var(--weight-semibold);
+                color: var(--text-strong);
                 text-transform: uppercase;
                 letter-spacing: 0.45px;
             }
             .pareto-control-sub {
                 display: block;
                 margin-top: 1px;
-                color: #64748b;
-                font-weight: 500;
+                color: var(--text-muted);
+                font-weight: var(--weight-medium);
                 text-transform: none;
                 letter-spacing: 0;
             }
             .pareto-control-value {
                 min-width: 42px;
                 text-align: center;
-                color: #1e293b;
-                font-weight: 700;
+                color: var(--text-strong);
+                font-weight: var(--weight-semibold);
                 font-variant-numeric: tabular-nums;
-                background: #ffffff;
-                border: 1px solid #dbe3ec;
-                border-radius: 4px;
+                background: var(--surface);
+                border: 1px solid var(--enterprise-border);
+                border-radius: var(--radius-sm);
                 padding: 2px 5px;
             }
             .pareto-slider-wrap {
@@ -1183,15 +1219,15 @@
             }
             .pareto-slider {
                 width: 100%;
-                accent-color: #1f4e79;
+                accent-color: var(--accent);
                 cursor: pointer;
             }
             .pareto-scale {
                 display: flex;
                 justify-content: space-between;
                 font-size: 10.5px;
-                color: #64748b;
-                font-weight: 600;
+                color: var(--text-muted);
+                font-weight: var(--weight-medium);
                 padding: 0 1px;
             }
             .excluded-effect {
@@ -1201,34 +1237,34 @@
                 align-items: center;
                 margin: 0 0 9px 0;
                 padding: 10px 12px;
-                border: 1px solid #E2E8F0;
-                border-left: 4px solid #64748B;
-                border-radius: 6px;
-                background: #F8FAFC;
+                border: 1px solid var(--border-soft);
+                border-left: 4px solid var(--text-muted);
+                border-radius: var(--radius-md);
+                background: var(--surface-soft);
                 font-size: 12px;
             }
-            .excluded-effect.alert { border-left-color: #B91C1C; }
-            .excluded-effect.saving { border-left-color: #166534; }
+            .excluded-effect.alert { border-left-color: var(--danger); }
+            .excluded-effect.saving { border-left-color: var(--success); }
             .excluded-effect > div:first-child,
             .driver-row > div:first-child {
                 min-width: 0;
             }
             .excluded-effect-title {
-                font-weight: 700;
-                color: #2d3748;
+                font-weight: var(--weight-semibold);
+                color: var(--text-strong);
                 text-transform: uppercase;
-                letter-spacing: 0.45px;
+                letter-spacing: 0.2px;
             }
             .excluded-effect-sub {
                 margin-top: 2px;
-                color: #64748b;
-                font-weight: 500;
+                color: var(--text-muted);
+                font-weight: var(--weight-medium);
                 line-height: 1.35;
             }
             .excluded-effect-breakdown {
                 margin-top: 3px;
-                color: #475569;
-                font-weight: 600;
+                color: var(--text-main);
+                font-weight: var(--weight-regular);
                 line-height: 1.35;
             }
             .excluded-effect-metric {
@@ -1237,15 +1273,15 @@
             }
             .excluded-effect-value {
                 display: block;
-                color: #1e293b;
+                color: var(--text-strong);
                 font-size: 13.5px;
-                font-weight: 700;
+                font-weight: var(--weight-semibold);
                 line-height: 1.25;
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
             }
-            .excluded-effect-value.alert { color: #B91C1C; }
-            .excluded-effect-value.saving { color: #166534; }
+            .excluded-effect-value.alert { color: var(--danger); }
+            .excluded-effect-value.saving { color: var(--success); }
             .budget-detail-controls {
                 display: flex;
                 align-items: center;
@@ -1256,29 +1292,29 @@
             .budget-detail-btn {
                 min-height: 28px;
                 padding: 5px 9px;
-                border: 1px solid #D6E0EA;
-                border-radius: 4px;
-                background: #FFFFFF;
-                color: #243443;
+                border: 1px solid var(--enterprise-border);
+                border-radius: var(--radius-sm);
+                background: var(--surface);
+                color: var(--enterprise-text);
                 font-size: 12px;
-                font-weight: 600;
+                font-weight: var(--weight-medium);
                 line-height: 1.2;
                 cursor: pointer;
             }
             .budget-detail-btn:hover {
-                border-color: #9FB2C7;
-                background: #F8FAFC;
+                border-color: var(--border-strong);
+                background: var(--surface-soft);
             }
             .budget-detail-btn.active {
-                border-color: #1F4E79;
-                background: #F4F7FA;
-                color: #12344D;
-                box-shadow: inset 3px 0 0 #1F4E79;
+                border-color: var(--accent);
+                background: var(--surface-soft);
+                color: var(--accent);
+                box-shadow: inset 3px 0 0 var(--accent);
             }
             .budget-detail-note {
-                color: #64748b;
+                color: var(--text-muted);
                 font-size: 11.5px;
-                font-weight: 500;
+                font-weight: var(--weight-regular);
                 line-height: 1.25;
             }
             .driver-row {
@@ -1287,27 +1323,27 @@
                 gap: 8px;
                 align-items: center;
                 font-size: 13px;
-                border: 1px solid #E2E8F0;
-                border-radius: 6px;
-                padding: 8px 10px;
-                background: #FFFFFF;
+                border: 1px solid var(--border-soft);
+                border-radius: var(--radius-md);
+                padding: 9px 12px;
+                background: var(--surface);
             }
             .driver-row:last-child { padding-bottom: 8px; }
-            .driver-name { font-weight: 700; color: #1e293b; line-height: 1.3; }
-            .driver-meta { color: #475569; font-weight: 500; line-height: 1.35; }
+            .driver-name { font-weight: var(--weight-semibold); color: var(--text-strong); line-height: 1.3; }
+            .driver-meta { color: var(--text-main); font-weight: var(--weight-regular); line-height: 1.35; }
             .driver-metric { min-width: 0; text-align: right; }
             .driver-value {
                 display: block;
-                color: #1e293b;
+                color: var(--text-strong);
                 font-size: 13.5px;
-                font-weight: 700;
+                font-weight: var(--weight-semibold);
                 line-height: 1.25;
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
             }
-            .driver-value-alert { color: #B91C1C; }
-            .driver-value-saving { color: #166534; }
-            .driver-value-neutral { color: #1e293b; }
+            .driver-value-alert { color: var(--danger); }
+            .driver-value-saving { color: var(--success); }
+            .driver-value-neutral { color: var(--text-strong); }
             @media (max-width: 900px) {
                 .executive-kpi-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
                 .executive-kpi.primary { grid-row: auto; grid-column: span 2; }
@@ -2467,18 +2503,20 @@
                 const formatSignedPct = (value) => `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
                 const statusClass = totalGlobalDesvio > 0 ? "alert" : (totalGlobalDesvio < 0 ? "saving" : "neutral");
                 const ytdStatusClass = ytdDesvio > 0 ? "alert" : (ytdDesvio < 0 ? "saving" : "neutral");
-                const totalVarianceSignal = totalGlobalDesvio > 0 ? "🔴" : (totalGlobalDesvio < 0 ? "🟢" : "⚪");
-                const ytdVarianceSignal = ytdDesvio > 0 ? "⚠️" : (ytdDesvio < 0 ? "✅" : "⚪");
+                const ytdKpiClass = ytdStatusClass;
+                const totalVarianceSignal = totalGlobalDesvio > 0 ? "!" : (totalGlobalDesvio < 0 ? "✓" : "•");
+                const ytdVarianceSignal = ytdDesvio > 0 ? "!" : (ytdDesvio < 0 ? "✓" : "•");
                 const trendDriver = executiveDrivers[0];
                 const trendDirection = trendDriver ? trendDriver.trendDirection : "stable";
                 const trendLabel = trendDriver ? EvoGATrendEngine.formatTrend(trendDirection) : "estável";
-                const trendSignal = trendDirection === "worsening" || trendDirection === "acceleration" ? "📈" : (trendDirection === "improving" || trendDirection === "normalization" ? "📉" : "➡️");
+                const trendSignal = trendDirection === "worsening" || trendDirection === "acceleration" ? "↑" : (trendDirection === "improving" || trendDirection === "normalization" ? "↓" : "→");
+                const trendSignalClass = trendDirection === "worsening" || trendDirection === "acceleration" ? "alert" : (trendDirection === "improving" || trendDirection === "normalization" ? "saving" : "neutral");
                 const analysisHeadline = totalGlobalDesvio > 0
-                    ? "ANÁLISE ORÇAMENTÁRIA: O PROBLEMA SALTA AOS OLHOS"
-                    : "ANÁLISE ORÇAMENTÁRIA: ORÇAMENTO SOB CONTROLE";
+                    ? "ANÁLISE ORÇAMENTÁRIA"
+                    : "ANÁLISE ORÇAMENTÁRIA";
                 const impactOffendersHtml = ofensores.length ? ofensores.map((driver, index) => `
                     <div class="impact-offender">
-                        <span class="impact-signal">•</span>
+                        <span class="impact-signal info">${index + 1}</span>
                         <div>
                             <span class="impact-offender-name">${escapeHtml(driver.name)}${index === 0 ? " (Foco principal)" : ""}</span>
                             <span class="impact-detail">${formatNumber(Math.abs(driver.budgetVariance), true, true, driver.budgetVariance)} de desvio</span>
@@ -2804,7 +2842,7 @@
                             <div class="kpi-detail-row"><span>Orçado</span><span>${formatKpiCurrency(totalGlobalOrcado)}</span></div>
                             <div class="kpi-detail-row"><span>Desvio</span><span>${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)}</span></div>
                         </div>
-                        <div class="executive-kpi ${ytdDesvio > 0 ? "alert" : "saving"}">
+                        <div class="executive-kpi ${ytdKpiClass}">
                             <div class="kpi-label">YTD Consolidado</div>
                             <div class="kpi-value">${formatKpiCurrency(ytdTotals.actual)}</div>
                             <div class="kpi-sub">${escapeHtml(ytdLabel)} · consumo ${escapeHtml(ytdConsumptionText)}</div>
@@ -2834,21 +2872,21 @@
                                 <span class="impact-subtitle">Métricas de impacto</span>
                                 <div class="impact-list">
                                     <div class="impact-metric">
-                                        <span class="impact-signal">${totalVarianceSignal}</span>
+                                        <span class="impact-signal ${statusClass}">${totalVarianceSignal}</span>
                                         <div>
                                             <span class="impact-value ${statusClass}">${formatSignedPct(totalVariancePct)} vs. Orçamento G&A</span>
                                             <span class="impact-detail">${formatNumber(Math.abs(totalGlobalDesvio), true, true, totalGlobalDesvio)} de desvio no período</span>
                                         </div>
                                     </div>
                                     <div class="impact-metric">
-                                        <span class="impact-signal">${ytdVarianceSignal}</span>
+                                        <span class="impact-signal ${ytdStatusClass}">${ytdVarianceSignal}</span>
                                         <div>
                                             <span class="impact-value ${ytdStatusClass}">${formatSignedPct(ytdVariancePct)} acumulado YTD</span>
                                             <span class="impact-detail">${formatNumber(Math.abs(ytdDesvio), true, true, ytdDesvio)} no acumulado</span>
                                         </div>
                                     </div>
                                     <div class="impact-metric">
-                                        <span class="impact-signal">💸</span>
+                                        <span class="impact-signal ${statusClass}">R$</span>
                                         <div>
                                             <span class="impact-value ${statusClass}">R$ ${formattedGlobalDesvio}</span>
                                             <span class="impact-detail">desvio do mês selecionado</span>
@@ -2866,9 +2904,9 @@
                                 <span class="impact-subtitle">Direção e alerta</span>
                                 <div class="impact-list">
                                     <div class="impact-trend-main">
-                                        <span class="impact-signal">${trendSignal}</span>
+                                        <span class="impact-signal ${trendSignalClass}">${trendSignal}</span>
                                         <div>
-                                            <span class="impact-value ${statusClass}">Tendência: ${escapeHtml(trendLabel)}</span>
+                                            <span class="impact-value ${trendSignalClass}">Tendência: ${escapeHtml(trendLabel)}</span>
                                             <span class="impact-detail">${trendDetailText}</span>
                                         </div>
                                     </div>
