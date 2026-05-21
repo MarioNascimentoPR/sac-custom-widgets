@@ -561,7 +561,7 @@
                 keyDrivers: `Principais ofensores oficiais: ${driverText}.`,
                 rootCause: topDriver ? `A concentração está em Departamento/Gerência ${topDriver.name}, conforme estrutura governada do modelo.` : "Não há vetor oficial dominante com desvio relevante.",
                 trend: `Tendência: ${trendText}.`,
-                riskAssessment: `Resumo: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento G&A. ${ytdContext}`
+                riskAssessment: `Resumo: ${directionText}; variação consolidada de ${totalPct.toFixed(1)}% sobre o orçamento. ${ytdContext}`
             };
         }
     }
