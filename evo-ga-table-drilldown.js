@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.29 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.31 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -441,9 +441,7 @@
                 const ccNivel1 = fact.ccNivel1;
                 const ccNivel2 = fact.ccNivel2;
                 const conta = fact.conta;
-                const excludedTerm = Object.prototype.hasOwnProperty.call(fact, "excludedTerm")
-                    ? fact.excludedTerm
-                    : EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode]);
+                const excludedTerm = EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode]);
                 if (excludedTerm) {
                     excludedRows++;
                     excludedSummary.rows++;
@@ -2268,15 +2266,11 @@
                         normalizedCol,
                         isBudget: normalizedCol.includes("ORCADO"),
                         isActual: normalizedCol.includes("REALIZADO"),
-                        excludedTerm: EvoGABudgetOffenderEngine._matchExcludedTerm([calcNode]),
                         month: monthDimKey ? getName(row[monthDimKey]) : null,
                         value: getMeasureValueFromRow(row)
                     };
                 });
-                const nonSegregatedFactsForTitle = sourceFacts.filter(fact =>
-                    !fact.excludedTerm
-                );
-                const titleFacts = nonSegregatedFactsForTitle.length ? nonSegregatedFactsForTitle : sourceFacts;
+                const titleFacts = sourceFacts;
                 const selectedAccountNames = Array.from(new Set(
                     titleFacts
                         .map(fact => fact.conta)
