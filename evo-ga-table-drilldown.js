@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.31 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.32 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -2835,17 +2835,9 @@
                             <td class="center cell-status"><span class="status-pill ${statusPillClass}" title="${escapeHtml(statusTitle)}">${statusText}</span></td>
                         </tr>`;
                     };
-                    const hasVisibleSignal = (rowObj, level = 0) => {
-                        if (level === 0) return true;
-                        const monthlyNode = getMonthlyMetrics(rowObj);
-                        if (getYtdStatus(rowObj) !== "Aderente") return true;
-                        if (monthlyNode && !monthlyNode.isExecutiveNoise) return true;
-                        return (rowObj.children || []).some(child => hasVisibleSignal(child, level + 1));
-                    };
                     const appendRows = (rows, level = 0) => {
                         let html = "";
                         rows.forEach(rowObj => {
-                            if (!hasVisibleSignal(rowObj, level)) return;
                             html += renderRowHtml(rowObj, level);
                             if (this._expandedRows.has(rowObj.key)) html += appendRows(rowObj.children || [], level + 1);
                         });
