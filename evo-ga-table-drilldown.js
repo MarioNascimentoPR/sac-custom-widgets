@@ -1,4 +1,4 @@
-// Evo GA Executive Oversight Engine v1.4.32 - governed budget oversight.
+// Evo GA Executive Oversight Engine v1.4.34 - governed budget oversight.
 (function () {
     // =========================================================================
     // CONFIGURACOES GERAIS
@@ -1742,27 +1742,26 @@
                 // estava no Drilldown, evitar renderizar a hierarquia antes do clique.
                 this._activeView = "executive";
                 this._refreshOperationalView = null;
-                const renderGeneration = ++this._renderGeneration;
-                if (this._pendingRenderFrame !== null && typeof cancelAnimationFrame !== "undefined") {
-                    cancelAnimationFrame(this._pendingRenderFrame);
+                const container = this._shadowRoot.getElementById("table-container");
+                const hasRenderedView = container && container.querySelector(".view-panel");
+                if (!hasRenderedView) this._renderExecutiveLoadingShell();
+
+                // O SAC pode emitir varias atualizacoes parciais em sequencia.
+                // Mantemos um unico frame pendente, que sempre usa o dado mais recente,
+                // sem apagar a tela ou reiniciar indefinidamente o agendamento.
+                if (this._pendingRenderFrame !== null) return;
+                const renderGeneration = this._renderGeneration;
+                const runScheduledRender = () => {
                     this._pendingRenderFrame = null;
-                }
-                this._renderExecutiveLoadingShell();
-                const scheduleRender = (callback) => {
-                    if (typeof requestAnimationFrame !== "undefined") {
-                        this._pendingRenderFrame = requestAnimationFrame(() => {
-                            this._pendingRenderFrame = null;
-                            setTimeout(() => {
-                                if (renderGeneration === this._renderGeneration) callback();
-                            }, 0);
-                        });
-                    } else {
-                        setTimeout(() => {
-                            if (renderGeneration === this._renderGeneration) callback();
-                        }, 0);
-                    }
+                    if (renderGeneration !== this._renderGeneration) return;
+                    this.renderTable();
                 };
-                scheduleRender(() => this.renderTable());
+                if (typeof requestAnimationFrame !== "undefined") {
+                    this._pendingRenderFrame = requestAnimationFrame(runScheduledRender);
+                } else {
+                    this._pendingRenderFrame = -1;
+                    setTimeout(runScheduledRender, 0);
+                }
             }
         }
 
