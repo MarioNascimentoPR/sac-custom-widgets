@@ -1,6 +1,6 @@
 // One Pager - table summary with base period selector (MTD/YTD/YTD PY)
 (function () {
-  const WIDGET_VERSION = "1.9.71";
+  const WIDGET_VERSION = "1.9.72";
   const ACCOUNT_MEASURE_PROPERTY = "accountMeasureMap";
   const SHOW_TOTAL_PROPERTY = "showTotal";
   const DELTA_ABS_DECIMALS_PROPERTY = "deltaAbsDecimals";
